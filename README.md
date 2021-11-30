@@ -17,7 +17,8 @@ export SPARK_HOME=~/Development/external/spark-2.4.3-bin-spark-2.4.3-bin-hadoop2
 
 1. `asdf install python 3.7`
 2. `pip install virtualenv`
-3. `source venv/bin/activate`
+3. `python -m venv venv`
+4. `source venv/bin/activate`
 
 #### Things not answered:
 * What does aws-glue-libs do? Seems to be just a wrapper around Spark.
