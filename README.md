@@ -15,7 +15,11 @@ export SPARK_HOME=~/Development/external/spark-2.4.3-bin-spark-2.4.3-bin-hadoop2
 
 (not tested, just notes)
 
-1. `asdf install python 3.7`
+1. `brew install openssl gcc readline zlib curl ossp-uuid`
+1. `asdf plugin-add python`
+1. `asdf plugin-add postgres`
+1. `asdf install`
+1. `asdf global postgres 13.3`
 2. `pip install virtualenv`
 3. `python -m venv venv`
 4. `source venv/bin/activate`
@@ -63,7 +67,7 @@ For subsequent snapshots, TBD.
 
 On the CDC side, everytime a new object is placed in S3, we will trigger an EventBridge that triggers a AWS Glue Workflow that runs a AWS Glue job. The trigger will pass the object key to the job. The job will have these functions:
 
-1. 
+1. ...
 
 
 ### Updating Parquet on Stage bucket
