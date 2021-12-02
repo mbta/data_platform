@@ -20,6 +20,7 @@ export SPARK_HOME=~/Development/external/spark-2.4.3-bin-spark-2.4.3-bin-hadoop2
 1. `asdf plugin-add postgres`
 1. `asdf install`
 1. `asdf global postgres 13.3`
+1. `pg_ctl start && createdb data_platform`
 2. `pip install virtualenv`
 3. `python -m venv venv`
 4. `source venv/bin/activate`
@@ -116,23 +117,24 @@ https://aws.amazon.com/about-aws/whats-new/2021/11/securely-connect-amazon-msk-c
 
 # Folder Structure
 
-## async
+### async
 
-## batch
+### batch
 
-## cert
+### cert
 
-## jobs
+### jobs
 
-## lambdas
+### lambdas
 
-## migrations
+### migrations
 
-## terraform
+### terraform
+
+### tests
 
 # Packages
 
 * boto3
-* pg8000 (used instead of psycopg2 because of BSD of license)
 
 

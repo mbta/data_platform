@@ -11,3 +11,6 @@ class CubicQlikTable(Base):
 
   name = Column(VARCHAR(500), nullable=False)
   s3_prefix = Column(VARCHAR(1000), nullable=False)
+
+def get():
+  pass

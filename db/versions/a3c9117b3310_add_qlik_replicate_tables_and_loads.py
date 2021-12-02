@@ -1,8 +1,8 @@
 """Add qlik replicate tables and loads
 
-Revision ID: d8edbf4549fc
+Revision ID: a3c9117b3310
 Revises: 
-Create Date: 2021-11-30 16:32:08.477491
+Create Date: 2021-12-01 11:25:24.451921
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'd8edbf4549fc'
+revision = 'a3c9117b3310'
 down_revision = None
 branch_labels = None
 depends_on = None

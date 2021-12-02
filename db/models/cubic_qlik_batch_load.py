@@ -13,3 +13,6 @@ class CubicQlikBatchLoad(Base):
 
   s3_key = Column(VARCHAR(1000), nullable=False)
   status = Column(VARCHAR(100), nullable=False)
+
+def get():
+  pass
