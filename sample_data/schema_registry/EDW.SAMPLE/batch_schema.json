@@ -1,0 +1,1 @@
+{"fields":[{"metadata":{},"name":"SAMPLE_ID","nullable":true,"type":"integer"},{"metadata":{},"name":"SAMPLE_NAME","nullable":true,"type":"string"},{"metadata":{},"name":"EDW_INSERTED_DTM","nullable":true,"type":"timestamp"},{"metadata":{},"name":"EDW_UPDATED_DTM","nullable":true,"type":"timestamp"}],"type":"struct"}

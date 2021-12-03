@@ -26,7 +26,7 @@ dbName = os.environ.get('DB_NAME')
 # connection url to database
 dbURL = ''
 # if we are on local, then make some updates
-if os.environ.get('ENV') == 'local':
+if bool(os.environ.get('LOCAL', 'False')):
   # a couple of options for local based on whether user/password is set or not
   if dbUser and dbPassword:
     dbURL = 'postgresql://{}:{}@{}/{}'.format(dbUser, dbPassword, dbHost, dbName)

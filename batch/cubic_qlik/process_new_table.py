@@ -16,7 +16,7 @@ s3 = boto3.client('s3')
 glue = boto3.client('glue')
 
 # if we are on local, then make some updates to the clients
-if os.environ.get('ENV') == 'local':
+if bool(os.environ.get('LOCAL', 'False')):
   # if we have specified a boto profile to use, then override clients to use the specific session
   if os.environ.get('BATCH_BOTO_PROFILE'):
     botoSession = boto3.Session(profile_name=os.environ.get('BATCH_BOTO_PROFILE'))
@@ -44,12 +44,18 @@ def main(tableName=None, dryRun=True):
   batchLoadObjectKeys = []
   cdcLoadObjectKeys = []
   paginator = s3.get_paginator('list_objects_v2')
-  for page in paginator.paginate(Bucket=os.environ.get('S3_BUCKET_CUBIC_QLIK_LANDING')):
+  paginatorParameters = {
+    'Bucket': os.environ.get('S3_BUCKET_CUBIC_QLIK_LANDING'),
+  }
+  # add a prefix if we have one set in our environment (usually on local)
+  if os.environ.get('S3_PREFIX'):
+    paginatorParameters['Prefix'] = os.environ.get('S3_PREFIX')
+  for page in paginator.paginate(**paginatorParameters):
     for obj in page.get('Contents', []):
       key = obj.get('Key', '')
 
       # if it 'ends' with '__ct' it's a cdc load object
-      if key.startswith('{}__ct/'.format(tableRec.s3_prefix)):
+      if key.startswith('{}{}__ct/'.format(os.environ.get('S3_PREFIX', ''), tableRec.s3_prefix)):
         cdcLoadObjectKeys.append(key)
       else:
         batchLoadObjectKeys.append(key)
@@ -70,20 +76,20 @@ def main(tableName=None, dryRun=True):
   # create list of object keys that we need to run jobs for
   # batch
   batchJobKeys = []
-  for objectKey in batchLoadObjectKeys: # @todo optimize
+  for objectKey in batchLoadObjectKeys: # @todo optimize (maybe https://datascienceparichay.com/article/set-difference-python/)
     if objectKey not in batchLoadRecS3Keys:
       batchJobKeys.append(objectKey)
   # cdc
   cdcJobKeys = []
-  for objectKey in batchLoadObjectKeys: # @todo optimize
-    if objectKey not in batchLoadRecS3Keys:
+  for objectKey in cdcLoadObjectKeys: # @todo optimize
+    if objectKey not in cdcLoadRecS3Keys:
       cdcJobKeys.append(objectKey)
 
   # loop over jobs that are left and run them
   # batch
   for objectKey in batchJobKeys:
     if dryRun:
-      print('run batch job: {}'.format(job))
+      print('run cubic_qlik_import_batch_load job for key: {}'.format(objectKey))
     else:
       glue.start_job_run(
         JobName='cubic_qlik_import_batch_load_{}'.format(os.environ.get('ENV')),
@@ -94,7 +100,7 @@ def main(tableName=None, dryRun=True):
   # cdc
   for objectKey in cdcJobKeys:
     if dryRun:
-      print('run cdc job: {}'.format(job))
+      print('run cubic_qlik_import_cdc_load job for key: {}'.format(objectKey))
     else:
       glue.start_job_run(
         JobName='cubic_qlik_import_cdc_load_{}'.format(os.environ.get('ENV')),
@@ -102,6 +108,7 @@ def main(tableName=None, dryRun=True):
           'object_key': objectKey
         }
       )
+      # @todo make sure the job ran with 'glue.get_job_run'
 
 # script controller
 if __name__ == '__main__':

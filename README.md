@@ -129,6 +129,8 @@ https://aws.amazon.com/about-aws/whats-new/2021/11/securely-connect-amazon-msk-c
 
 ### migrations
 
+### sample_data
+
 ### terraform
 
 ### tests
