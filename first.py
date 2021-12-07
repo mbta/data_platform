@@ -1,8 +1,11 @@
 
+import importlib
+
 import json
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
 
+from test_kot import app
 # initiate session (per submit)
 spark = SparkSession.builder.getOrCreate()
 
@@ -36,3 +39,6 @@ parquetDF.createOrReplaceTempView(tableName)
 # do some reading of data
 tempDF = spark.sql("select * from {} where SAMPLE_ID = '{}'".format(tableName, 4))
 tempDF.show()
+
+# testWhl = importlib.import_module('test_kot')
+app.blah()

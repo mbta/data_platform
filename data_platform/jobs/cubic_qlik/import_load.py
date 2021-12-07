@@ -117,6 +117,14 @@ if loadType == 'batch':
   if loadDf.schema.json() != schemaJson: # @todo there should be a better way to validate schema
     raise Exception() # @todo
 
+  # transfer to parquet to make sure there is no issues with this format
+
+  # write parquet file to archive bucket
+
+
+
+
+
 
 
 if loadType == 'cdc':
