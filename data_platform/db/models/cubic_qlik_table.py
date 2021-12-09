@@ -2,13 +2,13 @@
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import INTEGER, TIMESTAMP, VARCHAR, DATE
 
-from db.models.base import Base
+from data_platform.db.models.base import Base
 
 
 
 # create table metadata__tables (
 #   id bigint,
-#   name varchar,
+#   name varchar, @todo maybe make unique
 #   modified_field varchar,
 #   partition_field varchar,
 # )

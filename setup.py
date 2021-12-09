@@ -1,9 +1,9 @@
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
-# metadata in setup.cfg
 setup(
   name='MBTA Data Platform',
+  packages=find_packages(include=['data_platform', 'data_platform.*']),
   install_requires=[
     'alembic==1.7.5',
     'asn1crypto==1.4.0',

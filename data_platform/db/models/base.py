@@ -20,15 +20,15 @@ class Base(object):
     # set created, if not specifically set
     if not target.created:
       target.created = now
-    # set last_modified, if not specifically set
-    if not target.last_modified:
-      target.last_modified = now
+    # set modified, if not specifically set
+    if not target.modified:
+      target.modified = now
 
   # before an update
   @staticmethod
   def before_update(mapper, connection, target):
-    # set last_modified
-    target.last_modified = datetime.datetime.utcnow()
+    # set modified
+    target.modified = datetime.datetime.utcnow()
 
   @classmethod
   def __declare_last__(cls):
@@ -36,4 +36,3 @@ class Base(object):
     # http://docs.sqlalchemy.org/en/rel_0_7/orm/extensions/declarative.html#declare-last
     event.listen(cls, 'before_insert', cls.before_insert)
     event.listen(cls, 'before_update', cls.before_update)
-

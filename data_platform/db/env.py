@@ -27,10 +27,10 @@ target_metadata = None
 
 ######### MBTA-specific ###########################################
 
-from db import dbURL
+from data_platform.db import dbURL
 config.set_main_option('sqlalchemy.url', dbURL)
 
-from db.models import base
+from data_platform.db.models import base
 target_metadata = base.Base.metadata
 
 ###################################################################

@@ -1,14 +1,4 @@
 
-[metadata]
-name = MBTA Data Platform
-
-[options]
-packages = find:
-include_package_data = true
-
-[options.packages.find]
-where = data_platform
-
 # [tool:pytest]
 # testpaths = tests
 

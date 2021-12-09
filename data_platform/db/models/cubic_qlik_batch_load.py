@@ -2,7 +2,7 @@
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import INTEGER, TIMESTAMP, VARCHAR, DATE
 
-from db.models.base import Base
+from data_platform.db.models.base import Base
 
 
 
@@ -35,7 +35,7 @@ class CubicQlikBatchLoad(Base):
 
   table_id = Column(INTEGER, nullable=False)
 
-  s3_key = Column(VARCHAR(1000), nullable=False)
+  s3_key = Column(VARCHAR(1000), nullable=False) # @todo maybe unique
   status = Column(VARCHAR(100), nullable=False)
 
 def get():

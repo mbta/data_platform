@@ -2,11 +2,11 @@
 import boto3
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import sessionmaker
 
 # import tables to put them in scope and allow alembic to autogenerate any changes
-from db.models import (
+from data_platform.db.models import (
   cubic_qlik_batch_load,
   cubic_qlik_cdc_load,
   cubic_qlik_table
@@ -52,10 +52,8 @@ else:
 
   dbURL = 'postgresql://{}:{}@{}/{}'.format(dbUser, dbPassword, dbHost, dbName)
 
-# set up a session to the database, and return it for use
-def session():
-  # create connection
-  engine = create_engine(dbURL)
+# create connection
+dbEngine = create_engine(dbURL)
 
-  # create session and return it
-  return Session(engine)
+# database session maker
+dbSession = sessionmaker(dbEngine)

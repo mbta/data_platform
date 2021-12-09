@@ -4,8 +4,8 @@ import argparse
 import boto3
 from dotenv import load_dotenv
 
-import db
-from db.models import cubic_qlik_table, cubic_qlik_batch_load, cubic_qlik_cdc_load
+import data_platform.db as db
+from data_platform.db.models import cubic_qlik_table, cubic_qlik_batch_load, cubic_qlik_cdc_load
 
 
 # get enviroment variables from .env file
@@ -48,16 +48,16 @@ def main(tableName=None, dryRun=True):
     'Bucket': os.environ.get('S3_BUCKET_CUBIC_QLIK_LANDING'),
   }
   # add a prefix if we have one set in our environment (usually on local)
-  if os.environ.get('S3_PREFIX'):
-    paginatorParameters['Prefix'] = os.environ.get('S3_PREFIX')
+  if os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING'):
+    paginatorParameters['Prefix'] = os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING')
   for page in paginator.paginate(**paginatorParameters):
     for obj in page.get('Contents', []):
       key = obj.get('Key', '')
 
       # if it 'ends' with '__ct' it's a cdc load object
-      if key.startswith('{}{}__ct/'.format(os.environ.get('S3_PREFIX', ''), tableRec.s3_prefix)):
+      if key.startswith('{}{}__ct/'.format(os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING', ''), tableRec.name)):
         cdcLoadObjectKeys.append(key)
-      else:
+      elif key.startswith('{}{}/'.format(os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING', ''), tableRec.name)):
         batchLoadObjectKeys.append(key)
 
   # get all batch and cdc load records for the table, and dump their s3 keys
@@ -87,25 +87,14 @@ def main(tableName=None, dryRun=True):
 
   # loop over jobs that are left and run them
   # batch
-  for objectKey in batchJobKeys:
+  for objectKey in batchJobKeys + cdcJobKeys:
     if dryRun:
-      print('run cubic_qlik_import_batch_load job for key: {}'.format(objectKey))
+      print('run cubic_qlik__ingest_load job for key: {}'.format(objectKey))
     else:
       glue.start_job_run(
-        JobName='cubic_qlik_import_batch_load_{}'.format(os.environ.get('ENV')),
+        JobName='cubic_qlik__ingest_load_{}'.format(os.environ.get('ENV')),
         Arguments={
-          'object_key': objectKey
-        }
-      )
-  # cdc
-  for objectKey in cdcJobKeys:
-    if dryRun:
-      print('run cubic_qlik_import_cdc_load job for key: {}'.format(objectKey))
-    else:
-      glue.start_job_run(
-        JobName='cubic_qlik_import_cdc_load_{}'.format(os.environ.get('ENV')),
-        Arguments={
-          'object_key': objectKey
+          'OBJECT_KEY': objectKey
         }
       )
       # @todo make sure the job ran with 'glue.get_job_run'
@@ -123,8 +112,6 @@ if __name__ == '__main__':
   )
   parser.add_argument(
     '--table',
-    action='store_const',
-    const=True,
     required=True
   )
   args = parser.parse_args()
