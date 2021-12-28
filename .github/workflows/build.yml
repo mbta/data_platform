@@ -1,0 +1,59 @@
+
+name: build
+
+# Controls when the workflow will run
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      s3_bucket_operations:
+        description: "Operations S3 bucket."
+        required: true
+      ecs_cluster:
+        description: "ECS Cluster ARN or name."
+        required: true
+      ecs_task_definition:
+        description: "ECS Task Definition ARN or name."
+        required: true
+      vpc_subnet:
+        description: "ECS Fargate network configuration's subnet(s) (comma-delimited)."
+        required: true
+      vpc_security_group:
+        description: "ECS Fargate network configuration's security group(s) (comma-delimited)."
+        required: true
+      vpc_assign_public_ip:
+        description: "ECS Fargate network configuration's public IP or no. (ENABLED or DISABLED)"
+        required: true
+
+jobs:
+
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    # job env variables
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+      AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v2
+
+      - name: Zip up 'data_platform' folder and place in aws/s3/packages/
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ${{github.workspace}}/data_platform/
+
+      - name: Sync aws/s3/ to S3 (excluding 'empty' files)
+        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://${{github.event.inputs.s3_bucket_operations}}/ --exclude "*/empty"
+
+      - name: Run task
+        uses: mbta/actions/run-ecs-task@v...
+        with:
+          aws_access_key_id: ${{secrets.AWS_ACCESS_KEY_ID}}
+          aws_secret_access_key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          aws_default_region: ${{secrets.AWS_DEFAULT_REGION}}
+          ecs_cluster: ${{github.event.inputs.ecs_cluster}}
+          ecs_task_definition: ${{github.event.inputs.ecs_task_definition}}
+          vpc_subnet: ${{github.event.inputs.vpc_subnet}}
+          vpc_security_group: ${{github.event.inputs.vpc_security_group}}
+          vpc_assign_public_ip: ${{github.event.inputs.vpc_assign_public_ip}}
