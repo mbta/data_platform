@@ -1,8 +1,0 @@
-
-# [tool:pytest]
-# testpaths = tests
-
-# [coverage:paths]
-# source = data_platform
-
-# [flake8]
