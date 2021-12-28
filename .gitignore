@@ -130,3 +130,6 @@ dmypy.json
 
 # Mac ignores
 .DS_Store
+
+# local development
+db_data/
