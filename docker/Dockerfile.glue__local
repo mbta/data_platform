@@ -1,0 +1,37 @@
+
+# used ubuntu here for ease of use
+FROM ubuntu:20.04
+
+# make java install non interactive by preseting the timezone
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=US/Eastern
+
+# install dependencies for running spark 2.4.x
+RUN apt update
+RUN apt install -y software-properties-common git curl openjdk-8-jdk-headless zip maven
+# fetch specific python version as needed for spark
+RUN add-apt-repository ppa:deadsnakes/ppa
+RUN apt update
+RUN apt install -y python3.7 python3.7-dev
+# symlink so spark uses the right version (ubuntu has python3 installed)
+RUN ln -s /usr/bin/python3.7 /usr/bin/python
+# install pip since it's not available in the docker image
+RUN curl https://bootstrap.pypa.io/get-pip.py --output get-pip.py
+RUN python get-pip.py
+
+# installed data platform's required python dependencies
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
+
+# install (clone) glue, and work with glue 2.0
+RUN git clone --branch glue-2.0 https://github.com/awslabs/aws-glue-libs.git /glue
+# fetch and extract glue-provided archive for spark
+RUN curl https://aws-glue-etl-artifacts.s3.amazonaws.com/glue-2.0/spark-2.4.3-bin-hadoop2.8.tgz --output apache-spark.tgz
+RUN tar -xf apache-spark.tgz
+
+# set env variables that spark needs, and run it to ensure maven has fetched what it needs
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+ENV SPARK_HOME=/spark-2.4.3-bin-spark-2.4.3-bin-hadoop2.8
+RUN /glue/bin/gluesparksubmit --version
+
+CMD ["echo", "Container 'glue__local' ready!"]

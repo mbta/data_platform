@@ -1,0 +1,13 @@
+
+# base image (in line with .tools-version)
+FROM python:3.7-slim
+
+# set the working directory for separation of files
+WORKDIR /data_platform
+# copy everything in the repo over to working directory
+COPY . .
+
+# install all required packages
+RUN pip install -r requirements.txt
+
+CMD ["echo", "Container 'main' ready!"]

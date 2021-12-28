@@ -1,0 +1,43 @@
+
+version: '3'
+
+services:
+
+  db__local:
+    container_name: db__local
+    image: postgres:13.3 # current CTD postgres version
+    env_file: .env
+    environment:
+      POSTGRES_DB: data_platform
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  glue__local:
+    container_name: glue__local
+    env_file: .env
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.glue__local
+    depends_on:
+      - db__local
+    # when building we don't need a working dir, but we do when running it
+    working_dir: /data_platform
+    volumes:
+      - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only
+      - ./:/data_platform:ro # map data platform for access to glue scripts
+
+  # alternative way to running things on host
+  main__local:
+    container_name: main__local
+    env_file: .env
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.main
+    depends_on:
+      - db__local
+    working_dir: /data_platform
+    volumes:
+      - ./:/data_platform:ro # map data platform for access to glue scripts
