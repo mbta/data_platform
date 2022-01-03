@@ -8,7 +8,7 @@ import data_platform.db as db
 from data_platform.db.models import cubic_qlik_table, cubic_qlik_batch_load, cubic_qlik_cdc_load
 
 
-# get enviroment variables from .env file
+# get enviroment variables from .env file, if it exists (mainly local development)
 load_dotenv()
 
 # initialize clients (this uses the default session, i.e. instance profile/role)
@@ -16,12 +16,11 @@ s3 = boto3.client('s3')
 glue = boto3.client('glue')
 
 # if we are on local, then make some updates to the clients
-if bool(os.environ.get('LOCAL', 'False')):
-  # if we have specified a boto profile to use, then override clients to use the specific session
-  if os.environ.get('BATCH_BOTO_PROFILE'):
-    botoSession = boto3.Session(profile_name=os.environ.get('BATCH_BOTO_PROFILE'))
+if os.environ.get('ENV') == 'local':
+  # and if we have specified a boto profile to use, then override clients to use the specific session
+  if os.environ.get('BOTO_PROFILE'):
+    botoSession = boto3.Session(profile_name=os.environ.get('BOTO_PROFILE'))
     s3 = botoSession.client('s3')
-    glue = botoSession.client('glue')
 
 # main function to run
 def main(tableName=None, dryRun=True):
@@ -45,19 +44,21 @@ def main(tableName=None, dryRun=True):
   cdcLoadObjectKeys = []
   paginator = s3.get_paginator('list_objects_v2')
   paginatorParameters = {
-    'Bucket': os.environ.get('S3_BUCKET_CUBIC_QLIK_LANDING'),
+    'Bucket': os.environ.get('S3_BUCKET_INCOMING'),
+    'Prefix': 'cubic-ods-qlik-ingest/'
   }
-  # add a prefix if we have one set in our environment (usually on local)
-  if os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING'):
-    paginatorParameters['Prefix'] = os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING')
+  # add addional prefix if we have one set in our environment (usually on local)
+  if os.environ.get('S3_PREFIX_INCOMING'):
+    paginatorParameters['Prefix'] = os.environ.get('S3_PREFIX_INCOMING') + paginatorParameters['Prefix']
+  # loop through pages of list
   for page in paginator.paginate(**paginatorParameters):
     for obj in page.get('Contents', []):
       key = obj.get('Key', '')
 
       # if it 'ends' with '__ct' it's a cdc load object
-      if key.startswith('{}{}__ct/'.format(os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING', ''), tableRec.name)):
+      if key.startswith('{}{}__ct/'.format(os.environ.get('S3_PREFIX_INCOMING', ''), tableRec.name)):
         cdcLoadObjectKeys.append(key)
-      elif key.startswith('{}{}/'.format(os.environ.get('S3_PREFIX_CUBIC_QLIK_LANDING', ''), tableRec.name)):
+      elif key.startswith('{}{}/'.format(os.environ.get('S3_PREFIX_INCOMING', ''), tableRec.name)):
         batchLoadObjectKeys.append(key)
 
   # get all batch and cdc load records for the table, and dump their s3 keys
@@ -89,10 +90,10 @@ def main(tableName=None, dryRun=True):
   # batch
   for objectKey in batchJobKeys + cdcJobKeys:
     if dryRun:
-      print('run cubic_qlik__ingest_load job for key: {}'.format(objectKey))
+      print('Run "docker-compose run --rm glue__local /glue/bin/gluesparksubmit /data_platform/aws/s3/glue_jobs/cubic_qlik__ingest_load.py --JOB_NAME cubic_qlik__ingest_load --OBJECT_KEY {}"'.format(objectKey))
     else:
       glue.start_job_run(
-        JobName='cubic_qlik__ingest_load_{}'.format(os.environ.get('ENV')),
+        JobName='dataplatform-{}-cubic-qlik-ingest-load'.format(os.environ.get('ENV')),
         Arguments={
           'OBJECT_KEY': objectKey
         }

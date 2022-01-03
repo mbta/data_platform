@@ -2,37 +2,48 @@
 
 # Local
 
-Some learnings from setting up local environment.
-
-* Spark (pyspark) 2.4.* requires Python 3.7.\* and JRE 8.
-* The following needs to be in the ENV variables.
-```
-export JAVA_HOME=/usr/local/opt/openjdk@8
-export SPARK_HOME=~/Development/external/spark-2.4.3-bin-spark-2.4.3-bin-hadoop2.8
-```
-
 ### Setup
 
 (not tested, just notes)
 
-1. `brew install openssl gcc readline zlib curl ossp-uuid`
 1. `asdf plugin-add python`
-1. `asdf plugin-add postgres`
-1. `asdf install`
-1. `asdf global postgres 13.3`
-1. `pg_ctl start && createdb data_platform`
-2. `pip install virtualenv`
-3. `python -m venv venv`
-4. `source venv/bin/activate`
-5. `pip install -e .`
+2. `asdf install`
+3. `pip install virtualenv`
+4. `python -m venv venv`
+5. `source venv/bin/activate`
+6. `pip install -r requirements`
 
-#### Things not answered:
-* What does aws-glue-libs do? Seems to be just a wrapper around Spark.
-* 
+### Docker
 
+To build and stand up the database, glue, and the main containers:
+```sh
+docker-compose up
+```
 
-#### Things tried / failed / not worth it):
-* Trying to install Spark through 'brew' (see [this](https://stackoverflow.com/questions/56601226/how-to-install-apache-spark-2-3-3-with-homebrew-on-mac))
+To run migrations:
+```sh
+docker-compose run --rm main__local alembic upgrade head
+```
+
+To login into database:
+```sh
+# assuming `docker-compose up`
+docker exec -it db__local bash
+# in docker bash
+psql -U postgres -d data_platform
+```
+
+To run glue jobs:
+```sh
+# ex.
+docker-compose run --rm glue__local /glue/bin/gluesparksubmit /data_platform/aws/s3/glue_jobs/{glue_script_name}.py --JOB_NAME {glue_job_name} [--OBJECT_KEY {s3_object_key}]
+```
+
+To run batch jobs:
+```sh
+# ex.
+docker-compose run --rm main__local python -m data_platform.batch.cubic_qlik.process_new_table --table {table_name}
+```
 
 
 # Spark
@@ -118,26 +129,17 @@ https://aws.amazon.com/about-aws/whats-new/2021/11/securely-connect-amazon-msk-c
 
 # Folder Structure
 
-### async
+### aws
 
-### batch
+### data_platform
+### data_platform/batch
+### data_platform/db
+### data_platform/db/cert
+### data_platform/db/versions
+### data_platform/jobs
 
-### cert
-
-### jobs
-
-### lambdas
-
-### migrations
+### docker
 
 ### sample_data
 
-### terraform
-
 ### tests
-
-# Packages
-
-* boto3
-
-

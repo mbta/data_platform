@@ -27,7 +27,7 @@ services:
     working_dir: /data_platform
     volumes:
       - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only
-      - ./:/data_platform:ro # map data platform for access to glue scripts
+      - ./:/data_platform:ro # map data platform for access to glue scripts, read-only
 
   # alternative way to running things on host
   main__local:
@@ -40,4 +40,5 @@ services:
       - db__local
     working_dir: /data_platform
     volumes:
-      - ./:/data_platform:ro # map data platform for access to glue scripts
+      - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only
+      - ./:/data_platform:ro # map data platform for access to scripts, read-only
