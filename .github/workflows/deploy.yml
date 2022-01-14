@@ -6,6 +6,9 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
+      env:
+        description: "Environment, 'dev' or 'prod'."
+        required: true
       s3_bucket_operations:
         description: "Operations S3 bucket."
         required: true
@@ -15,14 +18,11 @@ on:
       ecs_task_definition:
         description: "ECS Task Definition ARN or name."
         required: true
-      vpc_subnet:
-        description: "ECS Fargate network configuration's subnet(s) (comma-delimited)."
+      ecs_task_network_configuration:
+        description: "ECS Task network configuration. (ex. 'awsvpcConfiguration={subnets=[subnet-...],securityGroups=[sg-...],assignPublicIp=ENABLED}')"
         required: true
-      vpc_security_group:
-        description: "ECS Fargate network configuration's security group(s) (comma-delimited)."
-        required: true
-      vpc_assign_public_ip:
-        description: "ECS Fargate network configuration's public IP or no. (ENABLED or DISABLED)"
+      ecs_task_overrides:
+        description: "ECS Task container overrides. (ex. '{ \"containerOverrides\": [ { \"name\": \"dataplatform\", \"command\": [\"alembic\", \"upgrade\", \"head\"] } ] }'"
         required: true
 
 jobs:
@@ -40,21 +40,53 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v2
 
-      - name: Zip up 'data_platform' folder and place in aws/s3/packages/
+      - name: Setup Python.
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
+      - name: Install python packages in 'libs' folder.
         working-directory: ${{github.workspace}}
-        run: zip -r ./aws/s3/packages/data_platform.zip ./data_platform/
+        run: pip install -r requirements.txt -t ./libs
 
-      - name: Sync aws/s3/ to S3 (excluding 'empty' files)
-        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://${{github.event.inputs.s3_bucket_operations}}/ --exclude "*/empty"
+      - name: Create package to be used for Lambda and Glue Jobs, and add lambda files.
+        working-directory: ${{github.workspace}}/aws/s3/lambdas
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./
 
-      - name: Run task
-        uses: mbta/actions/run-ecs-task@v...
+      - name: Add 'data_platform' folder to package.
+        working-directory: ${{github.workspace}}
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./data_platform/
+
+      - name: Add python libs to package.
+        working-directory: ${{github.workspace}}/libs
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./
+
+      - name: Sync Glue Jobs and package to operations.
+        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://{{github.events.inputs.s3_bucket_operations}}/ --exclude "*/empty"
+
+      - name: Build main container.
+        working-directory: ${{github.workspace}}
+        run: docker build --tag ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform:{{github.events.inputs.env}}-latest -f ./docker/Dockerfile.main .
+
+      - name: Get repository login.
+        run: aws ecr get-login-password | docker login --username AWS --password-stdin ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform
+
+      - name: Push main container to repository.
+        run: docker push ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform:{{github.events.inputs.env}}-latest
+
+      - name: Run main container task to run migrations.
+        uses: mbta/actions/run-ecs-task@v1
         with:
           aws_access_key_id: ${{secrets.AWS_ACCESS_KEY_ID}}
           aws_secret_access_key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
           aws_default_region: ${{secrets.AWS_DEFAULT_REGION}}
-          ecs_cluster: ${{github.event.inputs.ecs_cluster}}
-          ecs_task_definition: ${{github.event.inputs.ecs_task_definition}}
-          vpc_subnet: ${{github.event.inputs.vpc_subnet}}
-          vpc_security_group: ${{github.event.inputs.vpc_security_group}}
-          vpc_assign_public_ip: ${{github.event.inputs.vpc_assign_public_ip}}
+          ecs_cluster: arn:aws:ecs:${{secrets.AWS_DEFAULT_REGION}}:${{secrets.AWS_ACCOUNT_ID}}:cluster/dataplatform
+          ecs_task_definition: arn:aws:ecs:${{secrets.AWS_DEFAULT_REGION}}:${{secrets.AWS_ACCOUNT_ID}}:task-definition/dataplatform-{{github.events.inputs.env}}-main
+          ecs_task_network_configuration: {{github.events.inputs.ecs_task_network_configuration}}
+          ecs_task_overrides: {{github.events.inputs.ecs_task_overrides}}
+
+      - name: Update 'dataplatform-{{github.events.inputs.env}}-cubic-ods-process-incoming' AWS Lambda function.
+        run: aws lambda update-function-code --function-name dataplatform-{{github.events.inputs.env}}-cubic-ods-process-incoming --s3-bucket {{github.events.inputs.s3_bucket_operations}} --s3-key packages/data_platform.zip
+
+      - name: Update 'dataplatform-{{github.events.inputs.env}}-cubic-ods-process-ingestion' AWS Lambda function.
+        run: aws lambda update-function-code --function-name dataplatform-{{github.events.inputs.env}}-cubic-ods-process-ingestion --s3-bucket {{github.events.inputs.s3_bucket_operations}} --s3-key packages/data_platform.zip
