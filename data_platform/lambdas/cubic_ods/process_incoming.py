@@ -37,11 +37,21 @@ def run(loadKey):
     tableRecs = db.query(CubicODSTable).filter(CubicODSTable.deleted is not None).all()
 
     # determine which table the load is for
-    tableAvailable = False # for keeping track of if we find the table
+    isTableAvailable = False # for keeping track of if we find the table
+    # determine is the load is CDC (Change Data Capture)
+    isCDCLoad = False
     for tableRec in tableRecs:
+      # check if it's regular load file
       if loadKey.startswith('{}{}/'.format(os.environ.get('S3_BUCKET_INCOMING_PREFIX'), tableRec.s3_prefix)):
-        tableAvailable = True
+        isTableAvailable = True
 
+      # check if it's a cdc load file (prefix ends with '__ct')
+      if loadKey.startswith('{}{}__ct/'.format(os.environ.get('S3_BUCKET_INCOMING_PREFIX'), tableRec.s3_prefix)):
+        isTableAvailable = True
+        isCDCLoad = True
+
+      # if we have found a table record that we can associate the load with, then add the load record
+      if isTableAvailable:
         # if we are trying to insert a load that matches the snapshot key, we should update the snapshot
         # value for the table
         if loadKey == '{}{}'.format(os.environ.get('S3_BUCKET_INCOMING_PREFIX'), tableRec.snapshot_s3_key):
@@ -52,6 +62,7 @@ def run(loadKey):
           'table_id': tableRec.id,
           'status': 'ready',
           'snapshot': tableRec.snapshot,
+          'is_cdc': isCDCLoad,
           's3_key': loadKey,
           's3_modified': loadS3Info.get('LastModified'),
         })
@@ -64,7 +75,7 @@ def run(loadKey):
         break
 
     # if we didn't find the table, let others know by logging an error
-    if not tableAvailable:
+    if not isTableAvailable:
       errorMessage = 'Cubic ODS table doesn\'t exist for the load object: {}'.format(loadKey)
 
       logging.error('[data_platform] [lambdas] [cubic_ods] [process_incoming]: {}'.format(errorMessage))
