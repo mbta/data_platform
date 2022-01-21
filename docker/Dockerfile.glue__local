@@ -27,7 +27,7 @@ RUN pip install -r requirements.txt
 RUN git clone --branch glue-2.0 https://github.com/awslabs/aws-glue-libs.git /glue
 # fetch and extract glue-provided archive for spark
 RUN curl https://aws-glue-etl-artifacts.s3.amazonaws.com/glue-2.0/spark-2.4.3-bin-hadoop2.8.tgz --output apache-spark.tgz
-RUN tar -xf apache-spark.tgz
+RUN tar --no-same-owner -xf apache-spark.tgz
 
 # set env variables that spark needs, and run it to ensure maven has fetched what it needs
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64

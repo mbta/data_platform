@@ -66,13 +66,13 @@ jobs:
 
       - name: Build main container.
         working-directory: ${{github.workspace}}
-        run: docker build --tag ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform:{{github.events.inputs.env}}-latest -f ./docker/Dockerfile.main .
+        run: docker build --tag ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform:main-{{github.events.inputs.env}}-latest -f ./docker/Dockerfile.main .
 
       - name: Get repository login.
         run: aws ecr get-login-password | docker login --username AWS --password-stdin ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform
 
       - name: Push main container to repository.
-        run: docker push ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform:{{github.events.inputs.env}}-latest
+        run: docker push ${{secrets.AWS_ACCOUNT_ID}}.dkr.ecr.${{secrets.AWS_DEFAULT_REGION}}.amazonaws.com/dataplatform:main-{{github.events.inputs.env}}-latest
 
       - name: Run main container task to run migrations.
         uses: mbta/actions/run-ecs-task@v1
@@ -84,9 +84,3 @@ jobs:
           ecs_task_definition: arn:aws:ecs:${{secrets.AWS_DEFAULT_REGION}}:${{secrets.AWS_ACCOUNT_ID}}:task-definition/dataplatform-{{github.events.inputs.env}}-main
           ecs_task_network_configuration: {{github.events.inputs.ecs_task_network_configuration}}
           ecs_task_overrides: {{github.events.inputs.ecs_task_overrides}}
-
-      - name: Update 'dataplatform-{{github.events.inputs.env}}-cubic-ods-process-incoming' AWS Lambda function.
-        run: aws lambda update-function-code --function-name dataplatform-{{github.events.inputs.env}}-cubic-ods-process-incoming --s3-bucket {{github.events.inputs.s3_bucket_operations}} --s3-key packages/data_platform.zip
-
-      - name: Update 'dataplatform-{{github.events.inputs.env}}-cubic-ods-process-ingestion' AWS Lambda function.
-        run: aws lambda update-function-code --function-name dataplatform-{{github.events.inputs.env}}-cubic-ods-process-ingestion --s3-bucket {{github.events.inputs.s3_bucket_operations}} --s3-key packages/data_platform.zip

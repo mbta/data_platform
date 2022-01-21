@@ -5,7 +5,7 @@ services:
 
   db__local:
     container_name: db__local
-    image: postgres:13.3 # current CTD postgres version
+    image: postgres:12 # currently supported version on RDS Proxy
     env_file: .env
     environment:
       POSTGRES_DB: data_platform
