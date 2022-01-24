@@ -10,12 +10,12 @@ def run():
     'cubic_ods__start_ingestion': False
   }
   # kill switch handler
-  def sigtermHandler(signum, frame):
+  def sigHandler(signum, frame):
     kill['cubic_ods__start_ingestion'] = True
 
   # register handlers for termination signals, so we don't kill in mid process
-  signal.signal(signal.SIGINT, sigtermHandler) # SINGINT 2 (ctrl-c)
-  signal.signal(signal.SIGTERM, sigtermHandler) # SIGTERM 15 (docker stop)
+  signal.signal(signal.SIGINT, sigHandler) # SINGINT 2 (ctrl-c)
+  signal.signal(signal.SIGTERM, sigHandler) # SIGTERM 15 (docker stop)
 
   # if we haven't killed the process, contiue calling it
   while not kill.get('cubic_ods__start_ingestion', False):
