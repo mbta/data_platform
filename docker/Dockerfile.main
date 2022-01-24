@@ -10,4 +10,7 @@ COPY . .
 # install all required packages
 RUN pip install -r requirements.txt
 
+# install supervisor for process management
+RUN pip install supervisor
+
 CMD ["echo", "Container 'main' ready!"]
