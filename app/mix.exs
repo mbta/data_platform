@@ -2,7 +2,6 @@ defmodule App.MixProject do
   use Mix.Project
 
   def project do
-    IO.puts(Mix.env())
     [
       app: :app,
       version: "0.1.0",
