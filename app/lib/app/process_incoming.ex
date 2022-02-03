@@ -13,7 +13,7 @@ defmodule App.ProcessIncoming do
     # recursively run
     GenServer.cast(__MODULE__, {:run})
 
-    {:ok}
+    :ok
   end
 
 
@@ -41,7 +41,7 @@ defmodule App.ProcessIncoming do
   @impl true
   def handle_info(:start, %{status: :starting} = _state) do
     # kick off the first run
-    __MODULE__.run()
+    run()
 
     {:noreply, %{ status: :running }}
   end
