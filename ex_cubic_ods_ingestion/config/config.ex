@@ -1,4 +1,3 @@
-
 use Mix.Config
 
 # Configures Elixir's Logger
