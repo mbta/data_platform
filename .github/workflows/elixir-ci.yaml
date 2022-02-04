@@ -1,6 +1,6 @@
 name: Elixir CI
 
-on: [push, pull_request]
+on: [pull_request]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -75,5 +75,6 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: elixir-lcov
-          path: cover/
-      - uses: mbta/actions/dialyzer@v1
+          path: ex_cubic_ods_ingestion/cover/
+          if-no-files-found: error
+      # - uses: mbta/actions/dialyzer@v1
