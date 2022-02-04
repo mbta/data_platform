@@ -56,7 +56,7 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-
       - name: Install dependencies (if needed)
-        if: steps.deps-cache.outputs.cache-hit != 'true'
+        # if: steps.deps-cache.outputs.cache-hit != 'true'
         run: mix deps.get
       - name: Compile (warnings as errors)
         run: mix compile --force --warnings-as-errors
