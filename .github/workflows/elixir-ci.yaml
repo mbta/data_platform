@@ -77,4 +77,4 @@ jobs:
           name: elixir-lcov
           path: ex_cubic_ods_ingestion/cover/
           if-no-files-found: error
-      - uses: mbta/actions/dialyzer@v1
+      # - uses: mbta/actions/dialyzer@v1
