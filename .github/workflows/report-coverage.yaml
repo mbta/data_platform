@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - run: mkdir -p ${{ runner.temp }}/coverage
+      - run: mkdir -p ${{ runner.temp }}/cover
       - run: echo Fetching artifacts for ${{ github.event.workflow_run.id }}, event name ${{ github.event_name }}, triggered by ${{ github.event.workflow_run.event }}
       - name: Download artifact
         uses: actions/github-script@v3.1.0
@@ -39,8 +39,8 @@ jobs:
               archive_format: 'zip',
             });
             var fs = require('fs');
-            fs.writeFileSync('${{ runner.temp }}/coverage/elixir-lcov.zip', Buffer.from(download.data));
-      - working-directory: ${{ runner.temp }}/coverage
+            fs.writeFileSync('${{ runner.temp }}/cover/elixir-lcov.zip', Buffer.from(download.data));
+      - working-directory: ${{ runner.temp }}/cover
         run: |
           unzip elixir-lcov.zip
           echo "PR_SHA=$(cat PR_SHA)" >> $GITHUB_ENV
@@ -52,6 +52,6 @@ jobs:
         uses: mbta/github-actions-report-lcov@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          coverage-files: ${{ runner.temp }}/coverage/lcov*.info
+          coverage-files: ${{ runner.temp }}/cover/lcov*.info
           artifact-name: elixir-code-coverage
-          working-directory: app
+          # working-directory: ex_cubic_ods_ingestion

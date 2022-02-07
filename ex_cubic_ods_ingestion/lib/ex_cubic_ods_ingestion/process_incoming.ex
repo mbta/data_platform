@@ -1,9 +1,13 @@
-defmodule App.ProcessIncoming do
+defmodule ExCubicOdsIngestion.ProcessIncoming do
+  @moduledoc """
+  ProcessIncoming module.
+  """
+
   use GenServer
+
   require Logger
 
   @wait_interval_ms 5_000
-
 
   # client methods
   def start_link(opts) do
@@ -17,7 +21,7 @@ defmodule App.ProcessIncoming do
   # callbacks
   @impl true
   def init(_opts) do
-    {:ok, %{ status: :running }, 0}
+    {:ok, %{status: :running}, 0}
   end
 
   @impl true
@@ -35,11 +39,9 @@ defmodule App.ProcessIncoming do
   end
 
   # server helper functions
-  defp run() do
-
+  defp run do
     # ...
 
     :ok
   end
-
 end
