@@ -1,4 +1,3 @@
-
 defmodule ExCubicOdsIngestion.Repo do
   use Ecto.Repo,
     otp_app: :ex_cubic_ods_ingestion,
@@ -23,11 +22,8 @@ defmodule ExCubicOdsIngestion.Repo do
 
       # update password with token
       Keyword.put(config, :password, token)
-
-    # otherwise use the configuration from config file
     else
       config
     end
-
   end
 end

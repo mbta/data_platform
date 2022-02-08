@@ -33,5 +33,4 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
 
     :ok
   end
-
 end
