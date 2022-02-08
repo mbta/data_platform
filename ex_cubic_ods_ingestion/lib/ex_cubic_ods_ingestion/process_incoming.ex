@@ -53,11 +53,14 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
     # contents |> Enum.each(fn e -> IO.puts "Elem: #{e[:key]}" end)
 
-    # query = from t in "cubic_ods_tables",
-    #       select: %{name: t.name}
-    # results = Repo.all(query)
+    query =
+      from(t in "cubic_ods_tables",
+        select: %{name: t.name}
+      )
 
-    # results |> Enum.each(fn row -> IO.puts "Name: #{row[:name]}" end)
+    results = Repo.all(query)
+
+    results |> Enum.each(fn row -> IO.puts("Name: #{row[:name]}") end)
 
     # ...
 
