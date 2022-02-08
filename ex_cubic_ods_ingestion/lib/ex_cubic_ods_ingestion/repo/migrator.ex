@@ -14,13 +14,20 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
     opts = Keyword.merge(@opts, opts)
 
     Logger.info("Starting migrations (synchronous).")
-    migrate!(opts[:module])
+    run!(opts[:module])
     Logger.info("Finished migrations.")
 
     :ignore
   end
 
-  defp migrate!(module) do
+  # callbacks
+  @impl true
+  def init(opts) do
+    {:ok, opts}
+  end
+
+  # server functions
+  defp run!(module) do
     for repo <- [ExCubicOdsIngestion.Repo] do
       Logger.info(fn -> "Migrating repo=#{repo}" end)
 
