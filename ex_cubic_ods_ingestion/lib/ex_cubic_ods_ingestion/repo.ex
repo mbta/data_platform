@@ -18,7 +18,7 @@ defmodule ExCubicOdsIngestion.Repo do
       username = Keyword.fetch!(config, :username)
       hostname = Keyword.fetch!(config, :hostname)
       port = Keyword.fetch!(config, :port)
-      token = apply(ExAws.RDS, :generate_db_auth_token, [hostname, username, port, %{}])
+      token = ExAws.RDS.generate_db_auth_token(hostname, username, port, %{})
 
       # update password with token
       Keyword.put(config, :password, token)
