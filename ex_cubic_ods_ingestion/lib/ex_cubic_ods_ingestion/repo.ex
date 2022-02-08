@@ -14,17 +14,12 @@ defmodule ExCubicOdsIngestion.Repo do
   """
   @spec before_connect(map()) :: map()
   def before_connect(config) do
-
-    # in a prod environment, use generate a token as a password for RDS database
-    if Mix.env() == :prod do
-      :ok = Logger.info("generating_aws_rds_iam_auth_token")
-
+    # generate a token as a password for RDS database if indicated to
+    if Application.get_env(:ex_cubic_ods_ingestion, ExCubicOdsIngestion.Repo)[:use_iam_token] do
       username = Keyword.fetch!(config, :username)
       hostname = Keyword.fetch!(config, :hostname)
       port = Keyword.fetch!(config, :port)
       token = apply(ExAws.RDS, :generate_db_auth_token, [hostname, username, port, %{}])
-
-      :ok = Logger.info("generated_aws_rds_iam_auth_token")
 
       # update password with token
       Keyword.put(config, :password, token)
