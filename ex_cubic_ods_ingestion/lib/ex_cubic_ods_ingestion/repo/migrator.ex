@@ -11,7 +11,7 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
     opts = Keyword.merge(@opts, opts)
 
     if Keyword.get(opts, :run_migrations_at_startup?) do
-      _ignored = Logger.info("Migrating synchronously")
+      Logger.info("Migrating synchronously")
       migrate!(opts[:module])
       _ignored = Logger.info("Finished migrations")
     end
@@ -36,7 +36,7 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
         :timer.tc(module, :with_repo, [repo, &module.run(&1, :up, all: true)])
 
       time_msec = System.convert_time_unit(time_usec, :microsecond, :millisecond)
-      _ignored = Logger.info(fn -> "Migration finished repo=#{repo} time=#{time_msec}" end)
+      Logger.info("Migration finished repo=#{repo} time=#{time_msec}")
     end
 
     :ok
