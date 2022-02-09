@@ -16,7 +16,12 @@ defmodule ExCubicOdsIngestion.RepoTest do
   describe "before_connect/1" do
     test "uses given password if no rds module configured" do
       config =
-        ExCubicOdsIngestion.Repo.before_connect(username: "u", hostname: "h", port: 4000, password: "pass")
+        ExCubicOdsIngestion.Repo.before_connect(
+          username: "u",
+          hostname: "h",
+          port: 4000,
+          password: "pass"
+        )
 
       assert Keyword.fetch!(config, :password) == "pass"
     end

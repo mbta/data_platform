@@ -14,7 +14,6 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
     end
   end
 
-
   describe "run" do
     test "get list of load objects" do
       load_objects = [
@@ -22,7 +21,8 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
         %{}
       ]
 
-      assert load_objects == ExCubicOdsIngestion.ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", "")
+      assert load_objects ==
+               ExCubicOdsIngestion.ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", "")
     end
 
     test "get list of load records" do
@@ -31,10 +31,11 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
         %{}
       ]
 
-      assert load_records == ExCubicOdsIngestion.ProcessIncoming.load_recs_list(%{
-        key: "gg/incoming/cubic_ods_qlik_test/EDW.SAMPLE/LOAD1.csv",
-        last_modified: "2022-02-08T20:49:50.000Z"
-      })
+      assert load_records ==
+               ExCubicOdsIngestion.ProcessIncoming.load_recs_list(%{
+                 key: "gg/incoming/cubic_ods_qlik_test/EDW.SAMPLE/LOAD1.csv",
+                 last_modified: "2022-02-08T20:49:50.000Z"
+               })
     end
   end
 end
