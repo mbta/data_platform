@@ -1,8 +1,8 @@
-"""add cubic ods tables
+"""cubic ods tables loads
 
-Revision ID: 2fe879a1a59a
-Revises:
-Create Date: 2022-01-09 16:50:54.618557
+Revision ID: 91beb03ecc74
+Revises: 
+Create Date: 2022-02-09 12:16:40.322661
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '2fe879a1a59a'
+revision = '91beb03ecc74'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -23,13 +23,13 @@ def upgrade():
     sa.Column('created', postgresql.TIMESTAMP(), nullable=False),
     sa.Column('modified', postgresql.TIMESTAMP(), nullable=False),
     sa.Column('deleted', postgresql.TIMESTAMP(), nullable=True),
-    sa.Column('table_id', sa.INTEGER(), nullable=False),
+    sa.Column('table_id', sa.INTEGER(), nullable=True),
     sa.Column('status', sa.VARCHAR(length=100), nullable=False),
-    sa.Column('snapshot', postgresql.TIMESTAMP(), nullable=False),
-    sa.Column('is_cdc', postgresql.BOOLEAN(), nullable=False),
+    sa.Column('snapshot', postgresql.TIMESTAMP(), nullable=True),
+    sa.Column('is_cdc', sa.BOOLEAN(), nullable=True),
     sa.Column('s3_key', sa.VARCHAR(length=1000), nullable=False),
     sa.Column('s3_modified', postgresql.TIMESTAMP(), nullable=False),
-    sa.Column('s3_size', postgresql.BIGINT(), nullable=False),
+    sa.Column('s3_size', sa.BIGINT(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('cubic_ods_tables',
@@ -38,7 +38,7 @@ def upgrade():
     sa.Column('modified', postgresql.TIMESTAMP(), nullable=False),
     sa.Column('deleted', postgresql.TIMESTAMP(), nullable=True),
     sa.Column('name', sa.VARCHAR(length=500), nullable=False),
-    sa.Column('snapshot', postgresql.TIMESTAMP(), nullable=False),
+    sa.Column('snapshot', postgresql.TIMESTAMP(), nullable=True),
     sa.Column('snapshot_s3_key', sa.VARCHAR(length=1000), nullable=False),
     sa.Column('s3_prefix', sa.VARCHAR(length=1000), nullable=False),
     sa.PrimaryKeyConstraint('id')

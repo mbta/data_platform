@@ -31,7 +31,10 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
         %{}
       ]
 
-      assert load_records == ExCubicOdsIngestion.ProcessIncoming.load_recs_list(%{})
+      assert load_records == ExCubicOdsIngestion.ProcessIncoming.load_recs_list(%{
+        key: "gg/incoming/cubic_ods_qlik_test/EDW.SAMPLE/LOAD1.csv",
+        last_modified: "2022-02-08T20:49:50.000Z"
+      })
     end
   end
 end
