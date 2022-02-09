@@ -13,4 +13,25 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
       assert ExCubicOdsIngestion.ProcessIncoming.status(server) == :running
     end
   end
+
+
+  describe "run" do
+    test "get list of load objects" do
+      load_objects = [
+        %{},
+        %{}
+      ]
+
+      assert load_objects == ExCubicOdsIngestion.ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", "")
+    end
+
+    test "get list of load records" do
+      load_records = [
+        %{},
+        %{}
+      ]
+
+      assert load_records == ExCubicOdsIngestion.ProcessIncoming.load_recs_list(%{})
+    end
+  end
 end
