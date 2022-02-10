@@ -59,14 +59,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
     # query loads to see what we can ignore when inserting
     # usually happens when objects have not been moved out of 'incoming' bucket
-    [first_load_object | _rest] = load_objects
-
-    load_recs =
-      if first_load_object do
-        load_recs_list(first_load_object)
-      else
-        []
-      end
+    load_recs = load_recs_list(List.first(load_objects))
 
     # filter out objects already in the database
     new_load_objects = Enum.filter(load_objects, &filter_already_added(&1, load_recs))
@@ -75,6 +68,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     Repo.transaction(fn -> Enum.each(new_load_objects, &insert_load(&1)) end)
 
     # add or update continuation_token
+    # @todo make this a struct
     Map.merge(state, %{continuation_token: next_continuation_token})
   end
 
@@ -107,15 +101,19 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
   @spec load_recs_list(map()) :: list()
   def load_recs_list(load_object) do
-    {:ok, last_modified, _offset} = DateTime.from_iso8601(load_object[:last_modified])
-    last_modified = DateTime.truncate(last_modified, :second)
+    if load_object do
+      {:ok, last_modified, _offset} = DateTime.from_iso8601(load_object[:last_modified])
+      last_modified = DateTime.truncate(last_modified, :second)
 
-    query =
-      from(load in CubicOdsLoad,
-        where: load.s3_modified >= ^last_modified
-      )
+      query =
+        from(load in CubicOdsLoad,
+          where: load.s3_modified >= ^last_modified
+        )
 
-    Repo.all(query)
+      Repo.all(query)
+    else
+      []
+    end
   end
 
   @spec filter_already_added(map(), list()) :: boolean()
