@@ -5,16 +5,16 @@ defmodule ExCubicOdsIngestion.Mock.ExAws.S3 do
 
   @spec list_objects_v2(bucket :: binary) :: ExAws.Operation.S3.t()
   @spec list_objects_v2(bucket :: binary, list()) :: ExAws.Operation.S3.t()
-  @params [
-    :delimiter,
-    :prefix,
-    :encoding_type,
-    :max_keys,
-    :continuation_token,
-    :fetch_owner,
-    :start_after
-  ]
-  def list_objects_v2(bucket, opts \\ []) do
+  # @params [
+  #   :delimiter,
+  #   :prefix,
+  #   :encoding_type,
+  #   :max_keys,
+  #   :continuation_token,
+  #   :fetch_owner,
+  #   :start_after
+  # ]
+  def list_objects_v2(_bucket, _opts \\ []) do
     %{
       body: %{
         contents: [

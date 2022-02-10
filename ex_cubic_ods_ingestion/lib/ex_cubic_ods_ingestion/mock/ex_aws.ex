@@ -4,7 +4,7 @@ defmodule ExCubicOdsIngestion.Mock.ExAws do
   """
 
   @spec request!(ExAws.Operation.t(), keyword) :: term
-  def request!(op, config_overrides \\ []) do
+  def request!(op, _config_overrides \\ []) do
     op
 
     # ::::: original implementation :::::

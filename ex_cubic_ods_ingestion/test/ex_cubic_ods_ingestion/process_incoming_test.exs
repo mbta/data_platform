@@ -1,12 +1,14 @@
 defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   use ExUnit.Case
 
+  alias Ecto.Adapters.SQL.Sandbox
+
   require ExCubicOdsIngestion.Schema.CubicOdsLoad
 
   # setup server for use throughout tests
   setup do
     # Explicitly get a connection before each test
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(ExCubicOdsIngestion.Repo)
+    :ok = Sandbox.checkout(ExCubicOdsIngestion.Repo)
 
     # start a supervisor
     server = start_supervised!(ExCubicOdsIngestion.ProcessIncoming)
