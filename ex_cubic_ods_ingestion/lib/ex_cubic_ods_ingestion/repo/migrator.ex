@@ -3,7 +3,7 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
   GenServer which runs on startup to run Ecto migrations, then terminates.
   """
 
-  use GenServer, restart: :transient
+  use GenServer, restart: :temporary
 
   require Logger
 
