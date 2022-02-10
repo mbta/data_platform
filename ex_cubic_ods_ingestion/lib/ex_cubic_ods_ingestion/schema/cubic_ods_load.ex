@@ -13,9 +13,9 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
           s3_key: String.t() | nil,
           s3_modified: DateTime.t() | nil,
           s3_size: integer() | nil,
-          deleted: DateTime.t() | nil,
-          created: DateTime.t() | nil,
-          modified: DateTime.t() | nil
+          deleted_at: DateTime.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
         }
 
   schema "cubic_ods_loads" do
@@ -27,12 +27,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     field(:s3_modified, :utc_datetime)
     field(:s3_size, :integer)
 
-    field(:deleted, :utc_datetime)
+    field(:deleted_at, :utc_datetime)
 
-    timestamps(
-      inserted_at: :created,
-      updated_at: :modified,
-      type: :utc_datetime
-    )
+    timestamps(type: :utc_datetime)
   end
 end

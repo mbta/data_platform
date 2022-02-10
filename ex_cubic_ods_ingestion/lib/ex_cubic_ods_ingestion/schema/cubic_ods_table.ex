@@ -10,9 +10,9 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
           s3_prefix: String.t() | nil,
           snapshot: DateTime.t() | nil,
           snapshot_s3_key: String.t() | nil,
-          deleted: DateTime.t() | nil,
-          created: DateTime.t() | nil,
-          modified: DateTime.t() | nil
+          deleted_at: DateTime.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
         }
 
   schema "cubic_ods_loads" do
@@ -21,12 +21,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
     field(:snapshot, :utc_datetime)
     field(:snapshot_s3_key, :string)
 
-    field(:deleted, :utc_datetime)
+    field(:deleted_at, :utc_datetime)
 
-    timestamps(
-      inserted_at: :created,
-      updated_at: :modified,
-      type: :utc_datetime
-    )
+    timestamps(type: :utc_datetime)
   end
 end
