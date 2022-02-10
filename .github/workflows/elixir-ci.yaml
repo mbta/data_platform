@@ -36,6 +36,25 @@ jobs:
     defaults:
       run:
         working-directory: ex_cubic_ods_ingestion
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: dataplatform_test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: ${{env.DB_PASSWORD}}
+          POSTGRES_USER:  ${{env.DB_USER}}
+          POSTGRES_DB: ${{env.DB_NAME}}
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
     steps:
       - uses: actions/checkout@v2
       - name: ASDF cache
