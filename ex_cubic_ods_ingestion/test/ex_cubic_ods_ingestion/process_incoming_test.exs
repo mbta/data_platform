@@ -1,8 +1,14 @@
 defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   use ExUnit.Case
 
+  require ExCubicOdsIngestion.Schema.CubicOdsLoad
+
   # setup server for use throughout tests
   setup do
+    # Explicitly get a connection before each test
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(ExCubicOdsIngestion.Repo)
+
+    # start a supervisor
     server = start_supervised!(ExCubicOdsIngestion.ProcessIncoming)
 
     %{server: server}
@@ -17,23 +23,37 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   describe "run" do
     test "get list of load objects" do
       load_objects = [
-        %{},
-        %{}
+        %{
+          e_tag: "\"abc123\"",
+          key: "vendor/SAMPLE/LOAD1.csv",
+          last_modified: "2022-02-08T20:49:50.000Z",
+          owner: nil,
+          size: "197",
+          storage_class: "STANDARD"
+        },
+        %{
+          e_tag: "\"def123\"",
+          key: "vendor/SAMPLE/LOAD2.csv",
+          last_modified: "2022-02-08T20:49:50.000Z",
+          owner: nil,
+          size: "123",
+          storage_class: "STANDARD"
+        }
       ]
 
-      assert load_objects ==
+      assert [load_objects, ""] ==
                ExCubicOdsIngestion.ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", "")
     end
 
     test "get list of load records" do
-      load_records = [
-        %{},
-        %{}
+      load_recs = [
+        %ExCubicOdsIngestion.Schema.CubicOdsLoad{},
+        %ExCubicOdsIngestion.Schema.CubicOdsLoad{}
       ]
 
-      assert load_records ==
+      assert load_recs ==
                ExCubicOdsIngestion.ProcessIncoming.load_recs_list(%{
-                 key: "gg/incoming/cubic_ods_qlik_test/EDW.SAMPLE/LOAD1.csv",
+                 key: "vendor/SAMPLE/LOAD1.csv",
                  last_modified: "2022-02-08T20:49:50.000Z"
                })
     end

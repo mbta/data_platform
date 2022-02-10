@@ -60,11 +60,11 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
     # query loads to see what we can ignore when inserting
     # usually happens when objects have not been moved out of 'incoming' bucket
-    [first | _rest] = load_objects
+    [first_load_object | _rest] = load_objects
 
     load_recs =
-      if first do
-        load_recs_list(first)
+      if first_load_object do
+        load_recs_list(first_load_object)
       else
         []
       end
@@ -73,27 +73,35 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     new_load_objects = Enum.filter(load_objects, &filter_already_added(&1, load_recs))
 
     # insert new load objects
-    Repo.transaction(fn -> Enum.each(new_load_objects, &insert(&1)) end)
+    Repo.transaction(fn -> Enum.each(new_load_objects, &insert_load(&1)) end)
 
     # add or update continuation_token
     Map.merge(state, %{continuation_token: next_continuation_token})
   end
 
   @spec load_objects_list(String.t(), String.t()) :: list()
-  def load_objects_list(vendor_prefix, continuation_token) do
-    # fetch config variables
+  def load_objects_list(vendor_prefix, continuation_token, max_keys \\ 1_000) do
+    # get config variables
+    aws = Application.get_env(:ex_cubic_ods_ingestion, :lib_ex_aws, ExAws)
+    aws_s3 = Application.get_env(:ex_cubic_ods_ingestion, :lib_ex_aws_s3, ExAws.S3)
     bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
     prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_prefix_incoming)
 
     list_arguments =
       if continuation_token != "" do
-        [prefix: "#{prefix}#{vendor_prefix}", continuation_token: continuation_token]
+        [
+          prefix: "#{prefix}#{vendor_prefix}",
+          max_keys: max_keys,
+          continuation_token: continuation_token
+        ]
       else
-        [prefix: "#{prefix}#{vendor_prefix}"]
+        [prefix: "#{prefix}#{vendor_prefix}", max_keys: max_keys]
       end
 
     %{body: %{contents: contents, next_continuation_token: next_continuation_token}} =
-      ExAws.S3.list_objects_v2(bucket, list_arguments) |> ExAws.request!()
+      aws_s3.list_objects_v2(bucket, list_arguments) |> aws.request!()
+
+    # @todo handle error cases
 
     [contents, next_continuation_token]
   end
@@ -123,8 +131,8 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     )
   end
 
-  @spec insert(map()) :: Ecto.Schema.t()
-  def insert(new_load_object) do
+  @spec insert_load(map()) :: Ecto.Schema.t()
+  def insert_load(new_load_object) do
     {:ok, last_modified, _offset} = DateTime.from_iso8601(new_load_object[:last_modified])
     last_modified = DateTime.truncate(last_modified, :second)
     size = String.to_integer(new_load_object[:size])

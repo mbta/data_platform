@@ -1,6 +1,6 @@
 defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
   @moduledoc """
-  Schema.CubicOdsLoad
+  Schema.CubicOdsLoad @todo
   """
   use Ecto.Schema
 
