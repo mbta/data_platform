@@ -9,10 +9,10 @@ class CubicODSLoad(Base):
 
   __tablename__ = 'cubic_ods_loads'
 
-  table_id = Column(INTEGER, nullable=False) # cubic_ods_table.id
+  table_id = Column(INTEGER, nullable=True) # cubic_ods_table.id
   status = Column(VARCHAR(100), nullable=False)
-  snapshot = Column(TIMESTAMP, nullable=False)
-  is_cdc = Column(BOOLEAN, nullable=False)
+  snapshot = Column(TIMESTAMP, nullable=True)
+  is_cdc = Column(BOOLEAN, nullable=True)
 
   s3_key = Column(VARCHAR(1000), nullable=False)
   s3_modified = Column(TIMESTAMP, nullable=False)

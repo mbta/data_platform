@@ -20,18 +20,27 @@ defmodule ExCubicOdsIngestion.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
-      mod: {ExCubicOdsIngestion.Application, []}
+      mod: {ExCubicOdsIngestion.Application, []},
+      extra_applications: [:logger]
     ]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:configparser_ex, "~> 4.0"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: :dev, runtime: false},
+      {:ecto, "~> 3.7"},
+      {:ecto_sql, "~> 3.7"},
+      {:ex_aws, "~> 2.2"},
+      {:ex_aws_rds, "~> 2.0"},
       {:ex_aws_s3, "~> 2.3"},
-      {:lcov_ex, "~> 0.2", only: [:dev, :test], runtime: false}
+      {:hackney, "~> 1.18"},
+      {:jason, "~> 1.0"},
+      {:lcov_ex, "~> 0.2", only: [:dev, :test], runtime: false},
+      {:postgrex, "~> 0.16"},
+      {:sweet_xml, "~> 0.7"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]

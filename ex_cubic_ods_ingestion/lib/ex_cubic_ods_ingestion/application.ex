@@ -8,7 +8,11 @@ defmodule ExCubicOdsIngestion.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      ExCubicOdsIngestion.ProcessIncoming
+      {ExCubicOdsIngestion.Repo, []},
+      {ExCubicOdsIngestion.Repo.Migrator,
+       run_migrations_at_startup?:
+         Application.get_env(:ex_cubic_ods_ingestion, :run_migrations_at_startup?)},
+      {ExCubicOdsIngestion.ProcessIncoming, []}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

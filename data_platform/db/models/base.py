@@ -9,26 +9,26 @@ from sqlalchemy.dialects.postgresql import INTEGER, TIMESTAMP
 class Base(object):
 
   id = Column(INTEGER, primary_key=True)
-  created = Column(TIMESTAMP, nullable=False)
-  modified = Column(TIMESTAMP, nullable=False)
-  deleted = Column(TIMESTAMP, nullable=True)
+  inserted_at = Column(TIMESTAMP, nullable=False)
+  updated_at = Column(TIMESTAMP, nullable=False)
+  deleted_at = Column(TIMESTAMP, nullable=True)
 
   # before an insert
   @staticmethod
   def before_insert(mapper, connection, target):
     now = datetime.datetime.utcnow()
-    # set created, if not specifically set
-    if not target.created:
-      target.created = now
-    # set modified, if not specifically set
-    if not target.modified:
-      target.modified = now
+    # set inserted_at, if not specifically set
+    if not target.inserted_at:
+      target.inserted_at = now
+    # set updated_at, if not specifically set
+    if not target.updated_at:
+      target.updated_at = now
 
   # before an update
   @staticmethod
   def before_update(mapper, connection, target):
-    # set modified
-    target.modified = datetime.datetime.utcnow()
+    # set updated_at
+    target.updated_at = datetime.datetime.utcnow()
 
   @classmethod
   def __declare_last__(cls):

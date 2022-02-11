@@ -6,6 +6,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   use GenServer
 
   require Logger
+  require ExAws.S3
 
   @wait_interval_ms 5_000
 
@@ -26,11 +27,17 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
   @impl true
   def handle_info(:timeout, %{} = state) do
-    run()
+    new_state = run(state)
 
-    timeout = @wait_interval_ms
+    # set timeout according to need for continuing
+    timeout =
+      if new_state[:continuation_token] == "" do
+        @wait_interval_ms
+      else
+        0
+      end
 
-    {:noreply, state, timeout}
+    {:noreply, new_state, timeout}
   end
 
   @impl true
@@ -39,9 +46,9 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   end
 
   # server helper functions
-  defp run do
-    # ...
-
-    :ok
+  @spec run(map()) :: map()
+  defp run(state) do
+    # add or update continuation_token
+    Map.merge(state, %{continuation_token: ""})
   end
 end
