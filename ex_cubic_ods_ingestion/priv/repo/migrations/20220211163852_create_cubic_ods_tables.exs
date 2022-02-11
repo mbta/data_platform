@@ -2,7 +2,7 @@ defmodule ExCubicOdsIngestion.Repo.Migrations.CreateCubicOdsTables do
   use Ecto.Migration
 
   def up do
-    create table(:cubis_ods_tables, primary_key: false) do
+    create table(:cubic_ods_tables, primary_key: false) do
       add :id, :bigserial, primary_key: true
       add :name, :string, size: 500, null: false
       add :s3_prefix, :string, size: 1000, null: false
@@ -14,7 +14,7 @@ defmodule ExCubicOdsIngestion.Repo.Migrations.CreateCubicOdsTables do
       timestamps(type: :utc_datetime)
     end
 
-    create table(:cubis_ods_loads, primary_key: false) do
+    create table(:cubic_ods_loads, primary_key: false) do
       add :id, :bigserial, primary_key: true
       add :table_id, :bigint
       add :status, :string, size: 100, null: false
@@ -31,8 +31,8 @@ defmodule ExCubicOdsIngestion.Repo.Migrations.CreateCubicOdsTables do
   end
 
   def down do
-    drop table(:cubis_ods_tables)
-    drop table(:cubis_ods_loads)
+    drop table(:cubic_ods_tables)
+    drop table(:cubic_ods_loads)
   end
 end
 
