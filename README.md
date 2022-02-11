@@ -7,11 +7,12 @@
 (not tested, just notes)
 
 1. `asdf plugin-add python`
-2. `asdf install`
-3. `pip install virtualenv`
-4. `python -m venv venv`
-5. `source venv/bin/activate`
-6. `pip install -r requirements`
+1. `adsf plugin-add adr-tools`
+1. `asdf install`
+1. `pip install virtualenv`
+1. `python -m venv venv`
+1. `source venv/bin/activate`
+1. `pip install -r requirements`
 
 ### Docker
 
