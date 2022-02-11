@@ -7,15 +7,17 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
 
   require Logger
 
-  @opts [module: Ecto.Migrator]
+  @opts [module: Ecto.Migrator, run_migrations_at_startup?: true]
 
   @spec start_link(Keyword.t()) :: :ignore
   def start_link(opts) do
     opts = Keyword.merge(@opts, opts)
 
-    Logger.info("Starting migrations (synchronous).")
-    run!(opts[:module])
-    Logger.info("Finished migrations.")
+    if Keyword.get(opts, :run_migrations_at_startup?) do
+      Logger.info("Starting migrations (synchronous).")
+      run!(opts[:module])
+      Logger.info("Finished migrations.")
+    end
 
     :ignore
   end
@@ -28,7 +30,7 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
 
   # server functions
   defp run!(module) do
-    for repo <- [ExCubicOdsIngestion.Repo] do
+    for repo <- Application.get_env(:ex_cubic_ods_ingestion, :ecto_repos, []) do
       Logger.info(fn -> "Migrating repo=#{repo}" end)
 
       {time_usec, {:ok, _, _}} =

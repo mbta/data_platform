@@ -9,6 +9,9 @@ defmodule ExCubicOdsIngestion.Application do
   def start(_type, _args) do
     children = [
       {ExCubicOdsIngestion.Repo, []},
+      {ExCubicOdsIngestion.Repo.Migrator,
+       run_migrations_at_startup?:
+         Application.get_env(:ex_cubic_ods_ingestion, :run_migrations_at_startup?)},
       {ExCubicOdsIngestion.ProcessIncoming, []}
     ]
 
