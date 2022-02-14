@@ -13,11 +13,11 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
   def start_link(opts) do
     opts = Keyword.merge(@opts, opts)
 
-    # if Keyword.get(opts, :run_migrations_at_startup?) do
-    Logger.info("Starting migrations (synchronous).")
-    run!(opts[:module])
-    Logger.info("Finished migrations.")
-    # end
+    if Keyword.get(opts, :run_migrations_at_startup?) do
+      Logger.info("Starting migrations (synchronous).")
+      run!(opts[:module])
+      Logger.info("Finished migrations.")
+    end
 
     :ignore
   end
