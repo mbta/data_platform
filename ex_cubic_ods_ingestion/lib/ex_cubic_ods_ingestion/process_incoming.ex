@@ -65,7 +65,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     new_load_objects = Enum.filter(load_objects, &filter_already_added(&1, load_recs))
 
     # insert new load objects
-    Repo.transaction(fn -> Enum.each(new_load_objects, &insert_load(&1)) end)
+    CubicOdsLoad.insert_from_objects(new_load_objects)
 
     # add or update continuation_token
     # @todo make this a struct
@@ -126,19 +126,5 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
       load_recs,
       fn r -> r.s3_key == key and r.s3_modified == last_modified end
     )
-  end
-
-  @spec insert_load(map()) :: Ecto.Schema.t()
-  def insert_load(new_load_object) do
-    {:ok, last_modified, _offset} = DateTime.from_iso8601(new_load_object[:last_modified])
-    last_modified = DateTime.truncate(last_modified, :second)
-    size = String.to_integer(new_load_object[:size])
-
-    Repo.insert!(%CubicOdsLoad{
-      status: "ready",
-      s3_key: new_load_object[:key],
-      s3_modified: last_modified,
-      s3_size: size
-    })
   end
 end

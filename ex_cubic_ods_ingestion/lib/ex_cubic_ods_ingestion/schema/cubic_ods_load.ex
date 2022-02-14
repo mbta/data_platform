@@ -4,6 +4,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
   """
   use Ecto.Schema
 
+  alias ExCubicOdsIngestion.Repo
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           table_id: integer() | nil,
@@ -30,5 +32,25 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     field(:deleted_at, :utc_datetime)
 
     timestamps(type: :utc_datetime)
+  end
+
+
+  @spec insert_from_objects(list()) :: tuple()
+  def insert_from_objects(objects) do
+    Repo.transaction(fn -> Enum.each(objects, &insert_ready(&1)) end)
+  end
+
+  @spec insert_ready(map()) :: Ecto.Schema.t()
+  def insert_ready(object) do
+    {:ok, last_modified, _offset} = DateTime.from_iso8601(object[:last_modified])
+    last_modified = DateTime.truncate(last_modified, :second)
+    size = String.to_integer(object[:size])
+
+    Repo.insert!(%__MODULE__{
+      status: "ready",
+      s3_key: object[:key],
+      s3_modified: last_modified,
+      s3_size: size
+    })
   end
 end

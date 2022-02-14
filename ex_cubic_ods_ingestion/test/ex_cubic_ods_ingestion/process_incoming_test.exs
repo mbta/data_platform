@@ -33,47 +33,11 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
                ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", "")
     end
 
-    test "insert load records" do
-      new_load_recs = Enum.map(MockExAws.Data.get(), &ProcessIncoming.insert_load(&1))
-
-      assert [
-               %{
-                 status: "ready",
-                 s3_key: "vendor/SAMPLE/LOAD1.csv",
-                 s3_modified: ~U[2022-02-08 20:49:50Z],
-                 s3_size: 197
-               },
-               %{
-                 status: "ready",
-                 s3_key: "vendor/SAMPLE/LOAD2.csv",
-                 s3_modified: ~U[2022-02-08 20:49:50Z],
-                 s3_size: 123
-               }
-             ] ==
-               Enum.map(new_load_recs, fn new_load_rec ->
-                 %{
-                   status: new_load_rec.status,
-                   s3_key: new_load_rec.s3_key,
-                   s3_modified: new_load_rec.s3_modified,
-                   s3_size: new_load_rec.s3_size
-                 }
-               end)
-    end
-
-    test "get list of load records" do
-      new_load_recs = Enum.map(MockExAws.Data.get(), &ProcessIncoming.insert_load(&1))
-
-      Repo.transaction(fn -> new_load_recs end)
-
-      assert new_load_recs ==
-               ProcessIncoming.load_recs_list(List.first(MockExAws.Data.get()))
-    end
-
     test "filter out already loaded load objects" do
       [first_load_object | rest_load_objects] = MockExAws.Data.get()
 
-      # add the first element from the load objects
-      Repo.transaction(fn -> ProcessIncoming.insert_load(first_load_object) end)
+      # add the first element from the load objects as ready
+      Repo.transaction(fn -> CubicOdsLoad.insert_ready(first_load_object) end)
 
       # get the records already in the database (should be just one)
       load_recs = ProcessIncoming.load_recs_list(first_load_object)
