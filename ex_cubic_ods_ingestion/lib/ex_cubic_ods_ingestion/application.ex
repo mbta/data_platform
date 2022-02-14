@@ -17,7 +17,8 @@ defmodule ExCubicOdsIngestion.Application do
     app_children =
       if Application.get_env(:ex_cubic_ods_ingestion, :start_app?) do
         [
-          {ExCubicOdsIngestion.ProcessIncoming, []}
+          {ExCubicOdsIngestion.ProcessIncoming, []},
+          {ExCubicOdsIngestion.StartIngestion, []}
         ]
       else
         []
