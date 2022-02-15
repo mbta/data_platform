@@ -81,4 +81,16 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       Repo.all(query_with_filters)
     end
   end
+
+  @spec get_status_ready :: [t()]
+  def get_status_ready do
+    # @todo add deleted filter
+    query =
+      from(load in __MODULE__,
+        where: load.status == "ready",
+        order_by: [load.s3_modified, load.s3_key]
+      )
+
+    Repo.all(query)
+  end
 end

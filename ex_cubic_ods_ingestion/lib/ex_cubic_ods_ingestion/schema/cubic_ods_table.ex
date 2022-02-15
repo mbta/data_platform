@@ -25,4 +25,13 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
 
     timestamps(type: :utc_datetime)
   end
+
+  @spec get_all :: [t()]
+  def get_all do
+    # @todo add deleted filter
+    query =
+      from(table in __MODULE__)
+
+    Repo.all(query)
+  end
 end

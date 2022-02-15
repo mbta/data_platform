@@ -1,4 +1,7 @@
-def ProcessIngestion do
+defmodule ExCubicOdsIngestion.ProcessIngestion do
+  @moduledoc """
+  ProcessIngestion module.
+  """
 
   def archive(load_rec) do
 

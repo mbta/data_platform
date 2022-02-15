@@ -14,7 +14,7 @@ config :ex_cubic_ods_ingestion,
 
 config :ex_cubic_ods_ingestion, Oban,
   repo: ExCubicOdsIngestion.Repo,
-  # plugins: [Oban.Plugins.Pruner],
+  plugins: [],
   queues: [
     ingest: 10
   ]

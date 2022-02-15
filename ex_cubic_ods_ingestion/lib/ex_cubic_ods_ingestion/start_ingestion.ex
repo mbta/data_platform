@@ -51,10 +51,10 @@ defmodule ExCubicOdsIngestion.StartIngestion do
   defp run(state) do
 
     # get available tables
-    table_recs = table_recs_list()
+    table_recs = CubicOdsTable.get_all()
 
     # get list of load records that are in 'ready' state, ordered by s3_modified, s3_key
-    ready_load_recs = load_recs_list()
+    ready_load_recs = CubicOdsLoad.get_status_ready()
 
     # iterate through the load records list in order to start ingesting job,
     # or indicate move to error state
@@ -64,52 +64,9 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     # return
     state
 
-
-
-
-
-
-
-
-
-    # # get list of load objects for vendor
-    # [load_objects, next_continuation_token] =
-    #   load_objects_list("cubic_ods_qlik/", state[:continuation_token])
-
-    # # query loads to see what we can ignore when inserting
-    # # usually happens when objects have not been moved out of 'incoming' bucket
-    # load_recs = load_recs_list(List.first(load_objects))
-
-    # # filter out objects already in the database
-    # new_load_objects = Enum.filter(load_objects, &filter_already_added(&1, load_recs))
-
-    # # insert new load objects
-    # Repo.transaction(fn -> Enum.each(new_load_objects, &insert_load(&1)) end)
-
   end
 
-  @spec table_recs_list() :: list()
-  def table_recs_list() do
-    # @todo add deleted filter
-    query =
-      from(table in CubicOdsTable)
-
-    Repo.all(query)
-  end
-
-  @spec load_recs_list() :: list()
-  def load_recs_list() do
-    # @todo add deleted filter
-    query =
-      from(load in CubicOdsLoad,
-        where: load.status == "ready",
-        order_by: [load.s3_modified, load.s3_key]
-      )
-
-    Repo.all(query)
-  end
-
-  def start_ingestion(load_rec, table_recs) do
+  def start_ingest_worker(load_rec, table_recs) do
 
     # find the table rec that the load is for
     table_rec = Enum.find(table_recs, &get_table_rec(&1, load_rec))
