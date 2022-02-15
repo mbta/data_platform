@@ -34,10 +34,9 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     timestamps(type: :utc_datetime)
   end
 
-
   @spec insert_from_objects(list()) :: tuple()
   def insert_from_objects(objects) do
-    Repo.transaction(fn -> Enum.each(objects, &insert_ready(&1)) end)
+    Repo.transaction(fn -> Enum.map(objects, &insert_ready(&1)) end)
   end
 
   @spec insert_ready(map()) :: Ecto.Schema.t()

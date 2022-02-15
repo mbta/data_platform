@@ -61,8 +61,8 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     # usually happens when objects have not been moved out of 'incoming' bucket
     load_recs = load_recs_list(List.first(load_objects))
 
-    # filter out objects already in the database
-    new_load_objects = Enum.filter(load_objects, &filter_already_added(&1, load_recs))
+    # create a list of objects that have not been added to database
+    new_load_objects = Enum.filter(load_objects, &not_added(&1, load_recs))
 
     # insert new load objects
     CubicOdsLoad.insert_from_objects(new_load_objects)
@@ -116,8 +116,8 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     end
   end
 
-  @spec filter_already_added(map(), list()) :: boolean()
-  def filter_already_added(load_object, load_recs) do
+  @spec not_added(map(), list()) :: boolean()
+  def not_added(load_object, load_recs) do
     key = load_object[:key]
     {:ok, last_modified, _offset} = DateTime.from_iso8601(load_object[:last_modified])
     last_modified = DateTime.truncate(last_modified, :second)
