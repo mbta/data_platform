@@ -1,8 +1,6 @@
 defmodule ExCubicOdsIngestion.MixProject do
   use Mix.Project
 
-  require Logger
-
   def project do
     [
       app: :ex_cubic_ods_ingestion,
@@ -23,8 +21,6 @@ defmodule ExCubicOdsIngestion.MixProject do
 
   # Run "mix help compile.app" to learn about applications.
   def application do
-    Logger.error("----------- #{Mix.env()} -----------")
-
     [
       mod: {ExCubicOdsIngestion.Application, []},
       extra_applications: [:logger]
