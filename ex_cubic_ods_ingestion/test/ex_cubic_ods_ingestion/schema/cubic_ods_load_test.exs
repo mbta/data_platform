@@ -14,7 +14,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
   describe "insert_from_objects/1" do
 
     test "providing a non-empty list of objects" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.get())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
 
       assert [
                %{
