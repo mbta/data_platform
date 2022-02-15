@@ -15,19 +15,21 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   defstruct [:lib_ex_aws, status: :not_started, continuation_token: "", max_keys: 1_000]
 
   # client methods
+  @spec start_link(Keyword.t()) :: GenServer.on_start()
   def start_link(opts) do
     # define lib_ex_aws, unless it's already defined
-    opts = opts |> Keyword.put_new(:lib_ex_aws, ExAws)
+    opts = Keyword.put_new(opts, :lib_ex_aws, ExAws)
 
     GenServer.start_link(__MODULE__, opts)
   end
 
+  @spec status(GenServer.server()) :: :running
   def status(server) do
     GenServer.call(server, :status)
   end
 
   # callbacks
-  @impl true
+  @impl GenServer
   def init(opts) do
     # construct state
     state = struct!(__MODULE__, opts)
@@ -35,7 +37,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     {:ok, %{state | status: :running}, 0}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:timeout, %{} = state) do
     new_state = run(state)
 
@@ -50,7 +52,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     {:noreply, new_state, timeout}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:status, _from, state) do
     {:reply, state.status, state}
   end
@@ -115,8 +117,8 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   @spec not_added(map(), list()) :: boolean()
   def not_added(load_object, load_recs) do
     key = load_object[:key]
-    {:ok, last_modified, _offset} = DateTime.from_iso8601(load_object[:last_modified])
-    last_modified = DateTime.truncate(last_modified, :second)
+    {:ok, last_modified_with_msec, _offset} = DateTime.from_iso8601(load_object[:last_modified])
+    last_modified = DateTime.truncate(last_modified_with_msec, :second)
 
     not Enum.any?(
       load_recs,

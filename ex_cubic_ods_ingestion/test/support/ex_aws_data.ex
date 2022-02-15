@@ -3,6 +3,7 @@ defmodule MockExAws.Data do
   MockExAws.Data @todo
   """
 
+  @spec load_objects() :: [map()]
   def load_objects do
     [
       %{
