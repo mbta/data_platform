@@ -1,9 +1,9 @@
 defmodule ExCubicOdsIngestion.RepoTest do
   use ExUnit.Case
 
-  require Logger
-
   alias ExCubicOdsIngestion.Repo
+
+  require Logger
 
   # configuration of each test
   setup do

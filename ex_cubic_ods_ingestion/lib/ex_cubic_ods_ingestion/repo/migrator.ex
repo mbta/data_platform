@@ -23,12 +23,13 @@ defmodule ExCubicOdsIngestion.Repo.Migrator do
   end
 
   # callbacks
-  @impl true
+  @impl GenServer
   def init(opts) do
     {:ok, opts}
   end
 
   # server functions
+  @spec run!(module) :: :ok
   defp run!(module) do
     for repo <- Application.get_env(:ex_cubic_ods_ingestion, :ecto_repos, []) do
       Logger.info(fn -> "Migrating repo=#{repo}" end)

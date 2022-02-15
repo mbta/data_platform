@@ -4,9 +4,9 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
   """
   use Ecto.Schema
 
-  alias ExCubicOdsIngestion.Repo
-
   import Ecto.Query
+
+  alias ExCubicOdsIngestion.Repo
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -43,8 +43,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   @spec insert_ready(map()) :: Ecto.Schema.t()
   def insert_ready(object) do
-    {:ok, last_modified, _offset} = DateTime.from_iso8601(object[:last_modified])
-    last_modified = DateTime.truncate(last_modified, :second)
+    {:ok, last_modified_with_msec, _offset} = DateTime.from_iso8601(object[:last_modified])
+    last_modified = DateTime.truncate(last_modified_with_msec, :second)
     size = String.to_integer(object[:size])
 
     Repo.insert!(%__MODULE__{
