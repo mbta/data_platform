@@ -9,15 +9,20 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
 
   require Logger
+  require ExAws
   require ExAws.S3
 
   import Ecto.Query
 
   @wait_interval_ms 5_000
 
+  defstruct [:lib_ex_aws, :status, continuation_token: ""]
+
   # client methods
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, [])
+    opts = opts |> Keyword.put_new(:lib_ex_aws, ExAws)
+
+    GenServer.start_link(__MODULE__, opts)
   end
 
   def status(server) do
@@ -26,8 +31,13 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
   # callbacks
   @impl true
-  def init(_opts) do
-    {:ok, %{status: :running}, 0}
+  def init(opts) do
+    opts = opts |> Keyword.put_new(:status, :running)
+
+    # construct state
+    state = struct!(__MODULE__, opts)
+
+    {:ok, state, 0}
   end
 
   @impl true
@@ -76,7 +86,6 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   def load_objects_list(vendor_prefix, continuation_token, max_keys \\ 1_000) do
     # get config variables
     aws = Application.get_env(:ex_cubic_ods_ingestion, :lib_ex_aws, ExAws)
-    aws_s3 = Application.get_env(:ex_cubic_ods_ingestion, :lib_ex_aws_s3, ExAws.S3)
     bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
     prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_prefix_incoming)
 
@@ -92,7 +101,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
       end
 
     %{body: %{contents: contents, next_continuation_token: next_continuation_token}} =
-      aws_s3.list_objects_v2(bucket, list_arguments) |> aws.request!()
+      ExAws.S3.list_objects_v2(bucket, list_arguments) |> state.ex_aws.request!()
 
     # @todo handle error cases
 
