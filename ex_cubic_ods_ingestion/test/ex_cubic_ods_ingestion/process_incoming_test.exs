@@ -102,7 +102,7 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
         }
       ]
 
-      assert not ProcessIncoming.not_added(load_object, load_recs)
+      refute ProcessIncoming.not_added(load_object, load_recs)
     end
   end
 end

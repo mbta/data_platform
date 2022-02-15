@@ -75,7 +75,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     %{state | continuation_token: next_continuation_token}
   end
 
-  @spec load_objects_list(String.t(), struct()) :: list()
+  @spec load_objects_list(String.t(), struct()) :: {list(), String.t()}
   def load_objects_list(vendor_prefix, state) do
     # get config variables
     bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)

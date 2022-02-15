@@ -55,10 +55,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     })
   end
 
-  @spec get_s3_modified_since(DateTime.t()) :: [__MODULE__.t()]
+  @spec get_s3_modified_since(DateTime.t()) :: [t()]
   def get_s3_modified_since(last_modified) do
-    IO.puts(last_modified)
-
     query =
       from(load in __MODULE__,
         where: load.s3_modified >= ^last_modified
