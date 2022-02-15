@@ -1,6 +1,7 @@
 defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   use ExUnit.Case
 
+  require MockExAws.Data
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.ProcessIncoming
   alias ExCubicOdsIngestion.Repo

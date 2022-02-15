@@ -5,11 +5,17 @@ defmodule ExCubicOdsIngestion.RepoTest do
 
   alias ExCubicOdsIngestion.Repo
 
+  # configuration of each test
   setup do
     # configure RDS module
     current_repo_config = Application.get_env(:ex_cubic_ods_ingestion, Repo)
     updated_repo_config = Keyword.merge(current_repo_config, lib_ex_aws_rds: MockExAws.RDS)
     Application.put_env(:ex_cubic_ods_ingestion, Repo, updated_repo_config)
+
+    # put back configuration when exiting each test
+    on_exit(fn ->
+      Application.put_env(:ex_cubic_ods_ingestion, Repo, current_repo_config)
+    end)
   end
 
   describe "before_connect/1" do
