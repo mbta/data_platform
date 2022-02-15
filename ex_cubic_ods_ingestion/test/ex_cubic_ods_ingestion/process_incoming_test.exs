@@ -28,14 +28,14 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
     test "getting objects for test prefix" do
       state = %ProcessIncoming{lib_ex_aws: MockExAws}
 
-      assert [MockExAws.Data.load_objects(), ""] ==
+      assert {MockExAws.Data.load_objects(), ""} ==
                ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", state)
     end
 
     test "getting objects for non-existing prefix" do
       state = %ProcessIncoming{lib_ex_aws: MockExAws}
 
-      assert [[], ""] ==
+      assert {[], ""} ==
                ProcessIncoming.load_objects_list("does_not_exist/", state)
     end
 

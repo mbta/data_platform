@@ -5,17 +5,14 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
   use GenServer
 
-  alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
 
   require ExAws
   require ExAws.S3
 
-  import Ecto.Query
-
   @wait_interval_ms 5_000
 
-  defstruct [:lib_ex_aws, :status, continuation_token: "", max_keys: 1_000]
+  defstruct [:lib_ex_aws, status: :not_started, continuation_token: "", max_keys: 1_000]
 
   # client methods
   def start_link(opts) do
@@ -62,7 +59,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   @spec run(map()) :: map()
   defp run(state) do
     # get list of load objects for vendor
-    [load_objects, next_continuation_token] = load_objects_list("cubic_ods_qlik/", state)
+    {load_objects, next_continuation_token} = load_objects_list("cubic_ods_qlik/", state)
 
     # query loads to see what we can ignore when inserting
     # usually happens when objects have not been moved out of 'incoming' bucket
@@ -96,25 +93,20 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
       end
 
     %{body: %{contents: contents, next_continuation_token: next_continuation_token}} =
-      ExAws.S3.list_objects_v2(bucket, list_arguments) |> state.lib_ex_aws.request!()
+      state.lib_ex_aws.request!(ExAws.S3.list_objects_v2(bucket, list_arguments))
 
     # @todo handle error cases
 
-    [contents, next_continuation_token]
+    {contents, next_continuation_token}
   end
 
-  @spec load_recs_list(map()) :: list()
+  @spec load_recs_list(map() | nil) :: list()
   def load_recs_list(load_object) do
     if load_object do
       {:ok, last_modified, _offset} = DateTime.from_iso8601(load_object[:last_modified])
       last_modified = DateTime.truncate(last_modified, :second)
 
-      query =
-        from(load in CubicOdsLoad,
-          where: load.s3_modified >= ^last_modified
-        )
-
-      Repo.all(query)
+      CubicOdsLoad.get_s3_modified_since(last_modified)
     else
       []
     end

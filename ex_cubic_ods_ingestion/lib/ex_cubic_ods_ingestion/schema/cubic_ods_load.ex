@@ -6,6 +6,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   alias ExCubicOdsIngestion.Repo
 
+  import Ecto.Query
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           table_id: integer() | nil,
@@ -51,5 +53,17 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       s3_modified: last_modified,
       s3_size: size
     })
+  end
+
+  @spec get_s3_modified_since(DateTime.t()) :: [__MODULE__.t()]
+  def get_s3_modified_since(last_modified) do
+    IO.puts(last_modified)
+
+    query =
+      from(load in __MODULE__,
+        where: load.s3_modified >= ^last_modified
+      )
+
+    Repo.all(query)
   end
 end
