@@ -29,14 +29,14 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
       state = %ProcessIncoming{lib_ex_aws: MockExAws}
 
       assert [MockExAws.Data.load_objects(), ""] ==
-           ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", state)
+               ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", state)
     end
 
     test "getting objects for non-existing prefix" do
       state = %ProcessIncoming{lib_ex_aws: MockExAws}
 
       assert [[], ""] ==
-           ProcessIncoming.load_objects_list("does_not_exist/", state)
+               ProcessIncoming.load_objects_list("does_not_exist/", state)
     end
 
     # @todo test for a non-empty continuation token
@@ -46,26 +46,29 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
     test "getting records just added by providing the first load object in list" do
       {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
 
-      assert new_load_recs == ProcessIncoming.load_recs_list(List.first(MockExAws.Data.load_objects()))
+      assert new_load_recs ==
+               ProcessIncoming.load_recs_list(List.first(MockExAws.Data.load_objects()))
     end
 
     test "getting the last record by providing the last load object in list" do
       {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
 
-      assert [List.last(new_load_recs)] == ProcessIncoming.load_recs_list(List.last(MockExAws.Data.load_objects()))
+      assert [List.last(new_load_recs)] ==
+               ProcessIncoming.load_recs_list(List.last(MockExAws.Data.load_objects()))
     end
 
     test "getting no records by providing a load object not in db" do
       {:ok, _new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
 
-      assert [] == ProcessIncoming.load_recs_list(%{
-        e_tag: "\"ghi789\"",
-        key: "not/in/db.csv",
-        last_modified: "2022-02-08T21:49:50.000Z",
-        owner: nil,
-        size: "197",
-        storage_class: "STANDARD"
-      })
+      assert [] ==
+               ProcessIncoming.load_recs_list(%{
+                 e_tag: "\"ghi789\"",
+                 key: "not/in/db.csv",
+                 last_modified: "2022-02-08T21:49:50.000Z",
+                 owner: nil,
+                 size: "197",
+                 storage_class: "STANDARD"
+               })
     end
 
     test "getting no records by NOT providing load object" do
@@ -78,20 +81,26 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   describe "not_added/2" do
     test "object NOT found in database records" do
       load_object = List.first(MockExAws.Data.load_objects())
-      load_recs = [%CubicOdsLoad{
-        s3_key: "key/not/found.csv",
-        s3_modified: ~U[2022-02-08 20:49:50Z]
-      }]
+
+      load_recs = [
+        %CubicOdsLoad{
+          s3_key: "key/not/found.csv",
+          s3_modified: ~U[2022-02-08 20:49:50Z]
+        }
+      ]
 
       assert ProcessIncoming.not_added(load_object, load_recs)
     end
 
     test "object found in database records" do
       load_object = List.first(MockExAws.Data.load_objects())
-      load_recs = [%CubicOdsLoad{
-        s3_key: "vendor/SAMPLE/LOAD1.csv",
-        s3_modified: ~U[2022-02-08 20:49:50Z]
-      }]
+
+      load_recs = [
+        %CubicOdsLoad{
+          s3_key: "vendor/SAMPLE/LOAD1.csv",
+          s3_modified: ~U[2022-02-08 20:49:50Z]
+        }
+      ]
 
       assert not ProcessIncoming.not_added(load_object, load_recs)
     end

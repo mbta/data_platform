@@ -62,8 +62,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   @spec run(map()) :: map()
   defp run(state) do
     # get list of load objects for vendor
-    [load_objects, next_continuation_token] =
-      load_objects_list("cubic_ods_qlik/", state)
+    [load_objects, next_continuation_token] = load_objects_list("cubic_ods_qlik/", state)
 
     # query loads to see what we can ignore when inserting
     # usually happens when objects have not been moved out of 'incoming' bucket
