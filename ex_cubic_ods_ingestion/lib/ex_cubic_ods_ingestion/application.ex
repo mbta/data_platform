@@ -7,13 +7,20 @@ defmodule ExCubicOdsIngestion.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
+    db_children = [
       {ExCubicOdsIngestion.Repo, []},
       {ExCubicOdsIngestion.Repo.Migrator,
        run_migrations_at_startup?:
-         Application.get_env(:ex_cubic_ods_ingestion, :run_migrations_at_startup?)},
-      {ExCubicOdsIngestion.ProcessIncoming, []}
+         Application.get_env(:ex_cubic_ods_ingestion, :run_migrations_at_startup?)}
     ]
+    app_children = if Application.get_env(:ex_cubic_ods_ingestion, :start_app?) do
+      [
+        {ExCubicOdsIngestion.ProcessIncoming, []}
+      ]
+    else
+      []
+    end
+    children = db_children ++ app_children
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
