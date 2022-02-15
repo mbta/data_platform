@@ -43,8 +43,6 @@ jobs:
       DB_NAME: dataplatform_test
       DB_USER: postgres
       DB_PASSWORD: postgres
-      AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
 
     services:
       postgres:

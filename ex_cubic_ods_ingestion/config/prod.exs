@@ -7,3 +7,8 @@ config :ex_cubic_ods_ingestion, ExCubicOdsIngestion.Repo,
 
 config :ex_cubic_ods_ingestion,
   run_migrations_at_startup?: true
+
+config :ex_aws,
+  # overwrite defaults here, so as to only look at instance role
+  access_key_id: :instance_role,
+  secret_access_key: :instance_role

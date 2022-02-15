@@ -1,41 +1,42 @@
 defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   use ExUnit.Case
 
-  require MockExAws.Data
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.ProcessIncoming
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
 
-  # setup server for use throughout tests
-  setup do
-    Application.put_env(:ex_cubic_ods_ingestion, :lib_ex_aws, MockExAws)
+  require MockExAws.Data
+  require Logger
 
+  # setup server for each test
+  setup do
     # Explicitly get a connection before each test
     # @todo check out https://github.com/mbta/draft/blob/main/test/support/data_case.ex
     :ok = Sandbox.checkout(Repo)
-
-    # start a supervisor
-    server = start_supervised!(ProcessIncoming)
-
-    %{server: server}
   end
 
   describe "status/0" do
-    test "running state", %{server: server} do
+    test "running state" do
+      server = start_supervised!({ProcessIncoming, lib_ex_aws: MockExAws})
+
       assert ProcessIncoming.status(server) == :running
     end
   end
 
   describe "load_objects_list/3" do
     test "getting objects for test prefix" do
+      state = %ProcessIncoming{lib_ex_aws: MockExAws}
+
       assert [MockExAws.Data.load_objects(), ""] ==
-           ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", "")
+           ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", state)
     end
 
     test "getting objects for non-existing prefix" do
+      state = %ProcessIncoming{lib_ex_aws: MockExAws}
+
       assert [[], ""] ==
-           ProcessIncoming.load_objects_list("does_not_exist/", "")
+           ProcessIncoming.load_objects_list("does_not_exist/", state)
     end
 
     # @todo test for a non-empty continuation token
