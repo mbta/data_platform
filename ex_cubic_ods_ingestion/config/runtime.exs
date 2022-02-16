@@ -1,15 +1,5 @@
 import Config
 
-config :ex_aws,
-  # note: 'region' doesn't work. it's inherited from the profile
-  # region: [{:system, "AWS_REGION"}, {:awscli, "default", 30}, :instance_role],
-  access_key_id: [{:system, "AWS_ACCESS_KEY_ID"}, {:awscli, "default", 30}, :instance_role],
-  secret_access_key: [
-    {:system, "AWS_SECRET_ACCESS_KEY"},
-    {:awscli, "default", 30},
-    :instance_role
-  ]
-
 config :ex_cubic_ods_ingestion,
   s3_prefix_operations: System.get_env("S3_PREFIX_OPERATIONS"),
   s3_prefix_incoming: System.get_env("S3_PREFIX_INCOMING"),
