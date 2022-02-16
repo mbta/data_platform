@@ -71,11 +71,11 @@ jobs:
         id: deps-cache
         uses: actions/cache@v2
         with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
+          path: ex_cubic_ods_ingestion/deps
+          key: ${{ runner.os }}-mix-v2-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-v2
       - name: Install dependencies (if needed)
-        # if: steps.deps-cache.outputs.cache-hit != 'true'
+        if: steps.deps-cache.outputs.cache-hit != 'true'
         run: mix deps.get
       - name: Compile (warnings as errors)
         run: mix compile --force --warnings-as-errors
