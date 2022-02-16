@@ -5,8 +5,10 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
   use Ecto.Schema
 
   import Ecto.Query
+  import Ecto.Changeset
 
   alias ExCubicOdsIngestion.Repo
+  alias ExCubicOdsIngestion.Schema.CubicOdsTable
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -92,5 +94,11 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       )
 
     Repo.all(query)
+  end
+
+  def update_status(load_rec, status) do
+    Repo.transaction(fn ->
+      Repo.update!(change(load_rec, status: status))
+    end)
   end
 end

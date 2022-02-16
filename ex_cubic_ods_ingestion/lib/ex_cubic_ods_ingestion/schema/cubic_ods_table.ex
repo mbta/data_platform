@@ -4,6 +4,11 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
   """
   use Ecto.Schema
 
+  alias ExCubicOdsIngestion.Repo
+
+  import Ecto.Query
+  import Ecto.Changeset
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
@@ -33,5 +38,17 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
       from(table in __MODULE__)
 
     Repo.all(query)
+  end
+
+  def update_snapshot(table_rec, load_rec) do
+    if table_rec do
+      if table_rec.snapshot_s3_key == load_rec.s3_key and table_rec.snapshot != load_rec.s3_modified do
+        Repo.transaction(fn ->
+          Repo.update!(change(table_rec, snapshot: load_rec.s3_modified))
+        end)
+      end
+    else
+      nil
+    end
   end
 end

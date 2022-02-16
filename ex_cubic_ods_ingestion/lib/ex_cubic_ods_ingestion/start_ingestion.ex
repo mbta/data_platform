@@ -56,34 +56,44 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     # get list of load records that are in 'ready' state, ordered by s3_modified, s3_key
     ready_load_recs = CubicOdsLoad.get_status_ready()
 
-    # iterate through the load records list in order to start ingesting job,
-    # or indicate move to error state
-    Enum.each(ready_load_recs, &start_ingest_worker(&1, table_recs))
+    # attach table info to load records
+    ready_loads = Enum.map(ready_load_recs, &attach_table_info(&1, table_recs))
 
+    # iterate through the load records list in order to start ingesting job,
+    # or error
+    Enum.each(ready_loads, &start_ingestion(&1))
 
     # return
     state
-
   end
 
-  def start_ingest_worker(load_rec, table_recs) do
-
+  def attach_table_info(load_rec, table_recs) do
     # find the table rec that the load is for
-    table_rec = Enum.find(table_recs, &get_table_rec(&1, load_rec))
+    table_rec = if load_rec.table_id do
+      Enum.find(table_recs, &find_table_rec_by_id(&1, load_rec))
+    else
+      Enum.find(table_recs, &find_table_rec_by_s3_prefix(&1, load_rec))
+    end
 
-    # identify if this load is a snapshot (initiation) load
-    is_snapshot =
+    # update snapshot for table, if needed
+    table_rec = CubicOdsTable.update_snapshot(table_rec, load_rec)
 
+    {load_rec, table_rec}
+  end
 
+  def start_ingestion({load_rec, table_rec}) do
     if table_rec do
-      # start job
-      Oban.new()
+      Logger.info("---- start job")
     else
       ProcessIngestion.error(load_rec)
     end
   end
 
-  def get_table_rec(table_rec, load_rec) do
+  def find_table_rec_by_id(table_rec, load_rec) do
+    table_rec.id == load_rec.table_id
+  end
+
+  def find_table_rec_by_s3_prefix(table_rec, load_rec) do
     # get just the s3 prefix from load rec
     load_s3_prefix = load_rec[:s3_key] |> Path.dirname()
     # if cdc, we want to strip off the '__ct'
