@@ -8,6 +8,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   alias ExCubicOdsIngestion.Repo
 
+  require Logger
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           table_id: integer() | nil,
@@ -55,13 +57,30 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     })
   end
 
-  @spec get_s3_modified_since(DateTime.t()) :: [t()]
-  def get_s3_modified_since(last_modified) do
-    query =
-      from(load in __MODULE__,
-        where: load.s3_modified >= ^last_modified
-      )
+  @spec get_by_objects(list()) :: [t()]
+  def get_by_objects(objects) do
+    # put together filters based on the object info
+    filters =
+      Enum.map(objects, fn object ->
+        {:ok, last_modified_with_msec, _offset} = DateTime.from_iso8601(object[:last_modified])
+        last_modified = DateTime.truncate(last_modified_with_msec, :second)
 
-    Repo.all(query)
+        {object[:key], last_modified}
+      end)
+
+    # we only want to query if we have filters because otherwise the query will the return
+    # the whole table
+    if Enum.empty?(filters) do
+      []
+    else
+      query_with_filters =
+        Enum.reduce(filters, __MODULE__, fn {s3_key, s3_modified}, query ->
+          from(load in query,
+            or_where: load.s3_key == ^s3_key and load.s3_modified == ^s3_modified
+          )
+        end)
+
+      Repo.all(query_with_filters)
+    end
   end
 end

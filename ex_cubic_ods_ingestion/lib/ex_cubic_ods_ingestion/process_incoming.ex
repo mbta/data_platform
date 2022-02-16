@@ -65,7 +65,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
     # query loads to see what we can ignore when inserting
     # usually happens when objects have not been moved out of 'incoming' bucket
-    load_recs = load_recs_list(List.first(load_objects))
+    load_recs = CubicOdsLoad.get_by_objects(load_objects)
 
     # create a list of objects that have not been added to database
     new_load_objects = Enum.filter(load_objects, &not_added(&1, load_recs))
@@ -100,18 +100,6 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     # @todo handle error cases
 
     {contents, next_continuation_token}
-  end
-
-  @spec load_recs_list(map() | nil) :: list()
-  def load_recs_list(load_object) do
-    if load_object do
-      {:ok, last_modified, _offset} = DateTime.from_iso8601(load_object[:last_modified])
-      last_modified = DateTime.truncate(last_modified, :second)
-
-      CubicOdsLoad.get_s3_modified_since(last_modified)
-    else
-      []
-    end
   end
 
   @spec not_added(map(), list()) :: boolean()

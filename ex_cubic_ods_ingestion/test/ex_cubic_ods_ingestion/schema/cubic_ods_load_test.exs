@@ -43,4 +43,36 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
       assert {:ok, []} == CubicOdsLoad.insert_from_objects([])
     end
   end
+
+  describe "get_by_objects/1" do
+    test "getting records just added by providing the list we added from" do
+      load_objects = MockExAws.Data.load_objects()
+      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(load_objects)
+
+      assert new_load_recs ==
+               CubicOdsLoad.get_by_objects(load_objects)
+    end
+
+    test "getting no records by providing a list with a load object not in db" do
+      {:ok, _new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+
+      assert [] ==
+               CubicOdsLoad.get_by_objects([
+                 %{
+                   e_tag: "\"ghi789\"",
+                   key: "not/in/db.csv",
+                   last_modified: "2022-02-08T21:49:50.000Z",
+                   owner: nil,
+                   size: "197",
+                   storage_class: "STANDARD"
+                 }
+               ])
+    end
+
+    test "getting no records by providing an empty list" do
+      assert [] == CubicOdsLoad.get_by_objects([])
+    end
+
+    # @todo test for improper load object map
+  end
 end
