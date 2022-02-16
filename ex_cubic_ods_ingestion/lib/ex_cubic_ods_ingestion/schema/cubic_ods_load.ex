@@ -8,8 +8,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   alias ExCubicOdsIngestion.Repo
 
-  require Logger
-
   @type t :: %__MODULE__{
           id: integer() | nil,
           table_id: integer() | nil,
