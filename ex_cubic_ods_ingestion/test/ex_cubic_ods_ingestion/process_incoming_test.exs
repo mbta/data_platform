@@ -42,42 +42,6 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
     # @todo test for a non-empty continuation token
   end
 
-  describe "load_recs_list/1" do
-    test "getting records just added by providing the first load object in list" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
-
-      assert new_load_recs ==
-               ProcessIncoming.load_recs_list(List.first(MockExAws.Data.load_objects()))
-    end
-
-    test "getting the last record by providing the last load object in list" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
-
-      assert [List.last(new_load_recs)] ==
-               ProcessIncoming.load_recs_list(List.last(MockExAws.Data.load_objects()))
-    end
-
-    test "getting no records by providing a load object not in db" do
-      {:ok, _new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
-
-      assert [] ==
-               ProcessIncoming.load_recs_list(%{
-                 e_tag: "\"ghi789\"",
-                 key: "not/in/db.csv",
-                 last_modified: "2022-02-08T21:49:50.000Z",
-                 owner: nil,
-                 size: "197",
-                 storage_class: "STANDARD"
-               })
-    end
-
-    test "getting no records by NOT providing load object" do
-      assert [] == ProcessIncoming.load_recs_list(nil)
-    end
-
-    # @todo test for improper load object map
-  end
-
   describe "not_added/2" do
     test "object NOT found in database records" do
       load_object = List.first(MockExAws.Data.load_objects())
