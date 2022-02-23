@@ -147,7 +147,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   @spec remove_s3_bucket_prefix(String.t()) :: String.t()
   defp remove_s3_bucket_prefix(s3_key) do
-    s3_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_prefix_incoming)
+    s3_prefix = Application.get_env(:ex_cubic_ods_ingestion, :s3_prefix_incoming, "")
 
     if String.starts_with?(s3_key, s3_prefix) do
       String.replace_prefix(s3_key, s3_prefix, "")
