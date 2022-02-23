@@ -74,16 +74,4 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
 
     table_rec
   end
-
-  def update_snapshot(table_rec, load_rec) do
-    if table_rec do
-      if table_rec.snapshot_s3_key == load_rec.s3_key and table_rec.snapshot != load_rec.s3_modified do
-        Repo.transaction(fn ->
-          Repo.update!(change(table_rec, snapshot: load_rec.s3_modified))
-        end)
-      end
-    else
-      nil
-    end
-  end
 end
