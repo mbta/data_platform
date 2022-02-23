@@ -3,15 +3,20 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     queue: :ingest,
     max_attempts: 3
 
+  require Logger
+
+  alias ExCubicOdsIngestion.Schema.CubicOdsLoad
+
   @job_timeout_in_sec 30
 
   @impl Oban.Worker
-  def perform(%Oban.Job{attempt: attempt}) when attempt > 3 do
-    IO.inspect(attempt)
-  end
+  def perform(%Oban.Job{args: %{"load" => load, "table" => _table} = _args}) do
+    Process.sleep(2000)
 
-  def perform(job) do
-    IO.inspect(job.args)
+    load_rec = CubicOdsLoad.get(load["id"])
+    CubicOdsLoad.update(load_rec, status: "ingested")
+
+    :ok
   end
 
   @impl Oban.Worker

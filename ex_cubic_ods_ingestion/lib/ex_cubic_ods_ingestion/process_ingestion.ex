@@ -5,13 +5,13 @@ defmodule ExCubicOdsIngestion.ProcessIngestion do
 
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
 
-  @spec error(CubicOdsLoad.t()) :: nil
+  @spec archive(CubicOdsLoad.t()) :: nil
   def archive(load_rec) do
-    CubicOdsLoad.update_status(load_rec, "archive")
+    CubicOdsLoad.update(load_rec, status: "archived")
   end
 
   @spec error(CubicOdsLoad.t()) :: nil
   def error(load_rec) do
-    CubicOdsLoad.update_status(load_rec, "error")
+    CubicOdsLoad.update(load_rec, status: "errored")
   end
 end

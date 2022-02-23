@@ -1,6 +1,8 @@
 defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
   use ExUnit.Case
 
+  import Ecto.Changeset
+
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
@@ -74,5 +76,67 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
     end
 
     # @todo test for improper load object map
+  end
+
+  describe "not_added/2" do
+    test "object NOT found in database records" do
+      load_object = List.first(MockExAws.Data.load_objects())
+
+      load_recs = [
+        %CubicOdsLoad{
+          s3_key: "key/not/found.csv",
+          s3_modified: ~U[2022-02-08 20:49:50Z]
+        }
+      ]
+
+      assert CubicOdsLoad.not_added(load_object, load_recs)
+    end
+
+    test "object found in database records" do
+      load_object = List.first(MockExAws.Data.load_objects())
+
+      load_recs = [
+        %CubicOdsLoad{
+          s3_key: "vendor/SAMPLE/LOAD1.csv",
+          s3_modified: ~U[2022-02-08 20:49:50Z]
+        }
+      ]
+
+      refute CubicOdsLoad.not_added(load_object, load_recs)
+    end
+  end
+
+  describe "get_status_ready/0" do
+    test "getting load records with the status 'ready'" do
+      # insert records as ready
+      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      # set the first record to 'archived'
+      {:ok, _archived_load_rec} =
+        Repo.transaction(fn ->
+          Repo.update!(change(List.first(new_load_recs), status: "archived"))
+        end)
+
+      ready_load_recs = CubicOdsLoad.get_status_ready()
+      # filter down to the ones we just inserted
+      ready_load_recs = Enum.filter(ready_load_recs, &Enum.member?(new_load_recs, &1))
+
+      # assert that the last record inserted comes back
+      assert [List.last(new_load_recs)] == ready_load_recs
+    end
+  end
+
+  describe "update/2" do
+    test "setting an 'archived' status" do
+      # insert records as ready
+      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+
+      # use the first record
+      first_load_rec = List.first(new_load_recs)
+
+      # update it to 'archived' status
+      updated_load_rec = CubicOdsLoad.update(first_load_rec, status: "archived")
+
+      assert Repo.get!(CubicOdsLoad, first_load_rec.id) == updated_load_rec
+    end
   end
 end

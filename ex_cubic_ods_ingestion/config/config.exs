@@ -16,7 +16,7 @@ config :ex_cubic_ods_ingestion, Oban,
   repo: ExCubicOdsIngestion.Repo,
   plugins: [],
   queues: [
-    ingest: 10
+    ingest: 5
   ]
 
 # Import environment specific config. This must remain at the bottom

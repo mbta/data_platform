@@ -5,33 +5,42 @@ defmodule ExCubicOdsIngestion.StartIngestion do
 
   use GenServer
 
-  alias ExCubicOdsIngestion.Repo
+  alias ExCubicOdsIngestion.ProcessIngestion
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
+  alias ExCubicOdsIngestion.Workers.Ingest
 
   require Logger
-  require ExAws.S3
-
-  import Ecto.Query
+  require Oban
 
   @wait_interval_ms 5_000
 
+  defstruct [:lib_ex_aws, status: :not_started, continuation_token: "", max_keys: 1_000]
+
   # client methods
+  @spec start_link(Keyword.t()) :: GenServer.on_start()
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, [])
+    # define lib_ex_aws, unless it's already defined
+    opts = Keyword.put_new(opts, :lib_ex_aws, ExAws)
+
+    GenServer.start_link(__MODULE__, opts)
   end
 
+  @spec status(GenServer.server()) :: :running
   def status(server) do
     GenServer.call(server, :status)
   end
 
   # callbacks
-  @impl true
-  def init(_opts) do
-    {:ok, %{status: :running}, 0}
+  @impl GenServer
+  def init(opts) do
+    # construct state
+    state = struct!(__MODULE__, opts)
+
+    {:ok, %{state | status: :running}, 0}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:timeout, %{} = state) do
     new_state = run(state)
 
@@ -41,23 +50,19 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     {:noreply, new_state, timeout}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:status, _from, state) do
-    {:reply, state[:status], state}
+    {:reply, state.status, state}
   end
 
   # server helper functions
   @spec run(map()) :: map()
   defp run(state) do
-
-    # get available tables
-    table_recs = CubicOdsTable.get_all()
-
     # get list of load records that are in 'ready' state, ordered by s3_modified, s3_key
     ready_load_recs = CubicOdsLoad.get_status_ready()
 
-    # attach table info to load records
-    ready_loads = Enum.map(ready_load_recs, &attach_table_info(&1, table_recs))
+    # attach table to load records, and update snapshots
+    ready_loads = Enum.map(ready_load_recs, &attach_table(&1))
 
     # iterate through the load records list in order to start ingesting job,
     # or error
@@ -67,43 +72,51 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     state
   end
 
-  def attach_table_info(load_rec, table_recs) do
+  def attach_table(load_rec) do
     # find the table rec that the load is for
-    table_rec = if load_rec.table_id do
-      Enum.find(table_recs, &find_table_rec_by_id(&1, load_rec))
+    table_rec =
+      if load_rec.table_id do
+        CubicOdsTable.get(load_rec.table_id)
+      else
+        CubicOdsTable.get_from_load_s3_key(load_rec.s3_key)
+      end
+
+    if table_rec do
+      # for table, update snapshot if we have a new snapshot, as in
+      # the load key matches the snapshot key and the load modified date is newer than the snapshot
+      table_rec =
+        if table_rec.snapshot_s3_key == load_rec.s3_key and
+             table_rec.snapshot < load_rec.s3_modified do
+          CubicOdsTable.update(table_rec, snapshot: load_rec.s3_modified)
+        else
+          table_rec
+        end
+
+      # for load, update table_id and snapshot if we don't have one already, as we don't want to override
+      load_rec =
+        unless load_rec.table_id do
+          CubicOdsLoad.update(load_rec, %{table_id: table_rec.id, snapshot: table_rec.snapshot})
+        else
+          load_rec
+        end
+
+      {load_rec, table_rec}
     else
-      Enum.find(table_recs, &find_table_rec_by_s3_prefix(&1, load_rec))
+      {load_rec, nil}
     end
-
-    # update snapshot for table, if needed
-    table_rec = CubicOdsTable.update_snapshot(table_rec, load_rec)
-
-    {load_rec, table_rec}
   end
 
   def start_ingestion({load_rec, table_rec}) do
     if table_rec do
-      Logger.info("---- start job")
+      # update status to ingesting
+      CubicOdsLoad.update(load_rec, status: "ingesting")
+
+      # queue for ingesting
+      %{load: load_rec, table: table_rec} |> Ingest.new() |> Oban.insert()
     else
       ProcessIngestion.error(load_rec)
     end
-  end
 
-  def find_table_rec_by_id(table_rec, load_rec) do
-    table_rec.id == load_rec.table_id
-  end
-
-  def find_table_rec_by_s3_prefix(table_rec, load_rec) do
-    # get just the s3 prefix from load rec
-    load_s3_prefix = load_rec[:s3_key] |> Path.dirname()
-    # if cdc, we want to strip off the '__ct'
-    load_s3_prefix = if String.ends_with?(load_s3_prefix, "__ct") do
-      String.replace(load_s3_prefix, "__ct", "")
-    else
-      load_s3_prefix
-    end
-
-    # return true if we have a match
-    table_rec[:s3_prefix] == "#{load_s3_prefix}/"
+    :ok
   end
 end

@@ -68,7 +68,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     load_recs = CubicOdsLoad.get_by_objects(load_objects)
 
     # create a list of objects that have not been added to database
-    new_load_objects = Enum.filter(load_objects, &not_added(&1, load_recs))
+    new_load_objects = Enum.filter(load_objects, &CubicOdsLoad.not_added(&1, load_recs))
 
     # insert new load objects
     CubicOdsLoad.insert_from_objects(new_load_objects)
@@ -100,17 +100,5 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     # @todo handle error cases
 
     {contents, next_continuation_token}
-  end
-
-  @spec not_added(map(), list()) :: boolean()
-  def not_added(load_object, load_recs) do
-    key = load_object[:key]
-    {:ok, last_modified_with_msec, _offset} = DateTime.from_iso8601(load_object[:last_modified])
-    last_modified = DateTime.truncate(last_modified_with_msec, :second)
-
-    not Enum.any?(
-      load_recs,
-      fn r -> r.s3_key == key and r.s3_modified == last_modified end
-    )
   end
 end
