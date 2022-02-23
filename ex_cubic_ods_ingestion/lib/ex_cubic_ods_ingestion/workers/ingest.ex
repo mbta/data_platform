@@ -18,7 +18,7 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     Process.sleep(2000)
 
     load_rec = CubicOdsLoad.get(load["id"])
-    CubicOdsLoad.update(load_rec, status: "ingested")
+    CubicOdsLoad.update(load_rec, %{status: "ingested"})
 
     :ok
   end

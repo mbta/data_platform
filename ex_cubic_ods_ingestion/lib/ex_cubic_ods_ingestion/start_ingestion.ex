@@ -88,7 +88,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
       table_rec =
         if table_rec.snapshot_s3_key == load_rec.s3_key and
              table_rec.snapshot < load_rec.s3_modified do
-          CubicOdsTable.update(table_rec, snapshot: load_rec.s3_modified)
+          CubicOdsTable.update(table_rec, %{snapshot: load_rec.s3_modified})
         else
           table_rec
         end
@@ -111,7 +111,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
   def start_ingestion({load_rec, table_rec}) do
     if table_rec do
       # update status to ingesting
-      CubicOdsLoad.update(load_rec, status: "ingesting")
+      CubicOdsLoad.update(load_rec, %{status: "ingesting"})
 
       # queue for ingesting
       %{load: load_rec, table: table_rec} |> Ingest.new() |> Oban.insert()
