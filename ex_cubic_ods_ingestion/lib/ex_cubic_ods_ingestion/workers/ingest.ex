@@ -1,11 +1,15 @@
 defmodule ExCubicOdsIngestion.Workers.Ingest do
+  @moduledoc """
+  Workers.Ingest module.
+  """
+
   use Oban.Worker,
     queue: :ingest,
     max_attempts: 3
 
-  require Logger
-
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
+
+  require Logger
 
   @job_timeout_in_sec 30
 

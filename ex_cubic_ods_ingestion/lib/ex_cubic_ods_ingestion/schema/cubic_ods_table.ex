@@ -4,10 +4,10 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
   """
   use Ecto.Schema
 
-  alias ExCubicOdsIngestion.Repo
-
   import Ecto.Query
   import Ecto.Changeset
+
+  alias ExCubicOdsIngestion.Repo
 
   @derive {Jason.Encoder,
            only: [
@@ -54,7 +54,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
     # get just the s3 prefix from the key
     load_s3_prefix = Path.dirname(load_s3_key)
     # if cdc, we want to strip off the '__ct'
-    load_s3_prefix =
+    root_load_s3_prefix =
       if String.ends_with?(load_s3_prefix, "__ct") do
         String.replace_suffix(load_s3_prefix, "__ct", "")
       else
@@ -63,7 +63,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
 
     query =
       from(table in __MODULE__,
-        where: table.s3_prefix == ^"#{load_s3_prefix}/"
+        where: table.s3_prefix == ^"#{root_load_s3_prefix}/"
       )
 
     # return nil, if not found

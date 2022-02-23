@@ -118,10 +118,10 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
 
       ready_load_recs = CubicOdsLoad.get_status_ready()
       # filter down to the ones we just inserted
-      ready_load_recs = Enum.filter(ready_load_recs, &Enum.member?(new_load_recs, &1))
+      filtered_ready_load_recs = Enum.filter(ready_load_recs, &Enum.member?(new_load_recs, &1))
 
       # assert that the last record inserted comes back
-      assert [List.last(new_load_recs)] == ready_load_recs
+      assert [List.last(new_load_recs)] == filtered_ready_load_recs
     end
   end
 

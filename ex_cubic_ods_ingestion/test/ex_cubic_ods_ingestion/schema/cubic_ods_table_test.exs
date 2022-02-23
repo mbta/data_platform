@@ -20,12 +20,12 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
         snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
       }
 
-      {:ok, new_table_rec} =
+      {:ok, inserted_table_rec} =
         Repo.transaction(fn ->
           Repo.insert!(new_table_rec)
         end)
 
-      assert new_table_rec == CubicOdsTable.get(new_table_rec.id)
+      assert inserted_table_rec == CubicOdsTable.get(inserted_table_rec.id)
     end
   end
 
@@ -37,12 +37,12 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
         snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
       }
 
-      {:ok, new_table_rec} =
+      {:ok, inserted_table_rec} =
         Repo.transaction(fn ->
           Repo.insert!(new_table_rec)
         end)
 
-      assert new_table_rec == CubicOdsTable.get_from_load_s3_key("vendor/SAMPLE/LOAD1.csv")
+      assert inserted_table_rec == CubicOdsTable.get_from_load_s3_key("vendor/SAMPLE/LOAD1.csv")
     end
 
     test "getting nothing back with non-existing key" do
@@ -59,14 +59,14 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
         snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
       }
 
-      {:ok, new_table_rec} =
+      {:ok, inserted_table_rec} =
         Repo.transaction(fn ->
           Repo.insert!(new_table_rec)
         end)
 
       dt = DateTime.now!("Etc/UTC")
       dt_without_msec = DateTime.truncate(dt, :second)
-      updated_table_rec = CubicOdsTable.update(new_table_rec, snapshot: dt_without_msec)
+      updated_table_rec = CubicOdsTable.update(inserted_table_rec, snapshot: dt_without_msec)
 
       assert dt_without_msec == updated_table_rec.snapshot
     end

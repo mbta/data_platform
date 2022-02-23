@@ -2,10 +2,10 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
   use ExUnit.Case
 
   alias Ecto.Adapters.SQL.Sandbox
-  alias ExCubicOdsIngestion.StartIngestion
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
+  alias ExCubicOdsIngestion.StartIngestion
 
   require MockExAws.Data
   require Logger
@@ -34,7 +34,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
         snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
       }
 
-      {:ok, new_table_rec} =
+      {:ok, inserted_table_rec} =
         Repo.transaction(fn ->
           Repo.insert!(new_table_rec)
         end)
@@ -45,24 +45,27 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       last_load_rec = List.last(new_load_recs)
 
       # attach table
-      {first_load_rec, first_load_table_rec} = StartIngestion.attach_table(first_load_rec)
-      {last_load_rec, _last_load_table_rec} = StartIngestion.attach_table(last_load_rec)
+      {tuple_first_load_rec, tuple_first_load_table_rec} =
+        StartIngestion.attach_table(first_load_rec)
+
+      {tuple_last_load_rec, _tuple_last_load_table_rec} =
+        StartIngestion.attach_table(last_load_rec)
 
       # assert that we attached the right table, and we have the right updates
       assert %{
-               first_load_table_id: new_table_rec.id,
+               first_load_table_id: inserted_table_rec.id,
                first_load_snapshot: first_load_rec.s3_modified,
-               last_load_table_id: new_table_rec.id,
-               last_load_snapshot: last_load_rec.s3_modified,
-               table_id: new_table_rec.id,
+               last_load_table_id: inserted_table_rec.id,
+               last_load_snapshot: first_load_rec.s3_modified,
+               table_id: inserted_table_rec.id,
                table_snapshot: first_load_rec.s3_modified
              } == %{
-               first_load_table_id: first_load_rec.table_id,
-               first_load_snapshot: first_load_rec.snapshot,
-               last_load_table_id: last_load_rec.table_id,
-               last_load_snapshot: last_load_rec.s3_modified,
-               table_id: first_load_table_rec.id,
-               table_snapshot: first_load_table_rec.snapshot
+               first_load_table_id: tuple_first_load_rec.table_id,
+               first_load_snapshot: tuple_first_load_rec.snapshot,
+               last_load_table_id: tuple_last_load_rec.table_id,
+               last_load_snapshot: tuple_last_load_rec.snapshot,
+               table_id: tuple_first_load_table_rec.id,
+               table_snapshot: tuple_first_load_table_rec.snapshot
              }
     end
 
@@ -94,7 +97,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       first_load_rec = List.first(new_load_recs)
 
       # attach the table and try to ingest
-      StartIngestion.attach_table(first_load_rec) |> StartIngestion.start_ingestion()
+      first_load_rec |> StartIngestion.attach_table() |> StartIngestion.start_ingestion()
 
       assert "ingesting" == CubicOdsLoad.get(first_load_rec.id).status
     end

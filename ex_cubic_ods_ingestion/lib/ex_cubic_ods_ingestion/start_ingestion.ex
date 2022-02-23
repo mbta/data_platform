@@ -72,6 +72,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     state
   end
 
+  @spec attach_table(CubicOdsLoad.t()) :: tuple()
   def attach_table(load_rec) do
     # find the table rec that the load is for
     table_rec =
@@ -94,10 +95,10 @@ defmodule ExCubicOdsIngestion.StartIngestion do
 
       # for load, update table_id and snapshot if we don't have one already, as we don't want to override
       load_rec =
-        unless load_rec.table_id do
-          CubicOdsLoad.update(load_rec, %{table_id: table_rec.id, snapshot: table_rec.snapshot})
-        else
+        if load_rec.table_id do
           load_rec
+        else
+          CubicOdsLoad.update(load_rec, %{table_id: table_rec.id, snapshot: table_rec.snapshot})
         end
 
       {load_rec, table_rec}
@@ -106,6 +107,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     end
   end
 
+  @spec start_ingestion(tuple()) :: :ok
   def start_ingestion({load_rec, table_rec}) do
     if table_rec do
       # update status to ingesting
