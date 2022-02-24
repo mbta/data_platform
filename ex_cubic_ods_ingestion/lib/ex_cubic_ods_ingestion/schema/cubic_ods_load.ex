@@ -40,6 +40,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   schema "cubic_ods_loads" do
     field(:table_id, :integer)
+    # @todo specify the different statuses
     field(:status, :string)
     field(:snapshot, :utc_datetime)
     field(:is_cdc, :boolean)
@@ -134,6 +135,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     Repo.get!(__MODULE__, id)
   end
 
+  # @todo consider making this more specific to use cases
   @spec update(t(), map()) :: t()
   def update(load_rec, changes) do
     {:ok, load_rec} =
