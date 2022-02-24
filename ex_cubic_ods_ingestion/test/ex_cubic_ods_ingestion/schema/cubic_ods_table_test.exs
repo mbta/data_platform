@@ -25,7 +25,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
           Repo.insert!(new_table_rec)
         end)
 
-      assert inserted_table_rec == CubicOdsTable.get(inserted_table_rec.id)
+      assert inserted_table_rec == CubicOdsTable.get!(inserted_table_rec.id)
     end
   end
 

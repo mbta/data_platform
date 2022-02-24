@@ -10,7 +10,6 @@ defmodule ExCubicOdsIngestion.StartIngestion do
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
   alias ExCubicOdsIngestion.Workers.Ingest
 
-  require Logger
   require Oban
 
   @wait_interval_ms 5_000
@@ -20,9 +19,6 @@ defmodule ExCubicOdsIngestion.StartIngestion do
   # client methods
   @spec start_link(Keyword.t()) :: GenServer.on_start()
   def start_link(opts) do
-    # define lib_ex_aws, unless it's already defined
-    opts = Keyword.put_new(opts, :lib_ex_aws, ExAws)
-
     GenServer.start_link(__MODULE__, opts)
   end
 
@@ -77,7 +73,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     # find the table rec that the load is for
     table_rec =
       if load_rec.table_id do
-        CubicOdsTable.get(load_rec.table_id)
+        CubicOdsTable.get!(load_rec.table_id)
       else
         CubicOdsTable.get_from_load_s3_key(load_rec.s3_key)
       end
@@ -87,7 +83,8 @@ defmodule ExCubicOdsIngestion.StartIngestion do
       # the load key matches the snapshot key and the load modified date is newer than the snapshot
       table_rec =
         if table_rec.snapshot_s3_key == load_rec.s3_key and
-             table_rec.snapshot < load_rec.s3_modified do
+             (is_nil(table_rec.snapshot) or
+                DateTime.compare(table_rec.snapshot, load_rec.s3_modified) == :lt) do
           CubicOdsTable.update(table_rec, %{snapshot: load_rec.s3_modified})
         else
           table_rec

@@ -63,15 +63,8 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     # get list of load objects for vendor
     {load_objects, next_continuation_token} = load_objects_list("cubic_ods_qlik/", state)
 
-    # query loads to see what we can ignore when inserting
-    # usually happens when objects have not been moved out of 'incoming' bucket
-    load_recs = CubicOdsLoad.get_by_objects(load_objects)
-
-    # create a list of objects that have not been added to database
-    new_load_objects = Enum.filter(load_objects, &CubicOdsLoad.not_added(&1, load_recs))
-
     # insert new load objects
-    CubicOdsLoad.insert_from_objects(new_load_objects)
+    CubicOdsLoad.insert_from_objects(load_objects)
 
     # update state
     %{state | continuation_token: next_continuation_token}

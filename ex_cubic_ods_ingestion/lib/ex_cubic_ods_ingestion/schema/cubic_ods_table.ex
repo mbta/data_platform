@@ -44,8 +44,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
     timestamps(type: :utc_datetime)
   end
 
-  @spec get(integer()) :: t()
-  def get(id) do
+  @spec get!(integer()) :: t()
+  def get!(id) do
     Repo.get!(__MODULE__, id)
   end
 
@@ -54,12 +54,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
     # get just the s3 prefix from the key
     load_s3_prefix = Path.dirname(load_s3_key)
     # if cdc, we want to strip off the '__ct'
-    root_load_s3_prefix =
-      if String.ends_with?(load_s3_prefix, "__ct") do
-        String.replace_suffix(load_s3_prefix, "__ct", "")
-      else
-        load_s3_prefix
-      end
+    root_load_s3_prefix = String.replace_suffix(load_s3_prefix, "__ct", "")
 
     query =
       from(table in __MODULE__,

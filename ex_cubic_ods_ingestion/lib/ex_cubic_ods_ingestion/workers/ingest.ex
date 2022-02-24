@@ -17,7 +17,7 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
   def perform(%Oban.Job{args: %{"load" => load, "table" => _table} = _args}) do
     Process.sleep(2000)
 
-    load_rec = CubicOdsLoad.get(load["id"])
+    load_rec = CubicOdsLoad.get!(load["id"])
     CubicOdsLoad.update(load_rec, %{status: "ingested"})
 
     :ok

@@ -54,7 +54,14 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   @spec insert_from_objects(list()) :: tuple()
   def insert_from_objects(objects) do
-    Repo.transaction(fn -> Enum.map(objects, &insert_ready(&1)) end)
+    # query loads to see what we can ignore when inserting
+    # usually happens when objects have not been moved out of 'incoming' bucket
+    recs = get_by_objects(objects)
+
+    # create a list of objects that have not been added to database
+    new_objects = Enum.filter(objects, &not_added(&1, recs))
+
+    Repo.transaction(fn -> Enum.map(new_objects, &insert_ready(&1)) end)
   end
 
   @spec insert_ready(map()) :: Ecto.Schema.t()
@@ -122,8 +129,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     Repo.all(query)
   end
 
-  @spec get(integer()) :: t()
-  def get(id) do
+  @spec get!(integer()) :: t()
+  def get!(id) do
     Repo.get!(__MODULE__, id)
   end
 
@@ -147,12 +154,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   @spec remove_s3_bucket_prefix(String.t()) :: String.t()
   defp remove_s3_bucket_prefix(s3_key) do
-    s3_prefix = Application.get_env(:ex_cubic_ods_ingestion, :s3_prefix_incoming, "")
+    s3_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_prefix_incoming)
 
-    if String.starts_with?(s3_key, s3_prefix) do
-      String.replace_prefix(s3_key, s3_prefix, "")
-    else
-      s3_key
-    end
+    String.replace_prefix(s3_key, s3_prefix, "")
   end
 end

@@ -99,7 +99,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       # attach the table and try to ingest
       first_load_rec |> StartIngestion.attach_table() |> StartIngestion.start_ingestion()
 
-      assert "ingesting" == CubicOdsLoad.get(first_load_rec.id).status
+      assert "ingesting" == CubicOdsLoad.get!(first_load_rec.id).status
     end
 
     test "erroring out because of no table association" do
@@ -110,7 +110,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       # try to ingest
       StartIngestion.start_ingestion({first_load_rec, nil})
 
-      assert "errored" == CubicOdsLoad.get(first_load_rec.id).status
+      assert "errored" == CubicOdsLoad.get!(first_load_rec.id).status
     end
   end
 end
