@@ -45,7 +45,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       last_load_rec = List.last(new_load_recs)
 
       # attach table
-      {attched_first_load_rec, attached_first_load_table_rec} =
+      {attached_first_load_rec, attached_first_load_table_rec} =
         StartIngestion.attach_table(first_load_rec)
 
       {attached_last_load_rec, _attached_last_load_table_rec} =
@@ -60,8 +60,8 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
                table_id: inserted_table_rec.id,
                table_snapshot: first_load_rec.s3_modified
              } == %{
-               first_load_table_id: attched_first_load_rec.table_id,
-               first_load_snapshot: attched_first_load_rec.snapshot,
+               first_load_table_id: attached_first_load_rec.table_id,
+               first_load_snapshot: attached_first_load_rec.snapshot,
                last_load_table_id: attached_last_load_rec.table_id,
                last_load_snapshot: attached_last_load_rec.snapshot,
                table_id: attached_first_load_table_rec.id,
@@ -70,7 +70,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
 
       # re-attach to simulate a re-run
       {reattached_first_load_rec, reattached_first_load_table_rec} =
-        StartIngestion.attach_table(attched_first_load_rec)
+        StartIngestion.attach_table(attached_first_load_rec)
 
       assert %{
                first_load_table_id: inserted_table_rec.id,
