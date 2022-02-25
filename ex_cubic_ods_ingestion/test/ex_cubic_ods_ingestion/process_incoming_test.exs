@@ -4,7 +4,6 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.ProcessIncoming
   alias ExCubicOdsIngestion.Repo
-  alias ExCubicOdsIngestion.Schema.CubicOdsLoad
 
   require MockExAws.Data
   require Logger
@@ -40,34 +39,6 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
     end
 
     # @todo test for a non-empty continuation token
-  end
-
-  describe "not_added/2" do
-    test "object NOT found in database records" do
-      load_object = List.first(MockExAws.Data.load_objects())
-
-      load_recs = [
-        %CubicOdsLoad{
-          s3_key: "key/not/found.csv",
-          s3_modified: ~U[2022-02-08 20:49:50Z]
-        }
-      ]
-
-      assert ProcessIncoming.not_added(load_object, load_recs)
-    end
-
-    test "object found in database records" do
-      load_object = List.first(MockExAws.Data.load_objects())
-
-      load_recs = [
-        %CubicOdsLoad{
-          s3_key: "vendor/SAMPLE/LOAD1.csv",
-          s3_modified: ~U[2022-02-08 20:49:50Z]
-        }
-      ]
-
-      refute ProcessIncoming.not_added(load_object, load_recs)
-    end
   end
 end
 

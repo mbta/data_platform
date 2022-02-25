@@ -63,15 +63,8 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     # get list of load objects for vendor
     {load_objects, next_continuation_token} = load_objects_list("cubic_ods_qlik/", state)
 
-    # query loads to see what we can ignore when inserting
-    # usually happens when objects have not been moved out of 'incoming' bucket
-    load_recs = CubicOdsLoad.get_by_objects(load_objects)
-
-    # create a list of objects that have not been added to database
-    new_load_objects = Enum.filter(load_objects, &not_added(&1, load_recs))
-
     # insert new load objects
-    CubicOdsLoad.insert_from_objects(new_load_objects)
+    CubicOdsLoad.insert_new_from_objects(load_objects)
 
     # update state
     %{state | continuation_token: next_continuation_token}
@@ -100,17 +93,5 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     # @todo handle error cases
 
     {contents, next_continuation_token}
-  end
-
-  @spec not_added(map(), list()) :: boolean()
-  def not_added(load_object, load_recs) do
-    key = load_object[:key]
-    {:ok, last_modified_with_msec, _offset} = DateTime.from_iso8601(load_object[:last_modified])
-    last_modified = DateTime.truncate(last_modified_with_msec, :second)
-
-    not Enum.any?(
-      load_recs,
-      fn r -> r.s3_key == key and r.s3_modified == last_modified end
-    )
   end
 end
