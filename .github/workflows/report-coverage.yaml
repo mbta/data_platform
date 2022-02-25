@@ -54,4 +54,4 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           coverage-files: ${{ runner.temp }}/cover/lcov*.info
           artifact-name: elixir-code-coverage
-          # working-directory: ex_cubic_ods_ingestion
+          working-directory: ex_cubic_ods_ingestion
