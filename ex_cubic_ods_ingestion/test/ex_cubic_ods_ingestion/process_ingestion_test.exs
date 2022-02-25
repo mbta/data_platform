@@ -18,7 +18,7 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
 
   describe "error/1" do
     test "processing error in ingestion" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
       first_load_rec = List.first(new_load_recs)
       updated_load_rec = ProcessIngestion.error(first_load_rec)
@@ -29,7 +29,7 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
 
   describe "archive/1" do
     test "archiving load after ingestion" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
       first_load_rec = List.first(new_load_recs)
       updated_load_rec = ProcessIngestion.archive(first_load_rec)

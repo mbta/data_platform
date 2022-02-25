@@ -40,15 +40,15 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
         end)
 
       # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
       first_load_rec = List.first(new_load_recs)
       last_load_rec = List.last(new_load_recs)
 
       # attach table
-      {tuple_first_load_rec, tuple_first_load_table_rec} =
+      {attched_first_load_rec, attached_first_load_table_rec} =
         StartIngestion.attach_table(first_load_rec)
 
-      {tuple_last_load_rec, _tuple_last_load_table_rec} =
+      {attached_last_load_rec, _attached_last_load_table_rec} =
         StartIngestion.attach_table(last_load_rec)
 
       # assert that we attached the right table, and we have the right updates
@@ -60,18 +60,34 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
                table_id: inserted_table_rec.id,
                table_snapshot: first_load_rec.s3_modified
              } == %{
-               first_load_table_id: tuple_first_load_rec.table_id,
-               first_load_snapshot: tuple_first_load_rec.snapshot,
-               last_load_table_id: tuple_last_load_rec.table_id,
-               last_load_snapshot: tuple_last_load_rec.snapshot,
-               table_id: tuple_first_load_table_rec.id,
-               table_snapshot: tuple_first_load_table_rec.snapshot
+               first_load_table_id: attched_first_load_rec.table_id,
+               first_load_snapshot: attched_first_load_rec.snapshot,
+               last_load_table_id: attached_last_load_rec.table_id,
+               last_load_snapshot: attached_last_load_rec.snapshot,
+               table_id: attached_first_load_table_rec.id,
+               table_snapshot: attached_first_load_table_rec.snapshot
+             }
+
+      # re-attach to simulate a re-run
+      {reattached_first_load_rec, reattached_first_load_table_rec} =
+        StartIngestion.attach_table(attched_first_load_rec)
+
+      assert %{
+               first_load_table_id: inserted_table_rec.id,
+               first_load_snapshot: first_load_rec.s3_modified,
+               table_id: inserted_table_rec.id,
+               table_snapshot: first_load_rec.s3_modified
+             } == %{
+               first_load_table_id: reattached_first_load_rec.table_id,
+               first_load_snapshot: reattached_first_load_rec.snapshot,
+               table_id: reattached_first_load_table_rec.id,
+               table_snapshot: reattached_first_load_table_rec.snapshot
              }
     end
 
     test "not attaching anything by providing a load with no known table association" do
       # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
       first_load_rec = List.first(new_load_recs)
 
       assert {first_load_rec, nil} == StartIngestion.attach_table(first_load_rec)
@@ -93,7 +109,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
         end)
 
       # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
       first_load_rec = List.first(new_load_recs)
 
       # attach the table and try to ingest
@@ -104,7 +120,7 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
 
     test "erroring out because of no table association" do
       # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
       first_load_rec = List.first(new_load_recs)
 
       # try to ingest

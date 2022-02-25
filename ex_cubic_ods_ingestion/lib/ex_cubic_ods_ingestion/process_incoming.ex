@@ -64,7 +64,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     {load_objects, next_continuation_token} = load_objects_list("cubic_ods_qlik/", state)
 
     # insert new load objects
-    CubicOdsLoad.insert_from_objects(load_objects)
+    CubicOdsLoad.insert_new_from_objects(load_objects)
 
     # update state
     %{state | continuation_token: next_continuation_token}

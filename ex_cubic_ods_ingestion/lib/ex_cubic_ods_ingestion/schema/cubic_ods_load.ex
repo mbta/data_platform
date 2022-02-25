@@ -53,20 +53,23 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     timestamps(type: :utc_datetime)
   end
 
-  @spec insert_from_objects(list()) :: tuple()
-  def insert_from_objects(objects) do
-    # query loads to see what we can ignore when inserting
-    # usually happens when objects have not been moved out of 'incoming' bucket
-    recs = get_by_objects(objects)
+  @spec insert_new_from_objects(list()) :: tuple()
+  def insert_new_from_objects(objects) do
+    Repo.transaction(fn ->
+      # query loads to see what we can ignore when inserting
+      # usually happens when objects have not been moved out of 'incoming' bucket
+      recs = get_by_objects(objects)
 
-    # create a list of objects that have not been added to database
-    new_objects = Enum.filter(objects, &not_added(&1, recs))
+      # create a list of objects that have not been added to database
+      new_objects = Enum.filter(objects, &not_added(&1, recs))
 
-    Repo.transaction(fn -> Enum.map(new_objects, &insert_ready(&1)) end)
+      # insert new objects
+      Enum.map(new_objects, &insert_from_object(&1))
+    end)
   end
 
-  @spec insert_ready(map()) :: Ecto.Schema.t()
-  def insert_ready(object) do
+  @spec insert_from_object(map()) :: Ecto.Schema.t()
+  def insert_from_object(object) do
     last_modified = parse_and_drop_msec(object[:last_modified])
     size = String.to_integer(object[:size])
 

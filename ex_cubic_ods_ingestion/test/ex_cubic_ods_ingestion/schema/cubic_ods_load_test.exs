@@ -13,9 +13,9 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
     :ok = Sandbox.checkout(Repo)
   end
 
-  describe "insert_from_objects/1" do
+  describe "insert_new_from_objects/1" do
     test "providing a non-empty list of objects" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
       assert [
                %{
@@ -42,21 +42,21 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
     end
 
     test "providing an empty list of objects" do
-      assert {:ok, []} == CubicOdsLoad.insert_from_objects([])
+      assert {:ok, []} == CubicOdsLoad.insert_new_from_objects([])
     end
   end
 
   describe "get_by_objects/1" do
     test "getting records just added by providing the list we added from" do
       load_objects = MockExAws.Data.load_objects()
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(load_objects)
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(load_objects)
 
       assert new_load_recs ==
                CubicOdsLoad.get_by_objects(load_objects)
     end
 
     test "getting no records by providing a list with a load object not in db" do
-      {:ok, _new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, _new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
       assert [] ==
                CubicOdsLoad.get_by_objects([
@@ -109,7 +109,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
   describe "get_status_ready/0" do
     test "getting load records with the status 'ready'" do
       # insert records as ready
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
       # set the first record to 'archived'
       {:ok, _archived_load_rec} =
         Repo.transaction(fn ->
@@ -128,7 +128,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
   describe "update/2" do
     test "setting an 'archived' status" do
       # insert records as ready
-      {:ok, new_load_recs} = CubicOdsLoad.insert_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
       # use the first record
       first_load_rec = List.first(new_load_recs)
