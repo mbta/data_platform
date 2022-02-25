@@ -111,7 +111,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
       CubicOdsLoad.update(load_rec, %{status: "ingesting"})
 
       # queue for ingesting
-      %{load: load_rec, table: table_rec} |> Ingest.new() |> Oban.insert()
+      %{load_id: load_rec.id} |> Ingest.new() |> Oban.insert()
     else
       ProcessIngestion.error(load_rec)
     end
