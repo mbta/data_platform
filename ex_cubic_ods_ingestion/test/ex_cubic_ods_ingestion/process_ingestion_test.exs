@@ -16,25 +16,33 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
     :ok = Sandbox.checkout(Repo)
   end
 
-  describe "error/1" do
-    test "processing error in ingestion" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-
-      first_load_rec = List.first(new_load_recs)
-      updated_load_rec = ProcessIngestion.error(first_load_rec)
-
-      assert "errored" == updated_load_rec.status
-    end
-  end
-
   describe "archive/1" do
     test "archiving load after ingestion" do
       {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
-      first_load_rec = List.first(new_load_recs)
-      updated_load_rec = ProcessIngestion.archive(first_load_rec)
+      updated_load_recs =
+        ProcessIngestion.archive(
+          Enum.map(new_load_recs, fn new_load_rec -> %{"load" => %{"id" => new_load_rec.id}} end)
+        )
 
-      assert "archived" == updated_load_rec.status
+      assert {Enum.count(new_load_recs),
+              Enum.map(new_load_recs, fn new_load_rec -> new_load_rec.id end)} ==
+               updated_load_recs
+    end
+  end
+
+  describe "error/1" do
+    test "processing error in ingestion" do
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+
+      updated_load_recs =
+        ProcessIngestion.error(
+          Enum.map(new_load_recs, fn new_load_rec -> %{"load" => %{"id" => new_load_rec.id}} end)
+        )
+
+      assert {Enum.count(new_load_recs),
+              Enum.map(new_load_recs, fn new_load_rec -> new_load_rec.id end)} ==
+               updated_load_recs
     end
   end
 end

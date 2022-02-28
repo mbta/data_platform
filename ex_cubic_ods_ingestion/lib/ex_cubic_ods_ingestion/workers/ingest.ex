@@ -10,45 +10,56 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
   alias Ecto.Changeset
   alias ExCubicOdsIngestion.ProcessIngestion
   alias ExCubicOdsIngestion.Repo
-  alias ExCubicOdsIngestion.Schema.CubicOdsLoad
-
-  require Logger
-
-  @job_timeout_in_sec 300
 
   @impl Oban.Worker
   def perform(%{args: args, meta: meta} = job) do
+    # get info passed into args
+    %{"chunk" => loads_chunk} = args
+
+    # allow for ex_aws module to be passed in as a string, since Oban will need to
+    # serialize args to JSON. defaulted to library module.
+    lib_ex_aws =
+      case args do
+        %{"lib_ex_aws" => mod_str} -> Module.safe_concat([mod_str])
+        _args_lib_ex_aws -> ExAws
+      end
+
     # if no glue job run id available from meta data, then start the job
-    glue_job_run_id = if is_nil(Map.get(meta, "glue_job_run_id")) do
-      {:ok, glue_job_run} = start_glue_job_run("{\"a\": \"1\",\"b\": \"2\"}", "{\"c\": \"3\",\"d\": \"4\"}")
+    glue_job_run_id =
+      if is_nil(Map.get(meta, "glue_job_run_id")) do
+        {:ok, glue_job_run} =
+          start_glue_job_run(
+            lib_ex_aws,
+            "{\"a\": \"1\",\"b\": \"2\"}",
+            "{\"c\": \"3\",\"d\": \"4\"}"
+          )
 
-      job
-      |> Changeset.change(meta: Map.put(meta, "glue_job_run_id", glue_job_run["JobRunId"]))
-      |> Repo.update()
+        # update job's meta data with glue job run id
+        job
+        |> Changeset.change(meta: %{"glue_job_run_id" => glue_job_run["JobRunId"]})
+        |> Repo.update()
 
-      glue_job_run["JobRunId"]
-    else
-      Map.get(meta, "glue_job_run_id")
-    end
+        glue_job_run["JobRunId"]
+      else
+        Map.get(meta, "glue_job_run_id")
+      end
 
     # monitor for success or failure state in glue job run
-    glue_job_run_status = get_glue_job_run_status(glue_job_run_id)
+    case get_glue_job_run_status(lib_ex_aws, glue_job_run_id) do
+      {:ok, %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}}} ->
+        ProcessIngestion.archive(loads_chunk)
 
-    case glue_job_run_status do
-      "SUCCEEDED" ->
-        ProcessIngestion.archive(Map.fetch!(args, "load_id"))
-      _ ->
-        ProcessIngestion.error(Map.fetch!(args, "load_id"))
+      _other_glue_job_run_state ->
+        ProcessIngestion.error(loads_chunk)
     end
 
     :ok
   end
 
-  @impl Oban.Worker
-  def timeout(_job), do: :timer.seconds(@job_timeout_in_sec)
+  @spec start_glue_job_run(any(), String.t(), String.t()) :: {atom(), map()}
+  defp start_glue_job_run(lib_ex_aws, env_arg, input_arg) do
+    glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
-  @spec start_glue_job_run(String.t(), String.t()) :: {atom(), map()}
-  def start_glue_job_run(env_arg, input_arg) do
     operation = %ExAws.Operation.JSON{
       http_method: :post,
       path: "/",
@@ -57,8 +68,8 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
         {"content-type", "application/x-amz-json-1.1"}
       ],
       data: %{
-        "JobName": "vehiclepositions-2021-09-06",
-        "Arguments": %{
+        JobName: glue_job_name,
+        Arguments: %{
           "--ENV": env_arg,
           "--INPUT": input_arg
         }
@@ -66,12 +77,12 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
       service: :glue
     }
 
-    ExAws.request(operation)
+    lib_ex_aws.request(operation)
   end
 
-  @spec get_glue_job_run_status(String.t()) :: {atom(), map()}
-  def get_glue_job_run_status(run_id) do
-    Process.sleep(2000)
+  @spec get_glue_job_run_status(any(), String.t()) :: {atom(), map()}
+  defp get_glue_job_run_status(lib_ex_aws, run_id) do
+    glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
     operation = %ExAws.Operation.JSON{
       http_method: :post,
@@ -81,19 +92,22 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
         {"content-type", "application/x-amz-json-1.1"}
       ],
       data: %{
-        JobName: "vehiclepositions-2021-09-06",
+        JobName: glue_job_name,
         RunId: run_id
       },
       service: :glue
     }
 
-    {:ok, glue_job_run} = ExAws.request(operation)
+    # pause a litte before getting status
+    Process.sleep(5000)
+    glue_job_run = lib_ex_aws.request(operation)
 
-    if glue_job_run["JobRun"]["JobRunState"] == "RUNNING" do
-      get_glue_job_run_status(run_id)
-    else
-      glue_job_run["JobRun"]["JobRunState"]
+    case glue_job_run do
+      {:ok, %{"JobRun" => %{"JobRunState" => "RUNNING"}}} ->
+        get_glue_job_run_status(lib_ex_aws, run_id)
+
+      _other_glue_job_run_state ->
+        glue_job_run
     end
-
   end
 end

@@ -11,10 +11,11 @@ defmodule ExCubicOdsIngestion.StartIngestion do
   alias ExCubicOdsIngestion.Workers.Ingest
 
   require Oban
+  require Oban.Job
 
   @wait_interval_ms 5_000
 
-  defstruct [:lib_ex_aws, status: :not_started, continuation_token: "", max_keys: 1_000]
+  defstruct status: :not_started, continuation_token: "", max_keys: 1_000
 
   # client methods
   @spec start_link(Keyword.t()) :: GenServer.on_start()
@@ -57,15 +58,30 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     # get list of load records that are in 'ready' state, ordered by s3_modified, s3_key
     ready_load_recs = CubicOdsLoad.get_status_ready()
 
-    # attach table to load records, and update snapshots
-    ready_loads = Enum.map(ready_load_recs, &attach_table(&1))
+    # prepare lists for separate operations
+    {error_loads, ready_loads_chunks} = prepare_loads(ready_load_recs)
 
-    # iterate through the load records list in order to start ingesting job,
-    # or error
-    Enum.each(ready_loads, &start_ingestion(&1))
+    # error out the error loads
+    Enum.each(error_loads, &ProcessIngestion.error(&1.id))
+
+    # start ingestion for the rest
+    Enum.each(ready_loads_chunks, &start_ingestion(&1))
 
     # return
     state
+  end
+
+  @spec prepare_loads([CubicOdsLoad.t()]) ::
+          {[{CubicOdsLoad.t(), nil}], [[{CubicOdsLoad.t(), CubicOdsTable.t()}]]}
+  def prepare_loads(load_recs) do
+    # attach table to load records, add or update any snapshots
+    loads = Enum.map(load_recs, &attach_table(&1))
+
+    {error_loads, ready_loads} =
+      Enum.split_with(loads, fn {_load_rec, table_rec} -> is_nil(table_rec) end)
+
+    # @todo replace chunk_every with chunk_while for more fine-tuned control
+    {error_loads, Enum.chunk_every(ready_loads, 3)}
   end
 
   @spec attach_table(CubicOdsLoad.t()) :: tuple()
@@ -104,18 +120,18 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     end
   end
 
-  @spec start_ingestion(tuple()) :: :ok
-  def start_ingestion({load_rec, table_rec}) do
-    if table_rec do
-      # update status to ingesting
-      CubicOdsLoad.update(load_rec, %{status: "ingesting"})
+  @spec start_ingestion([{CubicOdsLoad.t(), CubicOdsTable.t()}]) :: {:ok, Oban.Job.t()}
+  def start_ingestion(loads_chunk) do
+    # update status to ingesting
+    load_recs_ids = Enum.map(loads_chunk, fn {load_rec, _table_rec} -> load_rec.id end)
+    CubicOdsLoad.update_many(load_recs_ids, status: "ingesting")
 
-      # queue for ingesting
-      %{load_id: load_rec.id} |> Ingest.new() |> Oban.insert()
-    else
-      ProcessIngestion.error(load_rec)
-    end
-
-    :ok
+    # queue chunk for ingesting
+    %{
+      chunk:
+        Enum.map(loads_chunk, fn {load_rec, table_rec} -> %{load: load_rec, table: table_rec} end)
+    }
+    |> Ingest.new()
+    |> Oban.insert()
   end
 end
