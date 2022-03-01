@@ -27,10 +27,12 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     # if no glue job run id available from meta data, then start the job
     glue_job_run_id =
       if is_nil(Map.get(meta, "glue_job_run_id")) do
+        glue_database = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_database)
+
         {:ok, glue_job_run} =
           start_glue_job_run(
             lib_ex_aws,
-            "{\"a\": \"1\",\"b\": \"2\"}",
+            "{\"GLUE_DATABASE_NAME\": \"#{glue_database}\"}",
             "{\"c\": \"3\",\"d\": \"4\"}"
           )
 
