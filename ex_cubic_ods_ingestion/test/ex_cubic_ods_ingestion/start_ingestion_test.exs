@@ -98,6 +98,54 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
     end
   end
 
+  describe "process_loads/1" do
+    test "processing with empty values" do
+      assert :ok == StartIngestion.process_loads({[], []})
+    end
+
+    test "processing with just empty ready load chunks list" do
+      # insert load records
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+      first_load_rec = List.first(new_load_recs)
+
+      assert :ok ==
+               StartIngestion.process_loads({
+                 [{first_load_rec, nil}],
+                 []
+               })
+    end
+
+    test "processing with just empty error load list" do
+      # insert a new table
+      new_table_rec = %CubicOdsTable{
+        name: "vendor__sample",
+        s3_prefix: "vendor/SAMPLE/",
+        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+      }
+
+      {:ok, _inserted_table_rec} =
+        Repo.transaction(fn ->
+          Repo.insert!(new_table_rec)
+        end)
+
+      # insert load records
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+      first_load_rec = List.first(new_load_recs)
+
+      # attach table
+      {attached_first_load_rec, attached_first_load_table_rec} =
+        StartIngestion.attach_table(first_load_rec)
+
+      assert :ok ==
+               StartIngestion.process_loads({
+                 [],
+                 [
+                   [{attached_first_load_rec, attached_first_load_table_rec}]
+                 ]
+               })
+    end
+  end
+
   describe "attach_table/1" do
     test "attaching with load records" do
       # insert a new table
@@ -189,7 +237,10 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       first_prepared_ready_loads_chunk = List.first(prepared_ready_loads_chunks)
 
       # attach the table and create oban job
-      {:ok, oban_job} = StartIngestion.start_ingestion(first_prepared_ready_loads_chunk)
+      {:ok, oban_job} =
+        StartIngestion.start_ingestion(
+          Enum.map(first_prepared_ready_loads_chunk, fn {load_rec, _table_rec} -> load_rec.id end)
+        )
 
       assert "available" == oban_job.state
     end

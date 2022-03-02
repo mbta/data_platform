@@ -21,9 +21,7 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
       {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
       updated_load_recs =
-        ProcessIngestion.archive(
-          Enum.map(new_load_recs, fn new_load_rec -> %{"load" => %{"id" => new_load_rec.id}} end)
-        )
+        ProcessIngestion.archive(Enum.map(new_load_recs, fn new_load_rec -> new_load_rec.id end))
 
       assert {Enum.count(new_load_recs),
               Enum.map(new_load_recs, fn new_load_rec -> new_load_rec.id end)} ==
@@ -36,9 +34,7 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
       {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
 
       updated_load_recs =
-        ProcessIngestion.error(
-          Enum.map(new_load_recs, fn new_load_rec -> %{"load" => %{"id" => new_load_rec.id}} end)
-        )
+        ProcessIngestion.error(Enum.map(new_load_recs, fn new_load_rec -> new_load_rec.id end))
 
       assert {Enum.count(new_load_recs),
               Enum.map(new_load_recs, fn new_load_rec -> new_load_rec.id end)} ==

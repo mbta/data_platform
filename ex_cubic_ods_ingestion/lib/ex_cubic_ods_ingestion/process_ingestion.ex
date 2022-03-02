@@ -5,15 +5,13 @@ defmodule ExCubicOdsIngestion.ProcessIngestion do
 
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
 
-  @spec archive(map()) :: [integer()]
-  def archive(loads_chunk) do
-    load_recs_ids = Enum.map(loads_chunk, fn %{"load" => %{"id" => id}} -> id end)
+  @spec archive([integer()]) :: [integer()]
+  def archive(load_recs_ids) do
     CubicOdsLoad.update_many(load_recs_ids, status: "archived")
   end
 
-  @spec error(map()) :: [integer()]
-  def error(loads_chunk) do
-    load_recs_ids = Enum.map(loads_chunk, fn %{"load" => %{"id" => id}} -> id end)
+  @spec error([integer()]) :: [integer()]
+  def error(load_recs_ids) do
     CubicOdsLoad.update_many(load_recs_ids, status: "errored")
   end
 end

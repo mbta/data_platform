@@ -7,14 +7,21 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     queue: :ingest,
     max_attempts: 3
 
-  alias Ecto.Changeset
   alias ExCubicOdsIngestion.ProcessIngestion
-  alias ExCubicOdsIngestion.Repo
+
+  require Logger
+
+  @log_prefix "[ex_cubic_ods_ingestion][workers][ingest]"
+  # 15 minutes
+  @job_timeout_in_sec 900
 
   @impl Oban.Worker
-  def perform(%{args: args, meta: meta} = job) do
-    # get info passed into args
-    %{"chunk" => loads_chunk} = args
+  def timeout(_job), do: :timer.seconds(@job_timeout_in_sec)
+
+  @impl Oban.Worker
+  def perform(%{args: args} = _job) do
+    # get list of ids for load records
+    %{"load_rec_ids" => load_rec_ids} = args
 
     # allow for ex_aws module to be passed in as a string, since Oban will need to
     # serialize args to JSON. defaulted to library module.
@@ -24,92 +31,64 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
         _args_lib_ex_aws -> ExAws
       end
 
-    # if no glue job run id available from meta data, then start the job
-    glue_job_run_id =
-      if is_nil(Map.get(meta, "glue_job_run_id")) do
-        glue_database = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_database)
+    # start glue job
+    glue_database = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_database)
 
-        {:ok, glue_job_run} =
-          start_glue_job_run(
-            lib_ex_aws,
-            "{\"GLUE_DATABASE_NAME\": \"#{glue_database}\"}",
-            "{\"c\": \"3\",\"d\": \"4\"}"
-          )
+    %{"JobRunId" => glue_job_run_id} =
+      start_glue_job_run(
+        lib_ex_aws,
+        "{\"GLUE_DATABASE_NAME\": \"#{glue_database}\"}",
+        "{\"c\": \"3\",\"d\": \"4\"}"
+      )
 
-        # update job's meta data with glue job run id
-        job
-        |> Changeset.change(meta: %{"glue_job_run_id" => glue_job_run["JobRunId"]})
-        |> Repo.update()
-
-        glue_job_run["JobRunId"]
-      else
-        Map.get(meta, "glue_job_run_id")
-      end
+    Logger.info("#{@log_prefix} Glue Job Run ID: #{glue_job_run_id}")
 
     # monitor for success or failure state in glue job run
-    case get_glue_job_run_status(lib_ex_aws, glue_job_run_id) do
-      {:ok, %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}}} ->
-        ProcessIngestion.archive(loads_chunk)
+    glue_job_run_status = get_glue_job_run_status(lib_ex_aws, glue_job_run_id)
+
+    case glue_job_run_status do
+      %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}} ->
+        Logger.info("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
+
+        ProcessIngestion.archive(load_rec_ids)
 
       _other_glue_job_run_state ->
-        ProcessIngestion.error(loads_chunk)
+        Logger.error("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
+
+        ProcessIngestion.error(load_rec_ids)
     end
 
     :ok
   end
 
-  @spec start_glue_job_run(any(), String.t(), String.t()) :: {atom(), map()}
+  @spec start_glue_job_run(any(), String.t(), String.t()) :: map()
   defp start_glue_job_run(lib_ex_aws, env_arg, input_arg) do
     glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
-    operation = %ExAws.Operation.JSON{
-      http_method: :post,
-      path: "/",
-      headers: [
-        {"x-amz-target", "AWSGlue.StartJobRun"},
-        {"content-type", "application/x-amz-json-1.1"}
-      ],
-      data: %{
-        JobName: glue_job_name,
-        Arguments: %{
-          "--ENV": env_arg,
-          "--INPUT": input_arg
-        }
-      },
-      service: :glue
-    }
-
-    lib_ex_aws.request(operation)
+    lib_ex_aws.request!(
+      ExAws.Glue.start_job_run(glue_job_name, %{
+        "--ENV": env_arg,
+        "--INPUT": input_arg
+      })
+    )
   end
 
-  @spec get_glue_job_run_status(any(), String.t()) :: {atom(), map()}
+  @spec get_glue_job_run_status(any(), String.t()) :: map()
   defp get_glue_job_run_status(lib_ex_aws, run_id) do
     glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
-    operation = %ExAws.Operation.JSON{
-      http_method: :post,
-      path: "/",
-      headers: [
-        {"x-amz-target", "AWSGlue.GetJobRun"},
-        {"content-type", "application/x-amz-json-1.1"}
-      ],
-      data: %{
-        JobName: glue_job_name,
-        RunId: run_id
-      },
-      service: :glue
-    }
-
     # pause a litte before getting status
-    Process.sleep(5000)
-    glue_job_run = lib_ex_aws.request(operation)
+    # Process.sleep(5000)
+    glue_job_run_status = lib_ex_aws.request!(ExAws.Glue.get_job_run(glue_job_name, run_id))
 
-    case glue_job_run do
-      {:ok, %{"JobRun" => %{"JobRunState" => "RUNNING"}}} ->
+    case glue_job_run_status do
+      %{"JobRun" => %{"JobRunState" => "RUNNING"}} ->
+        Logger.info("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
+
         get_glue_job_run_status(lib_ex_aws, run_id)
 
       _other_glue_job_run_state ->
-        glue_job_run
+        glue_job_run_status
     end
   end
 end

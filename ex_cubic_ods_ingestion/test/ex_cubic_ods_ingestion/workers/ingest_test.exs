@@ -1,5 +1,6 @@
 defmodule ExCubicOdsIngestion.Workers.IngestTest do
   use ExUnit.Case
+  use Oban.Testing, repo: ExCubicOdsIngestion.Repo
 
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.Repo
@@ -8,9 +9,7 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   alias ExCubicOdsIngestion.StartIngestion
   alias ExCubicOdsIngestion.Workers.Ingest
 
-  require Oban.Job
   require MockExAws
-  require Logger
 
   setup do
     # Explicitly get a connection before each test
@@ -19,6 +18,16 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   end
 
   describe "perform/1" do
+    test "enqueueing job" do
+      # @todo the assertion below is not working
+      # assert_enqueued(
+      #   worker: Ingest,
+      #   args: %{
+      #     load_rec_ids: [123,456]
+      #   }
+      # )
+    end
+
     test "run job" do
       # insert a new table
       new_table_rec = %CubicOdsTable{
@@ -27,7 +36,7 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
         snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
       }
 
-      {:ok, inserted_table_rec} =
+      {:ok, _inserted_table_rec} =
         Repo.transaction(fn ->
           Repo.insert!(new_table_rec)
         end)
@@ -41,42 +50,11 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
       StartIngestion.attach_table(first_load_rec)
       StartIngestion.attach_table(last_load_rec)
 
-      # prepare loads and get first chunk
-      {_prepared_error_loads, prepared_ready_loads_chunks} =
-        StartIngestion.prepare_loads(new_load_recs)
-
-      first_prepared_ready_loads_chunk = List.first(prepared_ready_loads_chunks)
-
-      # attach the table and create oban job
-      {:ok, oban_job} = StartIngestion.start_ingestion(first_prepared_ready_loads_chunk)
-
-      updated_args_oban_job = %{
-        oban_job
-        | args: %{
-            "chunk" => [
-              %{
-                "load" => %{"id" => first_load_rec.id},
-                "table" => %{"id" => inserted_table_rec.id}
-              },
-              %{
-                "load" => %{"id" => last_load_rec.id},
-                "table" => %{"id" => inserted_table_rec.id}
-              }
-            ],
-            "lib_ex_aws" => "MockExAws"
-          }
-      }
-
-      assert :ok = Ingest.perform(updated_args_oban_job)
-
-      updated_meta_oban_job = %{
-        updated_args_oban_job
-        | meta: %{
-            "glue_job_run_id" => "abc123"
-          }
-      }
-
-      assert :ok = Ingest.perform(updated_meta_oban_job)
+      assert :ok =
+               perform_job(Ingest, %{
+                 load_rec_ids: [first_load_rec.id, last_load_rec.id],
+                 lib_ex_aws: "MockExAws"
+               })
     end
   end
 end
