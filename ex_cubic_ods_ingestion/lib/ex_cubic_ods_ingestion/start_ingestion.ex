@@ -12,7 +12,6 @@ defmodule ExCubicOdsIngestion.StartIngestion do
 
   require Oban
   require Oban.Job
-  require Logger
 
   @wait_interval_ms 5_000
 
@@ -81,7 +80,9 @@ defmodule ExCubicOdsIngestion.StartIngestion do
           :ok
   def process_loads({error_loads, ready_load_chunks}) do
     # error out the error loads
-    ProcessIngestion.error(Enum.map(error_loads, fn {load_rec, _table_rec} -> load_rec.id end))
+    if Enum.count(error_loads) > 0 do
+      ProcessIngestion.error(Enum.map(error_loads, fn {load_rec, _table_rec} -> load_rec.id end))
+    end
 
     # start ingestion for the rest
     Enum.each(

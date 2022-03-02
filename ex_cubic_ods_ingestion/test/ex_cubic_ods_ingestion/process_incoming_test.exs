@@ -23,12 +23,6 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
     end
   end
 
-  describe "run/1" do
-    test "" do
-      # @todo
-    end
-  end
-
   describe "load_objects_list/3" do
     test "getting objects for test prefix" do
       state = %ProcessIncoming{lib_ex_aws: MockExAws}

@@ -61,7 +61,7 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     :ok
   end
 
-  @spec start_glue_job_run(any(), String.t(), String.t()) :: map()
+  @spec start_glue_job_run(module(), String.t(), String.t()) :: map()
   defp start_glue_job_run(lib_ex_aws, env_arg, input_arg) do
     glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
@@ -73,12 +73,12 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     )
   end
 
-  @spec get_glue_job_run_status(any(), String.t()) :: map()
+  @spec get_glue_job_run_status(module(), String.t()) :: map()
   defp get_glue_job_run_status(lib_ex_aws, run_id) do
     glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
     # pause a litte before getting status
-    # Process.sleep(5000)
+    Process.sleep(5000)
     glue_job_run_status = lib_ex_aws.request!(ExAws.Glue.get_job_run(glue_job_name, run_id))
 
     case glue_job_run_status do
