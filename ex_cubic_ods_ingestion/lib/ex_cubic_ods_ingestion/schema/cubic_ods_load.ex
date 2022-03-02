@@ -133,11 +133,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     Repo.all(query)
   end
 
-  @spec get!(integer()) :: t()
-  def get!(id) do
-    Repo.get!(__MODULE__, id)
-  end
-
   # @todo consider making this more specific to use cases
   @spec update(t(), map()) :: t()
   def update(load_rec, changes) do
@@ -147,6 +142,20 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       end)
 
     load_rec
+  end
+
+  # @todo consider making this more specific to use cases
+  @spec update_many([integer()], Keyword.t()) :: [integer()]
+  def update_many(load_recs_ids, change) do
+    {:ok, updated_load_recs_ids} =
+      Repo.transaction(fn ->
+        Repo.update_all(
+          from(load in __MODULE__, where: load.id in ^load_recs_ids, select: load.id),
+          set: change
+        )
+      end)
+
+    updated_load_recs_ids
   end
 
   # private

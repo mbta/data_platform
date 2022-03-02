@@ -5,8 +5,8 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
   alias ExCubicOdsIngestion.ProcessIncoming
   alias ExCubicOdsIngestion.Repo
 
+  require MockExAws
   require MockExAws.Data
-  require Logger
 
   # setup server for each test
   setup do
@@ -39,45 +39,5 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
     end
 
     # @todo test for a non-empty continuation token
-  end
-end
-
-defmodule MockExAws do
-  @moduledoc """
-  MockExAws @todo
-  """
-
-  @spec request!(ExAws.Operation.t(), keyword) :: term
-  def request!(op, _config_overrides \\ []) do
-    incoming_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_prefix_incoming)
-
-    if op.params["prefix"] == "#{incoming_prefix}cubic_ods_qlik_test/" do
-      %{
-        body: %{
-          contents: MockExAws.Data.load_objects(),
-          next_continuation_token: ""
-        }
-      }
-    else
-      %{
-        body: %{
-          contents: [],
-          next_continuation_token: ""
-        }
-      }
-    end
-
-    # ::::: original implementation :::::
-    #
-    # case request(op, config_overrides) do
-    #   {:ok, result} ->
-    #     result
-
-    #   error ->
-    #     raise ExAws.Error, """
-    #     ExAws Request Error!
-    #     #{inspect(error)}
-    #     """
-    # end
   end
 end
