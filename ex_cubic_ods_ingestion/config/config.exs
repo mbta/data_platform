@@ -16,6 +16,8 @@ config :ex_cubic_ods_ingestion, Oban,
   repo: ExCubicOdsIngestion.Repo,
   plugins: [],
   queues: [
+    archive: 5,
+    error: 5,
     ingest: 5
   ]
 

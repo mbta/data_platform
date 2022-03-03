@@ -5,6 +5,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
 
   use GenServer
 
+  alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
   alias ExCubicOdsIngestion.Workers.Ingest
@@ -83,6 +84,8 @@ defmodule ExCubicOdsIngestion.StartIngestion do
       ready_load_chunks,
       &start_ingestion(Enum.map(&1, fn {load_rec, _table_rec} -> load_rec.id end))
     )
+
+    :ok
   end
 
   @spec attach_table(CubicOdsLoad.t()) :: tuple()
@@ -122,12 +125,15 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     end
   end
 
-  @spec start_ingestion([integer()]) :: {:ok, Oban.Job.t()}
+  @spec start_ingestion([integer()]) :: {atom(), map()}
   def start_ingestion(load_rec_ids) do
-    # update status to ingesting
-    CubicOdsLoad.update_many(load_rec_ids, status: "ingesting")
-
-    # queue for ingesting
-    %{load_rec_ids: load_rec_ids} |> Ingest.new() |> Oban.insert()
+    Ecto.Multi.new()
+    |> Ecto.Multi.update_all(
+      :update_status,
+      CubicOdsLoad.query_many(load_rec_ids),
+      set: [status: "ingesting"]
+    )
+    |> Oban.insert(:ingest_job, Ingest.new(%{load_rec_ids: load_rec_ids}))
+    |> Repo.transaction()
   end
 end

@@ -1,4 +1,4 @@
-defmodule ExCubicOdsIngestion.Workers.IngestTest do
+defmodule ExCubicOdsIngestion.Workers.ErrorTest do
   use ExUnit.Case
   use Oban.Testing, repo: ExCubicOdsIngestion.Repo
 
@@ -7,7 +7,7 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
   alias ExCubicOdsIngestion.StartIngestion
-  alias ExCubicOdsIngestion.Workers.Ingest
+  alias ExCubicOdsIngestion.Workers.Error
 
   require MockExAws
 
@@ -18,7 +18,7 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   end
 
   describe "perform/1" do
-    test "run job" do
+    test "run job without error" do
       # insert a new table
       new_table_rec = %CubicOdsTable{
         name: "vendor__sample",
@@ -34,19 +34,17 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
       # insert load records
       {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
       first_load_rec = List.first(new_load_recs)
-      last_load_rec = List.last(new_load_recs)
 
       # attach tables
       StartIngestion.attach_table(first_load_rec)
-      StartIngestion.attach_table(last_load_rec)
 
-      assert :ok =
-               perform_job(Ingest, %{
-                 load_rec_ids: [first_load_rec.id, last_load_rec.id],
+      assert :ok ==
+               perform_job(Error, %{
+                 load_rec_id: first_load_rec.id,
                  lib_ex_aws: "MockExAws"
                })
 
-      assert "ready_for_archiving" == CubicOdsLoad.get!(first_load_rec.id).status
+      assert "errored" == CubicOdsLoad.get!(first_load_rec.id).status
     end
   end
 end

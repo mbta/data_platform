@@ -1,11 +1,13 @@
 defmodule ExCubicOdsIngestion.StartIngestionTest do
   use ExUnit.Case
+  use Oban.Testing, repo: ExCubicOdsIngestion.Repo
 
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
   alias ExCubicOdsIngestion.StartIngestion
+  alias ExCubicOdsIngestion.Workers.Ingest
 
   require MockExAws.Data
   require Logger
@@ -236,13 +238,13 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
 
       first_prepared_ready_loads_chunk = List.first(prepared_ready_loads_chunks)
 
-      # attach the table and create oban job
-      {:ok, oban_job} =
-        StartIngestion.start_ingestion(
-          Enum.map(first_prepared_ready_loads_chunk, fn {load_rec, _table_rec} -> load_rec.id end)
-        )
+      job_args =
+        Enum.map(first_prepared_ready_loads_chunk, fn {load_rec, _table_rec} -> load_rec.id end)
 
-      assert "available" == oban_job.state
+      # insert job
+      StartIngestion.start_ingestion(job_args)
+
+      assert_enqueued(worker: Ingest, args: %{load_rec_ids: job_args})
     end
   end
 end
