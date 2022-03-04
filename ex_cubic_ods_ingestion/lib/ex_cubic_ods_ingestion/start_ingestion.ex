@@ -5,7 +5,6 @@ defmodule ExCubicOdsIngestion.StartIngestion do
 
   use GenServer
 
-  alias ExCubicOdsIngestion.ProcessIngestion
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
   alias ExCubicOdsIngestion.Workers.Ingest
@@ -78,12 +77,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
 
   @spec process_loads({[{CubicOdsLoad.t(), nil}], [[{CubicOdsLoad.t(), CubicOdsTable.t()}]]}) ::
           :ok
-  def process_loads({error_loads, ready_load_chunks}) do
-    # error out the error loads
-    if Enum.count(error_loads) > 0 do
-      ProcessIngestion.error(Enum.map(error_loads, fn {load_rec, _table_rec} -> load_rec.id end))
-    end
-
+  def process_loads({_error_loads, ready_load_chunks}) do
     # start ingestion for the rest
     Enum.each(
       ready_load_chunks,
@@ -94,6 +88,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
   @spec attach_table(CubicOdsLoad.t()) :: tuple()
   def attach_table(load_rec) do
     # find the table rec that the load is for
+    # @todo optimize for loads that are in incoming, but don't have a table yet
     table_rec =
       if load_rec.table_id do
         CubicOdsTable.get!(load_rec.table_id)
