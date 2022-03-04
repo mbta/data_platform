@@ -36,6 +36,7 @@ There are several manual steps here, of which some could be automated:
 - Crawling the Incoming bucket with a Glue Crawler could be scheduled.
 - A script/Mix task could be written to turn a Glue Catalog table into a Terraform configuration, for easier importing.
 - A script/Mix task could be written to create a `CubicOdsTable`.
+- A script/Mix task could be written to generate an Ecto data-only migration to add the `CubicOdsTable` record.
 
 This also requires a developer to directly access the RDS database: a TODO for
 the future is to either have this configuration outside the RDS database or
