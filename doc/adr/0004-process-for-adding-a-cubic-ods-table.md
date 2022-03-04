@@ -24,7 +24,7 @@ before Cubic sends the table data to S3.
 1. Any changes to the schema (such as conversion of integer fields to strings) are made.
 1. The Glue Catalog tables are described in Terraform and imported.
 1. An `CubicOdsTable` record is created in the RDS database:
-  - `name`: name of the table, all lower case and with underscores (ex: `use_transaction`)
+  - `name`: name of the Glue Catalog table, all lower case and with underscores (ex: `cubic_ods_qlik__edw_use_transaction`)
   - `s3_prefix`: the S3 prefix, including any application-specific prefix, with a trailing slash (ex: `cubic_ods_qlik/EDW.USE_TRANSACTION`)
   - `snapshot_s3_key`: the initial snapshot load file (ex: `cubic_ods_qlik/EDW.USE_TRANSACTION/LOAD00000001.csv.gz`)
 1. Once the `CubicOdsTable` record is present in the RDS database, the `ExCubicOdsIngestion.ProcessIncoming` worker should pick up the new tables.
