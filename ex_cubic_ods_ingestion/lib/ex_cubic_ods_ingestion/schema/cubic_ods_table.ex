@@ -50,13 +50,11 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
   end
 
   @doc """
-  Given an enumerable of S3 prefixes, return those prefixes which represent a #{__MODULE__}.
-
-  Incoming prefixes are expected to have a leading "/" which matches the return value from S3 functions.
+  Given an enumerable of S3 prefixes, return those prefixes which represent a #{__MODULE__} and their table.
   """
-  @spec filter_to_existing_prefixes(Enumerable.t()) :: Enumerable.t()
+  @spec filter_to_existing_prefixes(Enumerable.t()) :: [{String.t(), t()}]
   def filter_to_existing_prefixes(prefixes) do
-    # strip both the leading / and any change tracking suffix
+    # strip any change tracking suffix
     without_change_tracking =
       prefixes
       |> MapSet.new(&String.replace_suffix(&1, "__ct/", "/"))
@@ -64,23 +62,23 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
 
     query =
       from(table in __MODULE__,
-        select: table.s3_prefix,
         where: table.s3_prefix in ^without_change_tracking
       )
 
-    valid_prefixes =
+    valid_prefix_map =
       query
       |> Repo.all()
-      |> MapSet.new()
+      |> Map.new(&{&1.s3_prefix, &1})
 
     for prefix <- prefixes,
-        String.replace_suffix(prefix, "__ct/", "/") in valid_prefixes do
-      prefix
+        short_prefix = String.replace_suffix(prefix, "__ct/", "/"),
+        %__MODULE__{} = table <- [Map.get(valid_prefix_map, short_prefix)] do
+      {prefix, table}
     end
   end
 
-  @spec get_from_load_s3_key(String.t()) :: t() | nil
-  def get_from_load_s3_key(load_s3_key) do
+  @spec get_from_load_s3_key!(String.t()) :: t()
+  def get_from_load_s3_key!(load_s3_key) do
     # get just the s3 prefix from the key
     load_s3_prefix = Path.dirname(load_s3_key)
     # if cdc, we want to strip off the '__ct'
@@ -91,8 +89,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
         where: table.s3_prefix == ^"#{root_load_s3_prefix}/"
       )
 
-    # return nil, if not found
-    Repo.one(query)
+    Repo.one!(query)
   end
 
   @spec update(t(), map()) :: {atom(), t()}

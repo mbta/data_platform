@@ -7,10 +7,20 @@ config :logger, :console,
 
 config :ex_cubic_ods_ingestion,
   ecto_repos: [ExCubicOdsIngestion.Repo],
-  run_migrations_at_startup?: false
-
-config :ex_cubic_ods_ingestion,
-  start_app?: true
+  run_migrations_at_startup?: false,
+  start_app?: true,
+  s3_bucket_operations: "",
+  s3_bucket_prefix_operations: "",
+  s3_bucket_incoming: "",
+  s3_bucket_prefix_incoming: "",
+  s3_bucket_archive: "",
+  s3_bucket_prefix_archive: "",
+  s3_bucket_error: "",
+  s3_bucket_prefix_error: "",
+  s3_bucket_springboard: "",
+  s3_bucket_prefix_springboard: "",
+  glue_database: "",
+  glue_job_cubic_ods_ingest: ""
 
 config :ex_cubic_ods_ingestion, Oban,
   repo: ExCubicOdsIngestion.Repo,
