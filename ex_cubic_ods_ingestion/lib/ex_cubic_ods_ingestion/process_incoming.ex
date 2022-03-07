@@ -74,7 +74,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   def load_objects_list(vendor_prefix, state) do
     # get config variables
     bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
-    prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_prefix_incoming)
+    prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
 
     list_arguments =
       if state.continuation_token != "" do

@@ -7,7 +7,7 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     queue: :ingest,
     max_attempts: 3
 
-  alias ExCubicOdsIngestion.ProcessIngestion
+  alias ExCubicOdsIngestion.Schema.CubicOdsLoad
 
   require Logger
 
@@ -50,12 +50,12 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
       %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}} ->
         Logger.info("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
 
-        ProcessIngestion.archive(load_rec_ids)
+        CubicOdsLoad.update_many(load_rec_ids, status: "ready_for_archiving")
 
       _other_glue_job_run_state ->
         Logger.error("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
 
-        ProcessIngestion.error(load_rec_ids)
+        CubicOdsLoad.update_many(load_rec_ids, status: "ready_for_erroring")
     end
 
     :ok

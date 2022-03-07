@@ -19,7 +19,8 @@ defmodule ExCubicOdsIngestion.Application do
       if Application.get_env(:ex_cubic_ods_ingestion, :start_app?) do
         [
           {ExCubicOdsIngestion.ProcessIncoming, []},
-          {ExCubicOdsIngestion.StartIngestion, []}
+          {ExCubicOdsIngestion.StartIngestion, []},
+          {ExCubicOdsIngestion.ProcessIngestion, []}
         ]
       else
         []

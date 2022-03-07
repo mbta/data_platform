@@ -5,8 +5,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
   use Ecto.Schema
 
   import Ecto.Query
-  import Ecto.Changeset
 
+  alias Ecto.Changeset
   alias ExCubicOdsIngestion.Repo
 
   @derive {Jason.Encoder,
@@ -121,6 +121,11 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     )
   end
 
+  @spec get!(integer()) :: t()
+  def get!(id) do
+    Repo.get!(__MODULE__, id)
+  end
+
   @spec get_status_ready :: [t()]
   def get_status_ready do
     # @todo add deleted filter
@@ -131,6 +136,22 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       )
 
     Repo.all(query)
+  end
+
+  @spec get_status_ready_for :: [t()]
+  def get_status_ready_for do
+    # @todo add deleted filter
+    query =
+      from(load in __MODULE__,
+        where: load.status in ["ready_for_archiving", "ready_for_erroring"]
+      )
+
+    Repo.all(query)
+  end
+
+  @spec change(t(), %{required(atom()) => term()}) :: Changeset.t()
+  def change(load_rec, changes) do
+    Changeset.change(load_rec, changes)
   end
 
   # @todo consider making this more specific to use cases
@@ -144,18 +165,23 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     load_rec
   end
 
+  @spec query_many([integer()]) :: Ecto.Queryable.t()
+  def query_many(load_rec_ids) do
+    from(load in __MODULE__, where: load.id in ^load_rec_ids, select: load)
+  end
+
   # @todo consider making this more specific to use cases
   @spec update_many([integer()], Keyword.t()) :: [integer()]
-  def update_many(load_recs_ids, change) do
-    {:ok, updated_load_recs_ids} =
+  def update_many(load_rec_ids, change) do
+    {:ok, updated_load_rec_ids} =
       Repo.transaction(fn ->
         Repo.update_all(
-          from(load in __MODULE__, where: load.id in ^load_recs_ids, select: load.id),
+          query_many(load_rec_ids),
           set: change
         )
       end)
 
-    updated_load_recs_ids
+    updated_load_rec_ids
   end
 
   # private
@@ -168,7 +194,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   @spec remove_s3_bucket_prefix(String.t()) :: String.t()
   defp remove_s3_bucket_prefix(s3_key) do
-    s3_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_prefix_incoming)
+    s3_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
 
     String.replace_prefix(s3_key, s3_prefix, "")
   end
