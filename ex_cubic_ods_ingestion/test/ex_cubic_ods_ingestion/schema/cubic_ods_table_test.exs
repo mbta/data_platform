@@ -50,6 +50,34 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
     end
   end
 
+  describe "filter_to_existing_prefixes/1" do
+    test "limits the provided prefixes to those with an existing table" do
+      table = %CubicOdsTable{
+        name: "vendor__sample",
+        s3_prefix: "vendor/SAMPLE/",
+        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+      }
+
+      Repo.insert!(table)
+
+      prefixes = [
+        "vendor/SAMPLE/",
+        "vendor/SAMPLE__ct/",
+        "vendor/SAMPLE_TABLE_WRONG/",
+        "other"
+      ]
+
+      expected = [
+        "vendor/SAMPLE/",
+        "vendor/SAMPLE__ct/"
+      ]
+
+      actual = CubicOdsTable.filter_to_existing_prefixes(prefixes)
+
+      assert expected == actual
+    end
+  end
+
   describe "update/2" do
     test "updating the snapshot" do
       # add table

@@ -49,6 +49,36 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
     Repo.get!(__MODULE__, id)
   end
 
+  @doc """
+  Given an enumerable of S3 prefixes, return those prefixes which represent a #{__MODULE__}.
+
+  Incoming prefixes are expected to have a leading "/" which matches the return value from S3 functions.
+  """
+  @spec filter_to_existing_prefixes(Enumerable.t()) :: Enumerable.t()
+  def filter_to_existing_prefixes(prefixes) do
+    # strip both the leading / and any change tracking suffix
+    without_change_tracking =
+      prefixes
+      |> MapSet.new(&String.replace_suffix(&1, "__ct/", "/"))
+      |> Enum.to_list()
+
+    query =
+      from(table in __MODULE__,
+        select: table.s3_prefix,
+        where: table.s3_prefix in ^without_change_tracking
+      )
+
+    valid_prefixes =
+      query
+      |> Repo.all()
+      |> MapSet.new()
+
+    for prefix <- prefixes,
+        String.replace_suffix(prefix, "__ct/", "/") in valid_prefixes do
+      prefix
+    end
+  end
+
   @spec get_from_load_s3_key(String.t()) :: t() | nil
   def get_from_load_s3_key(load_s3_key) do
     # get just the s3 prefix from the key
