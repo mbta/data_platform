@@ -95,27 +95,51 @@ defmodule MockExAws do
     end
   end
 
-  def request(%{service: :s3} = op, _config_overrides) do
-    incoming_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
+  @incoming_prefix Application.compile_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
 
-    # getting objects with prefix
-    if op.params["prefix"] == "#{incoming_prefix}cubic_ods_qlik_test/" do
-      {:ok,
-       %{
-         body: %{
-           contents: MockExAws.Data.load_objects(),
-           next_continuation_token: ""
-         }
-       }}
-    else
-      {:ok,
-       %{
-         body: %{
-           contents: [],
-           next_continuation_token: ""
-         }
-       }}
-    end
+  def request(
+        %{
+          service: :s3,
+          params: %{"prefix" => "#{@incoming_prefix}cubic_ods_qlik_test/", "delimiter" => "/"}
+        },
+        _config_overrides
+      ) do
+    {:ok,
+     %{
+       body: %{
+         common_prefixes: [%{prefix: "vendor/SAMPLE/"}],
+         contents: [],
+         next_continuation_token: ""
+       }
+     }}
+  end
+
+  def request(
+        %{
+          service: :s3,
+          params: %{"prefix" => "#{@incoming_prefix}cubic_ods_qlik_test/vendor/SAMPLE/"}
+        },
+        _config_overrides
+      ) do
+    {:ok,
+     %{
+       body: %{
+         common_prefixes: [],
+         contents: MockExAws.Data.load_objects(),
+         next_continuation_token: ""
+       }
+     }}
+  end
+
+  def request(%{service: :s3}, _config_overrides) do
+    {:ok,
+     %{
+       body: %{
+         common_prefixes: [],
+         contents: [],
+         next_continuation_token: ""
+       }
+     }}
   end
 
   def request(%{service: :glue} = op, _config_overrides) do

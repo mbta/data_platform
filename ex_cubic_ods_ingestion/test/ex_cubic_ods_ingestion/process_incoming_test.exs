@@ -22,22 +22,4 @@ defmodule ExCubicOdsIngestion.ProcessIncomingTest do
       assert ProcessIncoming.status(server) == :running
     end
   end
-
-  describe "load_objects_list/3" do
-    test "getting objects for test prefix" do
-      state = %ProcessIncoming{lib_ex_aws: MockExAws}
-
-      assert {MockExAws.Data.load_objects(), ""} ==
-               ProcessIncoming.load_objects_list("cubic_ods_qlik_test/", state)
-    end
-
-    test "getting objects for non-existing prefix" do
-      state = %ProcessIncoming{lib_ex_aws: MockExAws}
-
-      assert {[], ""} ==
-               ProcessIncoming.load_objects_list("does_not_exist/", state)
-    end
-
-    # @todo test for a non-empty continuation token
-  end
 end

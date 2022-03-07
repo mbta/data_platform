@@ -1,25 +1,27 @@
 defmodule ExCubicOdsIngestion.ProcessIncoming do
   @moduledoc """
-  ProcessIncoming module.
+  ProcessIncoming server.
+
+  Every @wait_interval_ms, scans the Incoming bucket for table prefixes. If a
+  prefix is present here and has a record in CubicOdsTable, the prefix is
+  scanned for files, which are inserted as CubicOdsLoad records to be processed
+  in the future.
   """
 
   use GenServer
 
+  alias ExCubicOdsIngestion.S3Scan
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
-
-  require ExAws
-  require ExAws.S3
+  alias ExCubicOdsIngestion.Schema.CubicOdsTable
 
   @wait_interval_ms 5_000
 
-  defstruct [:lib_ex_aws, status: :not_started, continuation_token: "", max_keys: 1_000]
+  @opaque t :: %__MODULE__{lib_ex_aws: module()}
+  defstruct lib_ex_aws: ExAws
 
   # client methods
   @spec start_link(Keyword.t()) :: GenServer.on_start()
   def start_link(opts) do
-    # define lib_ex_aws, unless it's already defined
-    opts = Keyword.put_new(opts, :lib_ex_aws, ExAws)
-
     GenServer.start_link(__MODULE__, opts)
   end
 
@@ -34,64 +36,45 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
     # construct state
     state = struct!(__MODULE__, opts)
 
-    {:ok, %{state | status: :running}, 0}
+    {:ok, state, 0}
   end
 
   @impl GenServer
   def handle_info(:timeout, %{} = state) do
-    new_state = run(state)
+    run(state)
 
-    # set timeout according to need for continuing
-    timeout =
-      if new_state.continuation_token == "" do
-        @wait_interval_ms
-      else
-        0
-      end
-
-    {:noreply, new_state, timeout}
+    {:noreply, state, @wait_interval_ms}
   end
 
   @impl GenServer
   def handle_call(:status, _from, state) do
-    {:reply, state.status, state}
+    {:reply, :running, state}
   end
 
   # server helper functions
-  @spec run(map()) :: map()
+  @spec run(t) :: :ok
   defp run(state) do
-    # get list of load objects for vendor
-    {load_objects, next_continuation_token} = load_objects_list("cubic_ods_qlik/", state)
-
-    # insert new load objects
-    CubicOdsLoad.insert_new_from_objects(load_objects)
-
-    # update state
-    %{state | continuation_token: next_continuation_token}
-  end
-
-  @spec load_objects_list(String.t(), struct()) :: {list(), String.t()}
-  def load_objects_list(vendor_prefix, state) do
-    # get config variables
     bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
     prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
 
-    list_arguments =
-      if state.continuation_token != "" do
-        [
-          prefix: "#{prefix}#{vendor_prefix}",
-          max_keys: state.max_keys,
-          continuation_token: state.continuation_token
-        ]
-      else
-        [prefix: "#{prefix}#{vendor_prefix}", max_keys: state.max_keys]
-      end
+    table_prefixes =
+      bucket
+      |> S3Scan.list_objects_v2(
+        prefix: "#{prefix}cubic_ods_qlik/",
+        delimiter: "/",
+        lib_ex_aws: state.lib_ex_aws
+      )
+      |> Stream.filter(&Map.has_key?(&1, :prefix))
+      |> Enum.map(&Map.fetch!(&1, :prefix))
+      |> CubicOdsTable.filter_to_existing_prefixes()
 
-    %{body: %{contents: contents, next_continuation_token: next_continuation_token}} =
-      state.lib_ex_aws.request!(ExAws.S3.list_objects_v2(bucket, list_arguments))
+    for {table_prefix, table} <- table_prefixes do
+      bucket
+      |> S3Scan.list_objects_v2(prefix: table_prefix, lib_ex_aws: state.lib_ex_aws)
+      |> Enum.filter(&Map.has_key?(&1, :key))
+      |> CubicOdsLoad.insert_new_from_objects_with_table(table)
+    end
 
-    # @todo handle error cases
-
-    {contents, next_continuation_token}
+    :ok
   end
 end
