@@ -69,7 +69,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     end)
   end
 
-  @spec insert_new_from_objects_with_table(list(), CubicOdsTable.t()) :: tuple()
+  @spec insert_new_from_objects_with_table([map()], CubicOdsTable.t()) ::
+          {:ok, [t()]} | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
     Repo.transaction(fn ->
       # query loads to see what we can ignore when inserting
@@ -80,7 +81,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       new_objects = Enum.filter(objects, &not_added(&1, recs))
 
       # insert new objects
-      Enum.each(new_objects, &insert_from_object_with_table(&1, table))
+      Enum.map(new_objects, &insert_from_object_with_table(&1, table))
     end)
   end
 

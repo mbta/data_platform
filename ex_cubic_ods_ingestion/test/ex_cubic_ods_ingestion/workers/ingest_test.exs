@@ -6,7 +6,6 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
-  alias ExCubicOdsIngestion.StartIngestion
   alias ExCubicOdsIngestion.Workers.Ingest
 
   require MockExAws
@@ -20,25 +19,22 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   describe "perform/1" do
     test "run job" do
       # insert a new table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, _inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
+      {:ok, new_table_rec} =
+        Repo.insert(%CubicOdsTable{
+          name: "vendor__sample",
+          s3_prefix: "vendor/SAMPLE/",
+          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+        })
 
       # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} =
+        CubicOdsLoad.insert_new_from_objects_with_table(
+          MockExAws.Data.load_objects(),
+          new_table_rec
+        )
+
       first_load_rec = List.first(new_load_recs)
       last_load_rec = List.last(new_load_recs)
-
-      # attach tables
-      StartIngestion.attach_table(first_load_rec)
-      StartIngestion.attach_table(last_load_rec)
 
       assert :ok =
                perform_job(Ingest, %{

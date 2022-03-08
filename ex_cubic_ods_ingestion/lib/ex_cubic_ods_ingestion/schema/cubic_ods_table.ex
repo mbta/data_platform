@@ -77,21 +77,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
     end
   end
 
-  @spec get_from_load_s3_key!(String.t()) :: t()
-  def get_from_load_s3_key!(load_s3_key) do
-    # get just the s3 prefix from the key
-    load_s3_prefix = Path.dirname(load_s3_key)
-    # if cdc, we want to strip off the '__ct'
-    root_load_s3_prefix = String.replace_suffix(load_s3_prefix, "__ct", "")
-
-    query =
-      from(table in __MODULE__,
-        where: table.s3_prefix == ^"#{root_load_s3_prefix}/"
-      )
-
-    Repo.one!(query)
-  end
-
   @spec update(t(), map()) :: {atom(), t()}
   def update(table_rec, changes) do
     {:ok, table_rec} =

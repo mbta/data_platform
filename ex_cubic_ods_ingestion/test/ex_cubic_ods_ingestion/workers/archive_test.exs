@@ -6,7 +6,6 @@ defmodule ExCubicOdsIngestion.Workers.ArchiveTest do
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
-  alias ExCubicOdsIngestion.StartIngestion
   alias ExCubicOdsIngestion.Workers.Archive
 
   require MockExAws
@@ -19,24 +18,26 @@ defmodule ExCubicOdsIngestion.Workers.ArchiveTest do
 
   describe "perform/1" do
     test "run job without error" do
+      snapshot = DateTime.truncate(DateTime.utc_now(), :second)
       # insert a new table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
+      new_table_rec =
+        Repo.insert!(%CubicOdsTable{
+          name: "vendor__sample",
+          s3_prefix: "vendor/SAMPLE/",
+          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv",
+          snapshot: snapshot
+        })
 
-      {:ok, _inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
-
-      # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-      first_load_rec = List.first(new_load_recs)
-
-      # attach tables
-      StartIngestion.attach_table(first_load_rec)
+      # insert load record
+      first_load_rec =
+        Repo.insert!(%CubicOdsLoad{
+          status: "ready",
+          table_id: new_table_rec.id,
+          s3_key: new_table_rec.snapshot_s3_key,
+          s3_modified: snapshot,
+          snapshot: snapshot,
+          s3_size: 0
+        })
 
       assert :ok ==
                perform_job(Archive, %{

@@ -27,224 +27,81 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
     end
   end
 
-  describe "prepare_loads/1" do
-    test "preparing with an empty list" do
-      assert {[], []} == StartIngestion.prepare_loads([])
-    end
-
-    test "preparing with list of load records that have a table" do
+  describe "run/0" do
+    test "updates snapshots and schedules ingestion for ready loads" do
       # insert a new table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, _inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
+      table =
+        Repo.insert!(%CubicOdsTable{
+          name: "vendor__sample",
+          s3_prefix: "vendor/SAMPLE/",
+          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+        })
 
       # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} =
+        CubicOdsLoad.insert_new_from_objects_with_table(MockExAws.Data.load_objects(), table)
+
       first_load_rec = List.first(new_load_recs)
-      last_load_rec = List.last(new_load_recs)
 
-      # attach tables
-      {attached_first_load_rec, attached_first_load_table_rec} =
-        StartIngestion.attach_table(first_load_rec)
+      assert :ok = StartIngestion.run()
 
-      {attached_last_load_rec, attached_last_load_table_rec} =
-        StartIngestion.attach_table(last_load_rec)
+      new_table = CubicOdsTable.get!(table.id)
+      assert new_table.snapshot == first_load_rec.s3_modified
 
-      # prepare loads and get first chunk
-      {prepared_error_loads, prepared_ready_loads_chunks} =
-        StartIngestion.prepare_loads(new_load_recs)
+      for %{id: load_rec_id} <- new_load_recs,
+          load_rec = CubicOdsLoad.get!(load_rec_id) do
+        assert load_rec.status == "ingesting"
+        assert load_rec.snapshot == new_table.snapshot
+      end
 
-      first_prepared_ready_loads_chunk = List.first(prepared_ready_loads_chunks)
+      load_rec_ids = Enum.map(new_load_recs, & &1.id)
 
-      # assert error loads is empty
-      assert [] == prepared_error_loads
-
-      # assert the first chunk matches load recs and table inserted
-      assert [
-               %{
-                 load_table_id: attached_first_load_rec.table_id,
-                 load_snapshot: attached_first_load_rec.snapshot,
-                 table_id: attached_first_load_table_rec.id,
-                 table_snapshot: attached_first_load_table_rec.snapshot
-               },
-               %{
-                 load_table_id: attached_last_load_rec.table_id,
-                 load_snapshot: attached_last_load_rec.snapshot,
-                 table_id: attached_last_load_table_rec.id,
-                 table_snapshot: attached_last_load_table_rec.snapshot
-               }
-             ] ==
-               Enum.map(first_prepared_ready_loads_chunk, fn {chunk_load_rec, chunk_table_rec} ->
-                 %{
-                   load_table_id: chunk_load_rec.table_id,
-                   load_snapshot: chunk_load_rec.snapshot,
-                   table_id: chunk_table_rec.id,
-                   table_snapshot: chunk_table_rec.snapshot
-                 }
-               end)
-    end
-
-    test "preparing with list of load records that don't have a table" do
-      # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-
-      assert {Enum.map(new_load_recs, fn new_load_rec -> {new_load_rec, nil} end), []} ==
-               StartIngestion.prepare_loads(new_load_recs)
+      assert_enqueued(worker: Ingest, args: %{load_rec_ids: load_rec_ids})
     end
   end
 
-  describe "process_loads/1" do
-    test "processing with empty values" do
-      assert :ok == StartIngestion.process_loads({[], []})
-    end
-
-    test "processing with just empty ready load chunks list" do
-      # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-      first_load_rec = List.first(new_load_recs)
-
-      assert :ok ==
-               StartIngestion.process_loads({
-                 [{first_load_rec, nil}],
-                 []
-               })
-    end
-
-    test "processing with just empty error load list" do
+  describe "updated_snapshot/1" do
+    test "updating with a load record that matches the table snapshot" do
       # insert a new table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, _inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
+      new_table_rec =
+        Repo.insert!(%CubicOdsTable{
+          name: "vendor__sample",
+          s3_prefix: "vendor/SAMPLE/",
+          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+        })
 
       # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-      first_load_rec = List.first(new_load_recs)
+      {:ok, [first_load_rec, last_load_rec]} =
+        CubicOdsLoad.insert_new_from_objects_with_table(
+          MockExAws.Data.load_objects(),
+          new_table_rec
+        )
 
-      # attach table
-      {attached_first_load_rec, attached_first_load_table_rec} =
-        StartIngestion.attach_table(first_load_rec)
+      new_first_load_rec = StartIngestion.update_snapshot(first_load_rec)
+      new_table = CubicOdsTable.get!(new_table_rec.id)
 
-      assert :ok ==
-               StartIngestion.process_loads({
-                 [],
-                 [
-                   [{attached_first_load_rec, attached_first_load_table_rec}]
-                 ]
-               })
-    end
-  end
+      assert new_table.snapshot == first_load_rec.s3_modified
+      assert new_first_load_rec.snapshot == new_table.snapshot
 
-  describe "attach_table/1" do
-    test "attaching with load records" do
-      # insert a new table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
-
-      # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-      first_load_rec = List.first(new_load_recs)
-
-      # attach table
-      {attached_first_load_rec, attached_first_load_table_rec} =
-        StartIngestion.attach_table(first_load_rec)
-
-      # assert that we attached the right table, and we have the right updates
-      assert %{
-               first_load_table_id: inserted_table_rec.id,
-               first_load_snapshot: first_load_rec.s3_modified,
-               table_id: inserted_table_rec.id,
-               table_snapshot: first_load_rec.s3_modified
-             } == %{
-               first_load_table_id: attached_first_load_rec.table_id,
-               first_load_snapshot: attached_first_load_rec.snapshot,
-               table_id: attached_first_load_table_rec.id,
-               table_snapshot: attached_first_load_table_rec.snapshot
-             }
-
-      # re-attach to simulate a re-run
-      {reattached_first_load_rec, reattached_first_load_table_rec} =
-        StartIngestion.attach_table(attached_first_load_rec)
-
-      assert %{
-               first_load_table_id: inserted_table_rec.id,
-               first_load_snapshot: first_load_rec.s3_modified,
-               table_id: inserted_table_rec.id,
-               table_snapshot: first_load_rec.s3_modified
-             } == %{
-               first_load_table_id: reattached_first_load_rec.table_id,
-               first_load_snapshot: reattached_first_load_rec.snapshot,
-               table_id: reattached_first_load_table_rec.id,
-               table_snapshot: reattached_first_load_table_rec.snapshot
-             }
+      new_last_load_rec = StartIngestion.update_snapshot(last_load_rec)
+      assert new_last_load_rec.snapshot == new_table.snapshot
+      # table wasn't updated in the DB
+      assert CubicOdsTable.get!(new_table_rec.id).snapshot == new_table.snapshot
     end
 
-    test "not attaching anything by providing a load with no known table association" do
-      # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-      first_load_rec = List.first(new_load_recs)
+    test "crashes when preparing with list of load records that don't have a table" do
+      now = DateTime.truncate(DateTime.utc_now(), :second)
 
-      assert {first_load_rec, nil} == StartIngestion.attach_table(first_load_rec)
-    end
-  end
+      load_rec =
+        Repo.insert!(%CubicOdsLoad{
+          status: "ready",
+          # table_id: nil,
+          s3_key: "key",
+          s3_modified: now,
+          s3_size: 0
+        })
 
-  describe "start_ingestion/1" do
-    test "kicking off worker" do
-      # insert a new table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, _inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
-
-      # insert load records
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-      first_load_rec = List.first(new_load_recs)
-      last_load_rec = List.last(new_load_recs)
-
-      # attach tables
-      StartIngestion.attach_table(first_load_rec)
-      StartIngestion.attach_table(last_load_rec)
-
-      # prepare loads and get first chunk
-      {_prepared_error_loads, prepared_ready_loads_chunks} =
-        StartIngestion.prepare_loads(new_load_recs)
-
-      first_prepared_ready_loads_chunk = List.first(prepared_ready_loads_chunks)
-
-      job_args =
-        Enum.map(first_prepared_ready_loads_chunk, fn {load_rec, _table_rec} -> load_rec.id end)
-
-      # insert job
-      StartIngestion.start_ingestion(job_args)
-
-      assert_enqueued(worker: Ingest, args: %{load_rec_ids: job_args})
+      assert catch_error(StartIngestion.update_snapshot(load_rec))
     end
   end
 end
