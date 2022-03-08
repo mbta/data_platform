@@ -39,12 +39,12 @@ defmodule ExCubicOdsIngestion.StartIngestion do
 
   @impl GenServer
   def handle_info(:timeout, %{} = state) do
-    new_state = run(state)
+    run()
 
     # set timeout according to need for continuing
     timeout = @wait_interval_ms
 
-    {:noreply, new_state, timeout}
+    {:noreply, state, timeout}
   end
 
   @impl GenServer
@@ -53,80 +53,49 @@ defmodule ExCubicOdsIngestion.StartIngestion do
   end
 
   # server helper functions
-  @spec run(map()) :: map()
-  defp run(state) do
+  @spec run() :: :ok
+  def run do
     # get list of load records that are in 'ready' state, ordered by s3_modified, s3_key
     # prepare them for processing, and kick off separate flows
-    CubicOdsLoad.get_status_ready() |> prepare_loads() |> process_loads()
-
-    # return
-    state
+    CubicOdsLoad.get_status_ready()
+    |> Enum.map(&update_snapshot/1)
+    |> Enum.chunk_every(3)
+    |> Enum.each(&process_loads/1)
   end
 
-  @spec prepare_loads([CubicOdsLoad.t()]) ::
-          {[{CubicOdsLoad.t(), nil}], [[{CubicOdsLoad.t(), CubicOdsTable.t()}]]}
-  def prepare_loads(load_recs) do
-    # attach table to load records, add or update any snapshots
-    loads = Enum.map(load_recs, &attach_table(&1))
-
-    {error_loads, ready_loads} =
-      Enum.split_with(loads, fn {_load_rec, table_rec} -> is_nil(table_rec) end)
-
-    # @todo replace chunk_every with chunk_while for more fine-tuned control
-    {error_loads, Enum.chunk_every(ready_loads, 3)}
-  end
-
-  @spec process_loads({[{CubicOdsLoad.t(), nil}], [[{CubicOdsLoad.t(), CubicOdsTable.t()}]]}) ::
+  @spec process_loads([CubicOdsLoad.t(), ...]) ::
           :ok
-  def process_loads({_error_loads, ready_load_chunks}) do
-    # start ingestion for the rest
-    Enum.each(
-      ready_load_chunks,
-      &start_ingestion(Enum.map(&1, fn {load_rec, _table_rec} -> load_rec.id end))
-    )
+  def process_loads([_ | _] = ready_load_chunk) do
+    start_ingestion(Enum.map(ready_load_chunk, & &1.id))
 
     :ok
   end
 
-  @spec attach_table(CubicOdsLoad.t()) :: tuple()
-  def attach_table(load_rec) do
+  @spec update_snapshot(CubicOdsLoad.t()) :: CubicOdsLoad.t()
+  def update_snapshot(load_rec) do
     # find the table rec that the load is for
-    # @todo optimize for loads that are in incoming, but don't have a table yet
-    table_rec =
-      if load_rec.table_id do
-        CubicOdsTable.get!(load_rec.table_id)
+    table_rec = CubicOdsTable.get!(load_rec.table_id)
+
+    # for table, update snapshot if we have a new snapshot, as in
+    # the load key matches the snapshot key and the load modified date is newer than the snapshot
+    updated_table_rec =
+      if table_rec.snapshot_s3_key == load_rec.s3_key and
+           (is_nil(table_rec.snapshot) or
+              DateTime.compare(table_rec.snapshot, load_rec.s3_modified) == :lt) do
+        CubicOdsTable.update(table_rec, %{snapshot: load_rec.s3_modified})
       else
-        CubicOdsTable.get_from_load_s3_key(load_rec.s3_key)
+        table_rec
       end
 
-    if table_rec do
-      # for table, update snapshot if we have a new snapshot, as in
-      # the load key matches the snapshot key and the load modified date is newer than the snapshot
-      table_rec =
-        if table_rec.snapshot_s3_key == load_rec.s3_key and
-             (is_nil(table_rec.snapshot) or
-                DateTime.compare(table_rec.snapshot, load_rec.s3_modified) == :lt) do
-          CubicOdsTable.update(table_rec, %{snapshot: load_rec.s3_modified})
-        else
-          table_rec
-        end
-
-      # for load, update table_id and snapshot if we don't have one already, as we don't want to override
-      load_rec =
-        if load_rec.table_id do
-          load_rec
-        else
-          CubicOdsLoad.update(load_rec, %{table_id: table_rec.id, snapshot: table_rec.snapshot})
-        end
-
-      {load_rec, table_rec}
+    if is_nil(load_rec.snapshot) do
+      CubicOdsLoad.update(load_rec, %{snapshot: updated_table_rec.snapshot})
     else
-      {load_rec, nil}
+      load_rec
     end
   end
 
   @spec start_ingestion([integer()]) :: {atom(), map()}
-  def start_ingestion(load_rec_ids) do
+  defp start_ingestion(load_rec_ids) do
     Ecto.Multi.new()
     |> Ecto.Multi.update_all(
       :update_status,

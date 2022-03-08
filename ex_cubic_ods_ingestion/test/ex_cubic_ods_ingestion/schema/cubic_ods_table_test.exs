@@ -29,36 +29,14 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
     end
   end
 
-  describe "get_from_load_s3_key/1" do
-    test "getting inserted record" do
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
-
-      assert inserted_table_rec == CubicOdsTable.get_from_load_s3_key("vendor/SAMPLE/LOAD1.csv")
-    end
-
-    test "getting nothing back with non-existing key" do
-      assert nil == CubicOdsTable.get_from_load_s3_key("not/in/db.csv")
-    end
-  end
-
   describe "filter_to_existing_prefixes/1" do
     test "limits the provided prefixes to those with an existing table" do
-      table = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      Repo.insert!(table)
+      table =
+        Repo.insert!(%CubicOdsTable{
+          name: "vendor__sample",
+          s3_prefix: "vendor/SAMPLE/",
+          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+        })
 
       prefixes = [
         "vendor/SAMPLE/",
@@ -68,8 +46,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
       ]
 
       expected = [
-        "vendor/SAMPLE/",
-        "vendor/SAMPLE__ct/"
+        {"vendor/SAMPLE/", table},
+        {"vendor/SAMPLE__ct/", table}
       ]
 
       actual = CubicOdsTable.filter_to_existing_prefixes(prefixes)
