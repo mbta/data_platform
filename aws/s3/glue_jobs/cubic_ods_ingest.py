@@ -11,6 +11,13 @@ from awsglue.dynamicframe import DynamicFrame
 from pyspark.sql.functions import *
 
 
+def removeprefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix):]
+
+    return text
+
+# @todo use function annotations
 def parse_job_arguments(env_arg, input_arg):
     """
     Parses arguments for this Glue Job, and returns a dictionaries.
@@ -31,10 +38,10 @@ def parse_job_arguments(env_arg, input_arg):
     Examples
     --------
     >>> parse_job_arguments(
-    ...   '{"GLUE_DATABASE_NAME": "db"}',
-    ...   '{"loads":[{"s3_key":"s3/prefix/key","snapshot":"20220101","table_name":"table","table_s3_prefix":"s3/prefix/"}]}'
+    ...   '{"GLUE_DATABASE_NAME": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
+    ...   '{"loads":[{"s3_key":"s3/prefix/key","snapshot":"20220101","table_name":"table"}]}'
     ... )
-    ({'GLUE_DATABASE_NAME': 'db'}, {'loads': [{'s3_key': 's3/prefix/key', 'snapshot': '20220101', 'table_name': 'table', 'table_s3_prefix': 's3/prefix/'}]})
+    ({'GLUE_DATABASE_NAME': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'}, {'loads': [{'s3_key': 's3/prefix/key', 'snapshot': '20220101', 'table_name': 'table'}]})
     """
 
     env_dict = json.loads(env_arg)
@@ -44,12 +51,14 @@ def parse_job_arguments(env_arg, input_arg):
 
 def run():
     """
-    Reads CSV files from Incoming bucket, writes them as Parquet files in the
+    Reads CSV files from Incoming bucket, and writes them as Parquet files in the
     Springboard bucket.
     """
 
     glue_context = GlueContext(SparkContext())
     spark = glue_context.spark_session
+    # spark config for allowing overwriting a specific partition
+    spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
     args = getResolvedOptions(sys.argv, ["JOB_NAME", "ENV", "INPUT"])
 
     # read arguments
@@ -63,21 +72,23 @@ def run():
 
     # run glue transformations for each cubic ods load
     for load in input_dict.get("loads", []):
-        data_catalog_table_name = f'incoming__{load["table_name"]}'
-        load_table_s3_prefix = load.get("table_s3_prefix")
         load_s3_key = load["s3_key"]
+        load_table_s3_prefix = removeprefix(
+            f'{os.path.dirname(load_s3_key)}/',
+            env_dict.get("S3_BUCKET_PREFIX_INCOMING", "")
+        )
+        data_catalog_table_name = f'incoming__{load["table_name"]}'
 
-        # for cdc, we want to suffix by '__ct'
-        if os.path.dirname(load_s3_key).endswith("__ct"):
+        # for cdc, we want to suffix table name by '__ct'
+        if load_table_s3_prefix.endswith("__ct"):
             data_catalog_table_name += "__ct"
-            load_table_s3_prefix = f"{load_table_s3_prefix[:-1]}__ct/"
 
         # create table dataframe using the data catalog table in glue
         table_df = glue_context.create_dynamic_frame.from_catalog(
-            database=env_dict.get("GLUE_DATABASE_NAME"),
+            database=env_dict["GLUE_DATABASE_NAME"],
             table_name=data_catalog_table_name,
             additional_options={
-                "paths": [f's3://{env_dict.get("S3_BUCKET_INCOMING")}/{load_s3_key}']
+                "paths": [f's3://{env_dict["S3_BUCKET_INCOMING"]}/{load_s3_key}']
             },
             transformation_ctx=f"{job_name}_table_df_read",
         )
@@ -86,16 +97,15 @@ def run():
         table_spark_df = table_df.toDF()
         # add partition columns
         table_spark_df = table_spark_df.withColumn(
-            "snapshot", lit(load.get("snapshot"))
+            "snapshot", lit(load["snapshot"])
         ).withColumn("identifier", lit(os.path.basename(load_s3_key)))
 
         # write out to springboard bucket with overwrite mode
-        spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
         table_spark_df.write.mode("overwrite").partitionBy(
             "snapshot", "identifier"
         ).parquet(
-            f's3a://{env_dict.get("S3_BUCKET_SPRINGBOARD")}/'
-            f'{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD")}{load_table_s3_prefix}'
+            f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}/'
+            f'{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{load_table_s3_prefix}'
         )
 
     job.commit()

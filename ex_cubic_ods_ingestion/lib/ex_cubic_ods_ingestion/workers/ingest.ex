@@ -92,6 +92,8 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     bucket_incoming = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
     bucket_springboard = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_springboard)
 
+    prefix_incoming = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
+
     prefix_springboard =
       Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_springboard)
 
@@ -100,14 +102,14 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
         %{
           s3_key: load_rec.s3_key,
           snapshot: load_rec.snapshot,
-          table_name: table_rec.name,
-          table_s3_prefix: table_rec.s3_prefix
+          table_name: table_rec.name
         }
       end)
 
     {Jason.encode!(%{
        GLUE_DATABASE_NAME: glue_database,
        S3_BUCKET_INCOMING: bucket_incoming,
+       S3_BUCKET_PREFIX_INCOMING: prefix_incoming,
        S3_BUCKET_SPRINGBOARD: bucket_springboard,
        S3_BUCKET_PREFIX_SPRINGBOARD: prefix_springboard
      }), Jason.encode!(%{loads: loads})}
