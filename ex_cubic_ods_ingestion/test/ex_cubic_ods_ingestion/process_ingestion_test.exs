@@ -19,6 +19,18 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
     :ok = Sandbox.checkout(Repo)
   end
 
+  defp new_load_recs(_tags) do
+    new_table_rec = Repo.insert!(MockExAws.Data.table())
+
+    {:ok, load_recs} =
+      CubicOdsLoad.insert_new_from_objects_with_table(
+        MockExAws.Data.load_objects(),
+        new_table_rec
+      )
+
+    {:ok, %{load_recs: load_recs}}
+  end
+
   describe "status/0" do
     test "running state" do
       server = start_supervised!(ProcessIngestion)
@@ -32,8 +44,11 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
       assert :ok == ProcessIngestion.process_loads([])
     end
 
-    test "processing with one ready for archiving load and one ready for erroring" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+    setup :new_load_recs
+
+    test "processing with one ready for archiving load and one ready for erroring", %{
+      load_recs: new_load_recs
+    } do
       first_load_rec = List.first(new_load_recs)
       last_load_rec = List.last(new_load_recs)
 
@@ -45,8 +60,9 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
   end
 
   describe "archive/1" do
-    test "archiving load after ingestion" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+    setup :new_load_recs
+
+    test "archiving load after ingestion", %{load_recs: new_load_recs} do
       first_load_rec = List.first(new_load_recs)
 
       # insert job
@@ -60,8 +76,9 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
   end
 
   describe "error/1" do
-    test "processing error in ingestion" do
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+    setup :new_load_recs
+
+    test "processing error in ingestion", %{load_recs: new_load_recs} do
       first_load_rec = List.first(new_load_recs)
 
       # insert job

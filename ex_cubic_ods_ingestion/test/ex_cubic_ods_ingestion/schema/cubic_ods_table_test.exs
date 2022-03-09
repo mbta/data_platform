@@ -9,35 +9,20 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
     # Explicitly get a connection before each test
     # @todo check out https://github.com/mbta/draft/blob/main/test/support/data_case.ex
     :ok = Sandbox.checkout(Repo)
+
+    table = Repo.insert!(MockExAws.Data.table())
+
+    {:ok, %{table: table}}
   end
 
   describe "get/1" do
-    test "adding and getting table rec" do
-      # add table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
-
+    test "adding and getting table rec", %{table: inserted_table_rec} do
       assert inserted_table_rec == CubicOdsTable.get!(inserted_table_rec.id)
     end
   end
 
   describe "filter_to_existing_prefixes/1" do
-    test "limits the provided prefixes to those with an existing table" do
-      table =
-        Repo.insert!(%CubicOdsTable{
-          name: "vendor__sample",
-          s3_prefix: "vendor/SAMPLE/",
-          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-        })
-
+    test "limits the provided prefixes to those with an existing table", %{table: table} do
       prefixes = [
         "vendor/SAMPLE/",
         "vendor/SAMPLE__ct/",
@@ -57,19 +42,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
   end
 
   describe "update/2" do
-    test "updating the snapshot" do
-      # add table
-      new_table_rec = %CubicOdsTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/",
-        snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-      }
-
-      {:ok, inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
-
+    test "updating the snapshot", %{table: inserted_table_rec} do
       dt = DateTime.now!("Etc/UTC")
       dt_without_msec = DateTime.truncate(dt, :second)
       updated_table_rec = CubicOdsTable.update(inserted_table_rec, snapshot: dt_without_msec)

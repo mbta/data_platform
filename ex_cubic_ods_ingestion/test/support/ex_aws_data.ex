@@ -2,6 +2,16 @@ defmodule MockExAws.Data do
   @moduledoc """
   MockExAws.Data @todo
   """
+  alias ExCubicOdsIngestion.Schema.CubicOdsTable
+
+  @spec table :: CubicOdsTable.t()
+  def table do
+    %CubicOdsTable{
+      name: "vendor__sample",
+      s3_prefix: "vendor/SAMPLE/",
+      snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+    }
+  end
 
   @spec load_objects() :: [map()]
   def load_objects do

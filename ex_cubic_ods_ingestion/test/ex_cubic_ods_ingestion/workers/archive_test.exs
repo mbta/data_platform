@@ -5,7 +5,6 @@ defmodule ExCubicOdsIngestion.Workers.ArchiveTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
-  alias ExCubicOdsIngestion.Schema.CubicOdsTable
   alias ExCubicOdsIngestion.Workers.Archive
 
   require MockExAws
@@ -20,13 +19,7 @@ defmodule ExCubicOdsIngestion.Workers.ArchiveTest do
     test "run job without error" do
       snapshot = DateTime.truncate(DateTime.utc_now(), :second)
       # insert a new table
-      new_table_rec =
-        Repo.insert!(%CubicOdsTable{
-          name: "vendor__sample",
-          s3_prefix: "vendor/SAMPLE/",
-          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv",
-          snapshot: snapshot
-        })
+      new_table_rec = Repo.insert!(%{MockExAws.Data.table() | snapshot: snapshot})
 
       # insert load record
       first_load_rec =

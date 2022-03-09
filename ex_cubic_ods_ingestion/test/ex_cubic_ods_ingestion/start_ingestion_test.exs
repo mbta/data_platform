@@ -17,6 +17,23 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
     # Explicitly get a connection before each test
     # @todo check out https://github.com/mbta/draft/blob/main/test/support/data_case.ex
     :ok = Sandbox.checkout(Repo)
+
+    # insert table
+    table = Repo.insert!(MockExAws.Data.table())
+
+    # insert load records
+    {:ok, load_recs} =
+      CubicOdsLoad.insert_new_from_objects_with_table(MockExAws.Data.load_objects(), table)
+
+    [first_load_rec, last_load_rec] = load_recs
+
+    {:ok,
+     %{
+       table: table,
+       load_recs: load_recs,
+       first_load_rec: first_load_rec,
+       last_load_rec: last_load_rec
+     }}
   end
 
   describe "status/0" do
@@ -28,21 +45,11 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
   end
 
   describe "run/0" do
-    test "updates snapshots and schedules ingestion for ready loads" do
-      # insert a new table
-      table =
-        Repo.insert!(%CubicOdsTable{
-          name: "vendor__sample",
-          s3_prefix: "vendor/SAMPLE/",
-          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-        })
-
-      # insert load records
-      {:ok, new_load_recs} =
-        CubicOdsLoad.insert_new_from_objects_with_table(MockExAws.Data.load_objects(), table)
-
-      first_load_rec = List.first(new_load_recs)
-
+    test "updates snapshots and schedules ingestion for ready loads", %{
+      table: table,
+      first_load_rec: first_load_rec,
+      load_recs: new_load_recs
+    } do
       assert :ok = StartIngestion.run()
 
       new_table = CubicOdsTable.get!(table.id)
@@ -61,22 +68,11 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
   end
 
   describe "updated_snapshot/1" do
-    test "updating with a load record that matches the table snapshot" do
-      # insert a new table
-      new_table_rec =
-        Repo.insert!(%CubicOdsTable{
-          name: "vendor__sample",
-          s3_prefix: "vendor/SAMPLE/",
-          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-        })
-
-      # insert load records
-      {:ok, [first_load_rec, last_load_rec]} =
-        CubicOdsLoad.insert_new_from_objects_with_table(
-          MockExAws.Data.load_objects(),
-          new_table_rec
-        )
-
+    test "updating with a load record that matches the table snapshot", %{
+      table: new_table_rec,
+      first_load_rec: first_load_rec,
+      last_load_rec: last_load_rec
+    } do
       new_first_load_rec = StartIngestion.update_snapshot(first_load_rec)
       new_table = CubicOdsTable.get!(new_table_rec.id)
 
@@ -87,21 +83,6 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       assert new_last_load_rec.snapshot == new_table.snapshot
       # table wasn't updated in the DB
       assert CubicOdsTable.get!(new_table_rec.id).snapshot == new_table.snapshot
-    end
-
-    test "crashes when preparing with list of load records that don't have a table" do
-      now = DateTime.truncate(DateTime.utc_now(), :second)
-
-      load_rec =
-        Repo.insert!(%CubicOdsLoad{
-          status: "ready",
-          # table_id: nil,
-          s3_key: "key",
-          s3_modified: now,
-          s3_size: 0
-        })
-
-      assert catch_error(StartIngestion.update_snapshot(load_rec))
     end
   end
 end
