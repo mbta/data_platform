@@ -27,7 +27,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   @type t :: %__MODULE__{
           id: integer() | nil,
-          table_id: integer() | nil,
+          table_id: integer(),
           status: String.t() | nil,
           snapshot: DateTime.t() | nil,
           is_cdc: boolean() | nil,
@@ -54,21 +54,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     timestamps(type: :utc_datetime)
   end
 
-  @spec insert_new_from_objects(list()) :: tuple()
-  def insert_new_from_objects(objects) do
-    Repo.transaction(fn ->
-      # query loads to see what we can ignore when inserting
-      # usually happens when objects have not been moved out of 'incoming' bucket
-      recs = get_by_objects(objects)
-
-      # create a list of objects that have not been added to database
-      new_objects = Enum.filter(objects, &not_added(&1, recs))
-
-      # insert new objects
-      Enum.map(new_objects, &insert_from_object(&1))
-    end)
-  end
-
   @spec insert_new_from_objects_with_table([map()], CubicOdsTable.t()) ::
           {:ok, [t()]} | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
@@ -83,19 +68,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       # insert new objects
       Enum.map(new_objects, &insert_from_object_with_table(&1, table))
     end)
-  end
-
-  @spec insert_from_object(map()) :: Ecto.Schema.t()
-  def insert_from_object(object) do
-    last_modified = parse_and_drop_msec(object[:last_modified])
-    size = String.to_integer(object[:size])
-
-    Repo.insert!(%__MODULE__{
-      status: "ready",
-      s3_key: remove_s3_bucket_prefix(object[:key]),
-      s3_modified: last_modified,
-      s3_size: size
-    })
   end
 
   @spec insert_from_object_with_table(map(), CubicOdsTable.t()) :: Ecto.Schema.t()

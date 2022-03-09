@@ -5,7 +5,6 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
-  alias ExCubicOdsIngestion.Schema.CubicOdsTable
   alias ExCubicOdsIngestion.Workers.Ingest
 
   require MockExAws
@@ -19,12 +18,7 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   describe "perform/1" do
     test "run job" do
       # insert a new table
-      {:ok, new_table_rec} =
-        Repo.insert(%CubicOdsTable{
-          name: "vendor__sample",
-          s3_prefix: "vendor/SAMPLE/",
-          snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
-        })
+      {:ok, new_table_rec} = Repo.insert(MockExAws.Data.table())
 
       # insert load records
       {:ok, new_load_recs} =
