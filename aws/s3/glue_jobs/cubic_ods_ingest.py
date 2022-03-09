@@ -1,4 +1,3 @@
-
 import os
 import logging
 import json
@@ -12,66 +11,104 @@ from awsglue.dynamicframe import DynamicFrame
 from pyspark.sql.functions import *
 
 
-sc = SparkContext()
-glueContext = GlueContext(sc)
-spark = glueContext.spark_session
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'ENV', 'INPUT'])
+def removeprefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix):]
 
-# read arguments
-jobName = args.get('JOB_NAME', 'cubic_ods_ingest')
-envDict = json.loads(args.get('ENV', '{}'))
-inputDict = json.loads(args.get('INPUT', '{}'))
+    return text
 
-# create job using the glue context
-job = Job(glueContext)
-# initialize job
-job.init(jobName, args)
+# @todo use function annotations
+def parse_job_arguments(env_arg, input_arg):
+    """
+    Parses arguments for this Glue Job, and returns a dictionaries.
 
-# run glue transformations for each cubic ods table
-for table in inputDict.get('tables', []):
-  dataCatalogTableName = 'incoming__{}'.format(table.get('name'))
-  if table.get('load_is_cdc', False):
-    dataCatalogTableName += '__ct'
+    Parameters
+    ----------
+    env_arg : str
+        Environment variables as JSON-formatted string.
+    input_arg : str
+        Job data as JSON-formatted string.
 
-  # create table dataframe using the data catalog table in glue
-  tableDF = glueContext.create_dynamic_frame.from_catalog(
-    database=envDict.get('GLUE_DATABASE_NAME'),
-    table_name=dataCatalogTableName,
-    additional_options={
-      'paths': table.get('load_s3_keys')
-    },
-    transformation_ctx='{}_table_df_read'.format(jobName)
-  )
-  # convert to spark dataframe so we can use withColumn
-  tableSparkDF = tableDF.toDF()
+    Returns
+    -------
+    dict, dict
+        Dictionaries containing environment variables and job data.
 
-  # determine partitions
-  partitionKeys = [ 'snapshot' ]
-  # add a new column for 'snapshot' and set to the value of the table's snapshot value
-  tableSparkDF = tableSparkDF.withColumn('snapshot', lit(table.get('snapshot')))
-  # if cdc load, then we want to add another partition for the file and one other column to the df
-  if table.get('load_is_cdc', False):
-    partitionKeys.append('file')
 
-    # determine the file name. for cdc, there is always one load file
-    fileName = os.path.basename(table.get('load_s3_keys')[0])
-    tableSparkDF = tableSparkDF.withColumn('file', lit(fileName))
+    Examples
+    --------
+    >>> parse_job_arguments(
+    ...   '{"GLUE_DATABASE_NAME": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
+    ...   '{"loads":[{"s3_key":"s3/prefix/key","snapshot":"20220101","table_name":"table"}]}'
+    ... )
+    ({'GLUE_DATABASE_NAME': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'}, {'loads': [{'s3_key': 's3/prefix/key', 'snapshot': '20220101', 'table_name': 'table'}]})
+    """
 
-  # write out to parquet
-  glueContext.write_dynamic_frame.from_options(
-    frame=tableDF,
-    connection_type='s3',
-    format='glueparquet',
-    connection_options={
-      'path': 's3://{}/{}{}.parquet/'.format(
-        envDict.get('S3_BUCKET_SPRINGBOARD'),
-        envDict.get('S3_BUCKET_SPRINGBOARD_PREFIX'), # used in local setups
-        table.get('s3_prefix')
-      ),
-      'partitionKeys': partitionKeys
-    },
-    format_options={ 'compression': 'gzip' },
-    transformation_ctx='{}_table_df_write_parquet'.format(jobName)
-  )
+    env_dict = json.loads(env_arg)
+    input_dict = json.loads(input_arg)
 
-job.commit()
+    return env_dict, input_dict
+
+def run():
+    """
+    Reads CSV files from Incoming bucket, and writes them as Parquet files in the
+    Springboard bucket.
+    """
+
+    glue_context = GlueContext(SparkContext())
+    spark = glue_context.spark_session
+    # spark config for allowing overwriting a specific partition
+    spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+    args = getResolvedOptions(sys.argv, ["JOB_NAME", "ENV", "INPUT"])
+
+    # read arguments
+    job_name = args["JOB_NAME"]
+    env_dict, input_dict = parse_job_arguments(args["ENV"], args["INPUT"])
+
+    # create job using the glue context
+    job = Job(glue_context)
+    # initialize job
+    job.init(job_name, args)
+
+    # run glue transformations for each cubic ods load
+    for load in input_dict.get("loads", []):
+        load_s3_key = load["s3_key"]
+        load_table_s3_prefix = removeprefix(
+            f'{os.path.dirname(load_s3_key)}/',
+            env_dict.get("S3_BUCKET_PREFIX_INCOMING", "")
+        )
+        data_catalog_table_name = f'incoming__{load["table_name"]}'
+
+        # for cdc, we want to suffix table name by '__ct'
+        if load_table_s3_prefix.endswith("__ct"):
+            data_catalog_table_name += "__ct"
+
+        # create table dataframe using the data catalog table in glue
+        table_df = glue_context.create_dynamic_frame.from_catalog(
+            database=env_dict["GLUE_DATABASE_NAME"],
+            table_name=data_catalog_table_name,
+            additional_options={
+                "paths": [f's3://{env_dict["S3_BUCKET_INCOMING"]}/{load_s3_key}']
+            },
+            transformation_ctx=f"{job_name}_table_df_read",
+        )
+
+        # convert to spark dataframe so we can use the withColumn functionality
+        table_spark_df = table_df.toDF()
+        # add partition columns
+        table_spark_df = table_spark_df.withColumn(
+            "snapshot", lit(load["snapshot"])
+        ).withColumn("identifier", lit(os.path.basename(load_s3_key)))
+
+        # write out to springboard bucket with overwrite mode
+        table_spark_df.write.mode("overwrite").partitionBy(
+            "snapshot", "identifier"
+        ).parquet(
+            f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}/'
+            f'{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{load_table_s3_prefix}'
+        )
+
+    job.commit()
+
+if __name__ == "__main__":
+    run()

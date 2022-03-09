@@ -32,14 +32,8 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
       end
 
     # start glue job
-    glue_database = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_database)
-
-    %{"JobRunId" => glue_job_run_id} =
-      start_glue_job_run(
-        lib_ex_aws,
-        "{\"GLUE_DATABASE_NAME\": \"#{glue_database}\"}",
-        "{\"c\": \"3\",\"d\": \"4\"}"
-      )
+    {env_payload, input_payload} = construct_glue_job_payload(load_rec_ids)
+    %{"JobRunId" => glue_job_run_id} = start_glue_job_run(lib_ex_aws, env_payload, input_payload)
 
     Logger.info("#{@log_prefix} Glue Job Run ID: #{glue_job_run_id}")
 
@@ -62,13 +56,13 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
   end
 
   @spec start_glue_job_run(module(), String.t(), String.t()) :: map()
-  defp start_glue_job_run(lib_ex_aws, env_arg, input_arg) do
+  defp start_glue_job_run(lib_ex_aws, env_payload, input_payload) do
     glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
     lib_ex_aws.request!(
       ExAws.Glue.start_job_run(glue_job_name, %{
-        "--ENV": env_arg,
-        "--INPUT": input_arg
+        "--ENV": env_payload,
+        "--INPUT": input_payload
       })
     )
   end
@@ -90,5 +84,34 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
       _other_glue_job_run_state ->
         glue_job_run_status
     end
+  end
+
+  @spec construct_glue_job_payload([integer()]) :: {String.t(), String.t()}
+  defp construct_glue_job_payload(load_rec_ids) do
+    glue_database = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_database)
+    bucket_incoming = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
+    bucket_springboard = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_springboard)
+
+    prefix_incoming = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
+
+    prefix_springboard =
+      Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_springboard)
+
+    loads =
+      Enum.map(CubicOdsLoad.get_many_with_table(load_rec_ids), fn {load_rec, table_rec} ->
+        %{
+          s3_key: load_rec.s3_key,
+          snapshot: load_rec.snapshot,
+          table_name: table_rec.name
+        }
+      end)
+
+    {Jason.encode!(%{
+       GLUE_DATABASE_NAME: glue_database,
+       S3_BUCKET_INCOMING: bucket_incoming,
+       S3_BUCKET_PREFIX_INCOMING: prefix_incoming,
+       S3_BUCKET_SPRINGBOARD: bucket_springboard,
+       S3_BUCKET_PREFIX_SPRINGBOARD: prefix_springboard
+     }), Jason.encode!(%{loads: loads})}
   end
 end

@@ -8,6 +8,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
   alias Ecto.Changeset
   alias ExCubicOdsIngestion.Repo
+  alias ExCubicOdsIngestion.Schema.CubicOdsTable
 
   @derive {Jason.Encoder,
            only: [
@@ -147,6 +148,18 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
       )
 
     Repo.all(query)
+  end
+
+  @spec get_many_with_table([integer()]) :: [{t(), CubicOdsTable.t()}]
+  def get_many_with_table(load_rec_ids) do
+    Repo.all(
+      from(load in __MODULE__,
+        join: table in CubicOdsTable,
+        on: table.id == load.table_id,
+        where: load.id in ^load_rec_ids,
+        select: {load, table}
+      )
+    )
   end
 
   @spec change(t(), %{required(atom()) => term()}) :: Changeset.t()
