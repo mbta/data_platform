@@ -1,9 +1,14 @@
 defmodule MockExAws.Data do
   @moduledoc """
-  MockExAws.Data @todo
+  Mock data for use in test cases.
   """
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
 
+  @doc """
+  A ``CubicOdsTable` which covers the data objects in `load_objects/1`.
+
+  It has not been inserted into the database.
+  """
   @spec table :: CubicOdsTable.t()
   def table do
     %CubicOdsTable{
@@ -13,6 +18,9 @@ defmodule MockExAws.Data do
     }
   end
 
+  @doc """
+  Mock S3 data, in the format returned by `ExAws.S3.load_objects_v2/2`.
+  """
   @spec load_objects() :: [map()]
   def load_objects do
     [
