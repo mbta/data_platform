@@ -154,17 +154,10 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
       assert [] == CubicOdsLoad.get_many_with_table([])
     end
 
-    test "getting no records by passing just inserted load records" do
+    test "getting records by passing load records with tables attached", %{table: table} do
       # insert records as ready
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
-      new_load_rec_ids = Enum.map(new_load_recs, fn new_load_rec -> new_load_rec.id end)
-
-      assert [] == CubicOdsLoad.get_many_with_table(new_load_rec_ids)
-    end
-
-    test "getting records by passing load records with tables attached" do
-      # insert records as ready
-      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects(MockExAws.Data.load_objects())
+      {:ok, new_load_recs} =
+        CubicOdsLoad.insert_new_from_objects_with_table(MockExAws.Data.load_objects(), table)
 
       # use the first record
       first_load_rec = List.first(new_load_recs)

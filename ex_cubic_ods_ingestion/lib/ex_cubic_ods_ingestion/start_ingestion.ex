@@ -59,7 +59,7 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     # prepare them for processing, and kick off separate flows
     CubicOdsLoad.get_status_ready()
     |> Enum.map(&update_snapshot/1)
-    |> Enum.chunk_every(3)
+    |> chunk_loads()
     |> Enum.each(&process_loads/1)
   end
 
@@ -92,6 +92,12 @@ defmodule ExCubicOdsIngestion.StartIngestion do
     else
       load_rec
     end
+  end
+
+  @spec chunk_loads([CubicOdsLoad.t()]) :: [[CubicOdsLoad.t(), ...]]
+  defp chunk_loads(loads) do
+    # @todo replace chunk_every with chunk_while for more fine-tuned control
+    Enum.chunk_every(loads, 3)
   end
 
   @spec start_ingestion([integer()]) :: {atom(), map()}
