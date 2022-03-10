@@ -53,7 +53,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
 
   # server helper functions
   @spec run(t) :: :ok
-  defp run(state) do
+  def run(state) do
     bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
     prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
 
