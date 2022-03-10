@@ -1,19 +1,11 @@
 defmodule ExCubicOdsIngestion.Workers.ErrorTest do
-  use ExUnit.Case
+  use ExCubicOdsIngestion.DataCase, async: true
   use Oban.Testing, repo: ExCubicOdsIngestion.Repo
 
-  alias Ecto.Adapters.SQL.Sandbox
-  alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Workers.Error
 
   require MockExAws
-
-  setup do
-    # Explicitly get a connection before each test
-    # @todo check out https://github.com/mbta/draft/blob/main/test/support/data_case.ex
-    :ok = Sandbox.checkout(Repo)
-  end
 
   describe "perform/1" do
     test "run job without error" do

@@ -1,18 +1,12 @@
 defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
-  use ExUnit.Case
+  use ExCubicOdsIngestion.DataCase, async: true
 
   import Ecto.Changeset
 
-  alias Ecto.Adapters.SQL.Sandbox
-  alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Schema.CubicOdsTable
 
   setup do
-    # Explicitly get a connection before each test
-    # @todo check out https://github.com/mbta/draft/blob/main/test/support/data_case.ex
-    :ok = Sandbox.checkout(Repo)
-
     table = Repo.insert!(MockExAws.Data.table())
     {:ok, %{table: table}}
   end

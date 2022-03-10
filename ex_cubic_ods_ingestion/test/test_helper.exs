@@ -1,4 +1,4 @@
 ExUnit.start()
 
-# Set the pool mode to manual for explicit checkouts
-Ecto.Adapters.SQL.Sandbox.mode(ExCubicOdsIngestion.Repo, {:shared, self()})
+# checkouts default to manual, `use ExCubicOdsIngestion.DataCase` for shared checkouts
+Ecto.Adapters.SQL.Sandbox.mode(ExCubicOdsIngestion.Repo, :manual)

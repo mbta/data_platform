@@ -1,23 +1,14 @@
 defmodule ExCubicOdsIngestion.ProcessIngestionTest do
-  use ExUnit.Case
+  use ExCubicOdsIngestion.DataCase
   use Oban.Testing, repo: ExCubicOdsIngestion.Repo
 
-  alias Ecto.Adapters.SQL.Sandbox
   alias ExCubicOdsIngestion.ProcessIngestion
-  alias ExCubicOdsIngestion.Repo
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
   alias ExCubicOdsIngestion.Workers.Archive
   alias ExCubicOdsIngestion.Workers.Error
 
   require MockExAws.Data
   require Logger
-
-  # setup server for each test
-  setup do
-    # Explicitly get a connection before each test
-    # @todo check out https://github.com/mbta/draft/blob/main/test/support/data_case.ex
-    :ok = Sandbox.checkout(Repo)
-  end
 
   defp new_load_recs(_tags) do
     new_table_rec = Repo.insert!(MockExAws.Data.table())
