@@ -19,13 +19,13 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
       assert [
                %{
                  status: "ready",
-                 s3_key: "vendor/SAMPLE/LOAD1.csv",
+                 s3_key: "cubic_ods_qlik/SAMPLE/LOAD1.csv",
                  s3_modified: ~U[2022-02-08 20:49:50Z],
                  s3_size: 197
                },
                %{
                  status: "ready",
-                 s3_key: "vendor/SAMPLE/LOAD2.csv",
+                 s3_key: "cubic_ods_qlik/SAMPLE/LOAD2.csv",
                  s3_modified: ~U[2022-02-08 20:50:50Z],
                  s3_size: 123
                }
@@ -97,7 +97,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
 
       load_recs = [
         %CubicOdsLoad{
-          s3_key: "vendor/SAMPLE/LOAD1.csv",
+          s3_key: "cubic_ods_qlik/SAMPLE/LOAD1.csv",
           s3_modified: ~U[2022-02-08 20:49:50Z]
         }
       ]
