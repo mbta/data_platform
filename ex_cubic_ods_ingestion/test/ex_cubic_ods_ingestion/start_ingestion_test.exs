@@ -78,5 +78,21 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
       # table wasn't updated in the DB
       assert CubicOdsTable.get!(new_table_rec.id).snapshot == new_table.snapshot
     end
+
+    test "updating a snapshot with a newer time", %{
+      table: table,
+      first_load_rec: load_rec
+    } do
+      _ignored = StartIngestion.update_snapshot(load_rec)
+
+      now = DateTime.truncate(DateTime.utc_now(), :second)
+      newer_load_rec = CubicOdsLoad.update(load_rec, %{s3_modified: now})
+      updated_load_rec = StartIngestion.update_snapshot(newer_load_rec)
+
+      new_table = CubicOdsTable.get!(table.id)
+
+      assert new_table.snapshot == now
+      assert updated_load_rec.snapshot == now
+    end
   end
 end
