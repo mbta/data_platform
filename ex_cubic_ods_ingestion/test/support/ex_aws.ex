@@ -105,18 +105,21 @@ defmodule MockExAws do
       ) do
     incoming_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
 
+    cubic_ods_qlik = incoming_prefix <> "cubic_ods_qlik/"
+    cubic_ods_qlik_sample = cubic_ods_qlik <> "SAMPLE/"
+
     case params do
-      %{"prefix" => <<^incoming_prefix, "cubic_ods_qlik_test/">>, "delimiter" => "/"} ->
+      %{"prefix" => ^cubic_ods_qlik, "delimiter" => "/"} ->
         {:ok,
          %{
            body: %{
-             common_prefixes: [%{prefix: "vendor/SAMPLE/"}],
+             common_prefixes: [%{prefix: cubic_ods_qlik_sample}],
              contents: [],
              next_continuation_token: ""
            }
          }}
 
-      %{"prefix" => <<^incoming_prefix, "cubic_ods_qlik_test/vendor/SAMPLE/">>} ->
+      %{"prefix" => ^cubic_ods_qlik_sample} ->
         {:ok,
          %{
            body: %{
@@ -126,7 +129,7 @@ defmodule MockExAws do
            }
          }}
 
-      %{} ->
+      false ->
         {:ok,
          %{
            body: %{

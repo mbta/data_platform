@@ -18,15 +18,15 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
   describe "filter_to_existing_prefixes/1" do
     test "limits the provided prefixes to those with an existing table", %{table: table} do
       prefixes = [
-        "vendor/SAMPLE/",
-        "vendor/SAMPLE__ct/",
-        "vendor/SAMPLE_TABLE_WRONG/",
+        "cubic_ods_qlik/SAMPLE/",
+        "cubic_ods_qlik/SAMPLE__ct/",
+        "cubic_ods_qlik/SAMPLE_TABLE_WRONG/",
         "other"
       ]
 
       expected = [
-        {"vendor/SAMPLE/", table},
-        {"vendor/SAMPLE__ct/", table}
+        {"cubic_ods_qlik/SAMPLE/", table},
+        {"cubic_ods_qlik/SAMPLE__ct/", table}
       ]
 
       actual = CubicOdsTable.filter_to_existing_prefixes(prefixes)

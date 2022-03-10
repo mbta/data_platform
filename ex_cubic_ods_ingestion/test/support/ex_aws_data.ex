@@ -12,9 +12,9 @@ defmodule MockExAws.Data do
   @spec table :: CubicOdsTable.t()
   def table do
     %CubicOdsTable{
-      name: "vendor__sample",
-      s3_prefix: "vendor/SAMPLE/",
-      snapshot_s3_key: "vendor/SAMPLE/LOAD1.csv"
+      name: "cubic_ods_qlik__sample",
+      s3_prefix: "cubic_ods_qlik/SAMPLE/",
+      snapshot_s3_key: "cubic_ods_qlik/SAMPLE/LOAD1.csv"
     }
   end
 
@@ -26,7 +26,7 @@ defmodule MockExAws.Data do
     [
       %{
         e_tag: "\"abc123\"",
-        key: "vendor/SAMPLE/LOAD1.csv",
+        key: "cubic_ods_qlik/SAMPLE/LOAD1.csv",
         last_modified: "2022-02-08T20:49:50.000Z",
         owner: nil,
         size: "197",
@@ -34,7 +34,7 @@ defmodule MockExAws.Data do
       },
       %{
         e_tag: "\"def123\"",
-        key: "vendor/SAMPLE/LOAD2.csv",
+        key: "cubic_ods_qlik/SAMPLE/LOAD2.csv",
         last_modified: "2022-02-08T20:50:50.000Z",
         owner: nil,
         size: "123",
