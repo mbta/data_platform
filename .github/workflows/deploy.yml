@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  workflow_dispatch
+
+jobs:
+  deploy_glue:
+    name: Deploy Glue job-status
+    runs-on: ubuntu-latest
+
+    # job env variables used by AWS CLI
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+      AWS_DEFAULT_REGION: 'us-east-1'
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v2
+      - name: Setup Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+      - name: Install python packages in 'libs' folder
+        working-directory: ${{github.workspace}}
+        run: pip install -r requirements.txt -t ./libs
+
+      - name: Create archive, and add 'data_platform' folder
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./data_platform/
+
+      # change directory 'libs', so libraries can be loaded into the root of archive
+      - name: Add python libs to archive
+        working-directory: ${{github.workspace}}/libs
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./
+
+      - name: Sync Glue Jobs and package to operations
+        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://mbta-ctd-dataplatform-dev-operations/ --exclude "*/empty"
+
+
+  deploy_ex_cubic_ods_ingestion:
+    name: Deploy ExCubicOdsIngestion
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v2
+      - name: Build container and push to ECR
+        uses: mbta/actions/build-push-ecr@v1
+        id: build-push
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          docker-repo: ${{secrets.DOCKER_REPO}}
+          dockerfile-path: ex_cubic_ods_ingestion
+
+      # - uses: mbta/actions/deploy-ecs@v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     ecs-cluster: draft
+      #     ecs-service: draft-${{ env.TARGET }}
+      #     docker-tag: ${{ steps.build-push.outputs.docker-tag }}
+      # - uses: mbta/actions/notify-slack-deploy@v1
+      #   if: ${{ !cancelled() }}
+      #   with:
+      #     webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+      #     job-status: ${{ job.status }}
+      #     custom-message: "(${{ env.TARGET }})"
