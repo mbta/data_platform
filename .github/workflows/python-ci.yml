@@ -16,3 +16,7 @@ jobs:
       - name: Install python packages in 'libs' folder
         working-directory: ${{github.workspace}}
         run: pip install -r requirements.txt -t ./libs
+      - uses: psf/black@stable
+        with:
+          options: "--check"
+          src: "./aws/s3/glue_jobs"
