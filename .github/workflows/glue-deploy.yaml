@@ -1,7 +1,11 @@
 name: Glue Deploy
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment, 'dev' or 'prod'."
+        required: true
 
 jobs:
   deploy_glue:
@@ -34,4 +38,4 @@ jobs:
         run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./
 
       - name: Sync Glue Jobs and package to operations
-        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://mbta-ctd-dataplatform-dev-operations/ --exclude "*/empty"
+        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://mbta-ctd-dataplatform-${{github.event.inputs.env}}-operations/ --exclude "*/empty"

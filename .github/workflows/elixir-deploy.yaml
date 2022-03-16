@@ -1,7 +1,11 @@
 name: Elixir Deploy
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment, 'dev' or 'prod'."
+        required: true
 
 jobs:
   deploy_ex_cubic_ods_ingestion:
@@ -25,7 +29,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           ecs-cluster: dataplatform
-          ecs-service: dataplatform-dev
+          ecs-service: dataplatform-${{github.event.inputs.env}}
           docker-tag: ${{ steps.build-push.outputs.docker-tag }}
       # - uses: mbta/actions/notify-slack-deploy@v1
       #   if: ${{ !cancelled() }}
