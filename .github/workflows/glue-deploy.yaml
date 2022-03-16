@@ -1,11 +1,11 @@
-name: Deploy
+name: Glue Deploy
 
 on:
   workflow_dispatch
 
 jobs:
   deploy_glue:
-    name: Deploy Glue job-status
+    name: Deploy Glue
     runs-on: ubuntu-latest
 
     # job env variables used by AWS CLI
@@ -35,34 +35,3 @@ jobs:
 
       - name: Sync Glue Jobs and package to operations
         run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://mbta-ctd-dataplatform-dev-operations/ --exclude "*/empty"
-
-
-  deploy_ex_cubic_ods_ingestion:
-    name: Deploy ExCubicOdsIngestion
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository code
-        uses: actions/checkout@v2
-      - name: Build container and push to ECR
-        uses: mbta/actions/build-push-ecr@v1
-        id: build-push
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          docker-repo: ${{secrets.DOCKER_REPO}}
-          dockerfile-path: ex_cubic_ods_ingestion
-
-      # - uses: mbta/actions/deploy-ecs@v1
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     ecs-cluster: draft
-      #     ecs-service: draft-${{ env.TARGET }}
-      #     docker-tag: ${{ steps.build-push.outputs.docker-tag }}
-      # - uses: mbta/actions/notify-slack-deploy@v1
-      #   if: ${{ !cancelled() }}
-      #   with:
-      #     webhook-url: ${{ secrets.SLACK_WEBHOOK }}
-      #     job-status: ${{ job.status }}
-      #     custom-message: "(${{ env.TARGET }})"
