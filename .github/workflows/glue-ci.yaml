@@ -14,7 +14,6 @@ jobs:
         with:
           python-version: '3.7'
       - name: Install python packages
-        working-directory: ${{github.workspace}}
         run: pip install -r requirements.txt
       - name: Check code formatting with Black
         run: black ./aws/s3/glue_jobs/ --check
