@@ -1,0 +1,20 @@
+name: Glue (Python) CI
+
+on: [pull_request]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v2
+      - name: Setup Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+      - name: Install python packages
+        working-directory: ${{github.workspace}}
+        run: pip install -r requirements.txt
+      - name: Check code formatting with Black
+        run: black ./aws/s3/glue_jobs/ --check

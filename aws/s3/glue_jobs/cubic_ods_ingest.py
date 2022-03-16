@@ -13,9 +13,10 @@ from pyspark.sql.functions import *
 
 def removeprefix(text, prefix):
     if text.startswith(prefix):
-        return text[len(prefix):]
+        return text[len(prefix) :]
 
     return text
+
 
 # @todo use function annotations
 def parse_job_arguments(env_arg, input_arg):
@@ -49,6 +50,7 @@ def parse_job_arguments(env_arg, input_arg):
 
     return env_dict, input_dict
 
+
 def run():
     """
     Reads CSV files from Incoming bucket, and writes them as Parquet files in the
@@ -74,8 +76,8 @@ def run():
     for load in input_dict.get("loads", []):
         load_s3_key = load["s3_key"]
         load_table_s3_prefix = removeprefix(
-            f'{os.path.dirname(load_s3_key)}/',
-            env_dict.get("S3_BUCKET_PREFIX_INCOMING", "")
+            f"{os.path.dirname(load_s3_key)}/",
+            env_dict.get("S3_BUCKET_PREFIX_INCOMING", ""),
         )
         data_catalog_table_name = f'incoming__{load["table_name"]}'
 
@@ -109,6 +111,7 @@ def run():
         )
 
     job.commit()
+
 
 if __name__ == "__main__":
     run()
