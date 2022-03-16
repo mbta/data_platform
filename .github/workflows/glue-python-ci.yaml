@@ -17,3 +17,5 @@ jobs:
         run: pip install -r requirements.txt
       - name: Check code formatting with Black
         run: black ./aws/s3/glue_jobs/ --check
+      - name: Check static typing with mypy
+        run: mypy ./aws/s3/glue_jobs/

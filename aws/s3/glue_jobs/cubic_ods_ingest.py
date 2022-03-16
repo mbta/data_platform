@@ -1,3 +1,4 @@
+import typing
 import os
 import logging
 import json
@@ -8,10 +9,10 @@ from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 from awsglue.dynamicframe import DynamicFrame
-from pyspark.sql.functions import *
+from pyspark.sql.functions import lit
 
 
-def removeprefix(text, prefix):
+def removeprefix(text: str, prefix: str) -> str:
     if text.startswith(prefix):
         return text[len(prefix) :]
 
@@ -19,7 +20,7 @@ def removeprefix(text, prefix):
 
 
 # @todo use function annotations
-def parse_job_arguments(env_arg, input_arg):
+def parse_job_arguments(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
     """
     Parses arguments for this Glue Job, and returns a dictionaries.
 
@@ -51,10 +52,15 @@ def parse_job_arguments(env_arg, input_arg):
     return env_dict, input_dict
 
 
-def run():
+def run() -> bool:
     """
     Reads CSV files from Incoming bucket, and writes them as Parquet files in the
     Springboard bucket.
+
+    Returns
+    -------
+    bool
+        Indicating success.
     """
 
     glue_context = GlueContext(SparkContext())
@@ -111,6 +117,8 @@ def run():
         )
 
     job.commit()
+
+    return True
 
 
 if __name__ == "__main__":
