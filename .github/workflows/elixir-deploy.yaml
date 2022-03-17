@@ -1,0 +1,17 @@
+name: Elixir Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment, 'dev' or 'prod'."
+        required: true
+
+jobs:
+  deploy_ex_cubic_ods_ingestion:
+    name: Deploy ExCubicOdsIngestion
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v2

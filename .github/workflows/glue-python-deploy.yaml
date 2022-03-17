@@ -1,0 +1,23 @@
+name: Glue (Python) Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment, 'dev' or 'prod'."
+        required: true
+
+jobs:
+  deploy_glue:
+    name: Deploy Glue (Python)
+    runs-on: ubuntu-latest
+
+    # job env variables used by AWS CLI
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+      AWS_DEFAULT_REGION: 'us-east-1'
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v2
