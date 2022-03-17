@@ -21,3 +21,18 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v2
+      - name: Setup Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+      - name: Install python packages in 'libs' folder
+        working-directory: ${{github.workspace}}
+        run: pip install -r requirements.txt -t ./libs
+      - name: Create archive, and add 'data_platform' folder
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./data_platform/
+      # change directory 'libs', so libraries can be loaded into the root of archive
+      - name: Add python libs to archive
+        working-directory: ${{github.workspace}}/libs
+        run: zip -r ${{github.workspace}}/aws/s3/packages/data_platform.zip ./
+      - name: Sync Glue Jobs and package to operations
+        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://mbta-ctd-dataplatform-${{github.event.inputs.env}}-operations/ --exclude "*/empty"
