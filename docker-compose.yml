@@ -23,7 +23,6 @@ services:
       dockerfile: docker/Dockerfile.glue__local
     depends_on:
       - db__local
-    # when building we don't need a working dir, but we do when running it
     working_dir: /data_platform
     volumes:
       - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only

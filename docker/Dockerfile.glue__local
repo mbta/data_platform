@@ -19,10 +19,6 @@ RUN ln -s /usr/bin/python3.7 /usr/bin/python
 RUN curl https://bootstrap.pypa.io/get-pip.py --output get-pip.py
 RUN python get-pip.py
 
-# installed data platform's required python dependencies
-COPY ./requirements.txt .
-RUN pip install -r requirements.txt
-
 # install (clone) glue, and work with glue 2.0
 RUN git clone --branch glue-2.0 https://github.com/awslabs/aws-glue-libs.git /glue
 # fetch and extract glue-provided archive for spark
@@ -33,5 +29,15 @@ RUN tar --no-same-owner -xf apache-spark.tgz
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 ENV SPARK_HOME=/spark-2.4.3-bin-spark-2.4.3-bin-hadoop2.8
 RUN /glue/bin/gluesparksubmit --version
+
+# python packaging
+RUN pip install poetry
+# install py_cubic_ods_ingestion's required python dependencies
+COPY ./py_cubic_ods_ingestion /data_platform/py_cubic_ods_ingestion
+WORKDIR /data_platform/py_cubic_ods_ingestion
+RUN poetry config virtualenvs.create false
+RUN poetry install --no-dev
+# install an editable link of py_cubic_ods_ingestion
+RUN pip install --editable .
 
 CMD ["echo", "Container 'glue__local' ready!"]

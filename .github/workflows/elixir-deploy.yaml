@@ -15,25 +15,3 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v2
-      - name: Build container and push to ECR
-        uses: mbta/actions/build-push-ecr@v1
-        id: build-push
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          docker-repo: ${{secrets.DOCKER_REPO}}
-          dockerfile-path: ex_cubic_ods_ingestion
-      - name: Update ECS service with new container build
-        uses: mbta/actions/deploy-ecs@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          ecs-cluster: dataplatform
-          ecs-service: dataplatform-${{github.event.inputs.env}}
-          docker-tag: ${{ steps.build-push.outputs.docker-tag }}
-      # - uses: mbta/actions/notify-slack-deploy@v1
-      #   if: ${{ !cancelled() }}
-      #   with:
-      #     webhook-url: ${{ secrets.SLACK_WEBHOOK }}
-      #     job-status: ${{ job.status }}
-      #     custom-message: "(${{ env.TARGET }})"

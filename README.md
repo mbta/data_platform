@@ -18,6 +18,7 @@
 
 To build and stand up the database, glue, and the main containers:
 ```sh
+# start docker, and then
 docker-compose up
 ```
 
