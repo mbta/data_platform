@@ -7,11 +7,9 @@ defmodule MockExAws do
   def request(op, config_overrides \\ [])
 
   def request(%{service: :s3, http_method: :delete} = op, _config_overrides) do
-    incoming_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
-
     valid_paths =
       Enum.map(MockExAws.Data.load_objects(), fn load_object ->
-        "#{incoming_prefix}#{load_object[:key]}"
+        "#{load_object[:key]}"
       end)
 
     # deleting object

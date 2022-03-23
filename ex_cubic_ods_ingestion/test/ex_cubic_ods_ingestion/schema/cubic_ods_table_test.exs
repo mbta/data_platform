@@ -17,11 +17,14 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
 
   describe "filter_to_existing_prefixes/1" do
     test "limits the provided prefixes to those with an existing table", %{table: table} do
+      incoming_prefix =
+        Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
+
       prefixes = [
-        "cubic_ods_qlik/SAMPLE/",
-        "cubic_ods_qlik/SAMPLE__ct/",
-        "cubic_ods_qlik/SAMPLE_TABLE_WRONG/",
-        "other"
+        "#{incoming_prefix}cubic_ods_qlik/SAMPLE/",
+        "#{incoming_prefix}cubic_ods_qlik/SAMPLE__ct/",
+        "#{incoming_prefix}cubic_ods_qlik/SAMPLE_TABLE_WRONG/",
+        "#{incoming_prefix}other"
       ]
 
       expected = [
