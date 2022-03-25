@@ -44,4 +44,16 @@ defmodule MockExAws.Data do
       }
     ]
   end
+
+  @doc """
+  Helper function to eliminate duplication in tests that don't care about the bucket prefix.
+  """
+  @spec load_objects_without_bucket_prefix :: [map()]
+  def load_objects_without_bucket_prefix do
+    incoming_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
+
+    Enum.map(load_objects(), fn object ->
+      %{object | key: String.replace_prefix(object[:key], incoming_prefix, "")}
+    end)
+  end
 end

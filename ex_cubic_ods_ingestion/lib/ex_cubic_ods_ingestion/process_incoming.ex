@@ -75,6 +75,9 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
         lib_ex_aws: state.lib_ex_aws
       )
       |> Enum.filter(&Map.has_key?(&1, :key))
+      |> Enum.map(fn object ->
+        %{object | key: String.replace_prefix(object[:key], incoming_prefix, "")}
+      end)
       |> CubicOdsLoad.insert_new_from_objects_with_table(table)
     end
 
