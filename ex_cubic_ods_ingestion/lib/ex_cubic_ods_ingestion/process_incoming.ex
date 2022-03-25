@@ -54,24 +54,30 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
   # server helper functions
   @spec run(t) :: :ok
   def run(state) do
-    bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
-    prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
+    incoming_bucket = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
+    incoming_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
 
     table_prefixes =
-      bucket
+      incoming_bucket
       |> S3Scan.list_objects_v2(
-        prefix: "#{prefix}cubic_ods_qlik/",
+        prefix: "#{incoming_prefix}cubic_ods_qlik/",
         delimiter: "/",
         lib_ex_aws: state.lib_ex_aws
       )
       |> Stream.filter(&Map.has_key?(&1, :prefix))
-      |> Enum.map(&Map.fetch!(&1, :prefix))
+      |> Enum.map(fn %{prefix: prefix} -> String.replace_prefix(prefix, incoming_prefix, "") end)
       |> CubicOdsTable.filter_to_existing_prefixes()
 
     for {table_prefix, table} <- table_prefixes do
-      bucket
-      |> S3Scan.list_objects_v2(prefix: table_prefix, lib_ex_aws: state.lib_ex_aws)
+      incoming_bucket
+      |> S3Scan.list_objects_v2(
+        prefix: "#{incoming_prefix}#{table_prefix}",
+        lib_ex_aws: state.lib_ex_aws
+      )
       |> Enum.filter(&Map.has_key?(&1, :key))
+      |> Enum.map(fn object ->
+        %{object | key: String.replace_prefix(object[:key], incoming_prefix, "")}
+      end)
       |> CubicOdsLoad.insert_new_from_objects_with_table(table)
     end
 

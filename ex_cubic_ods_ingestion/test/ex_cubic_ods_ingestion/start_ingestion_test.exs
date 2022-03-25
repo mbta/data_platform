@@ -17,7 +17,10 @@ defmodule ExCubicOdsIngestion.StartIngestionTest do
 
     # insert load records
     {:ok, load_recs} =
-      CubicOdsLoad.insert_new_from_objects_with_table(MockExAws.Data.load_objects(), table)
+      CubicOdsLoad.insert_new_from_objects_with_table(
+        MockExAws.Data.load_objects_without_bucket_prefix(),
+        table
+      )
 
     [first_load_rec, last_load_rec] = load_recs
 

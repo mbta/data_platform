@@ -78,7 +78,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     Repo.insert!(%__MODULE__{
       table_id: table.id,
       status: "ready",
-      s3_key: remove_s3_bucket_prefix(object[:key]),
+      s3_key: object[:key],
       s3_modified: last_modified,
       s3_size: size
     })
@@ -101,8 +101,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     else
       query_with_filters =
         Enum.reduce(filters, __MODULE__, fn {s3_key, s3_modified}, query ->
-          s3_key = remove_s3_bucket_prefix(s3_key)
-
           # query
           from(load in query,
             or_where: load.s3_key == ^s3_key and load.s3_modified == ^s3_modified
@@ -120,7 +118,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
 
     not Enum.any?(
       load_recs,
-      fn r -> r.s3_key == remove_s3_bucket_prefix(key) and r.s3_modified == last_modified end
+      fn r -> r.s3_key == key and r.s3_modified == last_modified end
     )
   end
 
@@ -205,12 +203,5 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     {:ok, datetime_with_msec, _offset} = DateTime.from_iso8601(datetime)
 
     DateTime.truncate(datetime_with_msec, :second)
-  end
-
-  @spec remove_s3_bucket_prefix(String.t()) :: String.t()
-  defp remove_s3_bucket_prefix(s3_key) do
-    s3_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
-
-    String.replace_prefix(s3_key, s3_prefix, "")
   end
 end
