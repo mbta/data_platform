@@ -54,15 +54,10 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
   """
   @spec filter_to_existing_prefixes(Enumerable.t()) :: [{String.t(), t()}]
   def filter_to_existing_prefixes(prefixes) do
-    incoming_prefix = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_incoming)
-
-    # strip incoming bucket prefix as it will not be in the database
-    without_incoming_prefix = Enum.map(prefixes, &String.replace_prefix(&1, incoming_prefix, ""))
-
-    # strip any change tracking suffix, and eliminate dups from list
+    # strip any change tracking suffix
     without_change_tracking =
-      without_incoming_prefix
-      |> MapSet.new(&replace_change_tracking_suffix(&1))
+      prefixes
+      |> MapSet.new(&String.replace_suffix(&1, "__ct/", "/"))
       |> Enum.to_list()
 
     query =
@@ -75,8 +70,8 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
       |> Repo.all()
       |> Map.new(&{&1.s3_prefix, &1})
 
-    for prefix <- without_incoming_prefix,
-        short_prefix = replace_change_tracking_suffix(prefix),
+    for prefix <- prefixes,
+        short_prefix = String.replace_suffix(prefix, "__ct/", "/"),
         %__MODULE__{} = table <- [Map.get(valid_prefix_map, short_prefix)] do
       {prefix, table}
     end
@@ -90,10 +85,5 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
       end)
 
     table_rec
-  end
-
-  @spec replace_change_tracking_suffix(String.t()) :: String.t()
-  defp replace_change_tracking_suffix(prefix) do
-    String.replace_suffix(prefix, "__ct/", "/")
   end
 end

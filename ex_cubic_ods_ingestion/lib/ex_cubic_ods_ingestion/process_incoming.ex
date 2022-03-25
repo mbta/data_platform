@@ -65,7 +65,7 @@ defmodule ExCubicOdsIngestion.ProcessIncoming do
         lib_ex_aws: state.lib_ex_aws
       )
       |> Stream.filter(&Map.has_key?(&1, :prefix))
-      |> Enum.map(&Map.fetch!(&1, :prefix))
+      |> Enum.map(fn %{prefix: prefix} -> String.replace_prefix(prefix, incoming_prefix, "") end)
       |> CubicOdsTable.filter_to_existing_prefixes()
 
     for {table_prefix, table} <- table_prefixes do
