@@ -1,8 +1,17 @@
-import typing
+"""
+Helper functions for `ingest_incoming` module. Also, allows for testing of some of the components
+in the Glue Job.
+"""
+
+import logging
 import json
+import typing
 
 
 def removeprefix(text: str, prefix: str) -> str:
+    """
+    A (not-exact) shim for `str.removeprefix()` in Python 3.9+
+    """
     if text.startswith(prefix):
         return text[len(prefix) :]
 
@@ -32,19 +41,24 @@ def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
     ...   '{"GLUE_DATABASE_NAME": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
     ...   '{"loads":[{"s3_key":"s3/prefix/key","snapshot":"20220101","table_name":"table"}]}'
     ... )
-    ({'GLUE_DATABASE_NAME': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'}, {'loads': [{'s3_key': 's3/prefix/key', 'snapshot': '20220101', 'table_name': 'table'}]})
+    ({'GLUE_DATABASE_NAME': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'},
+    ...{'loads': [{'s3_key': 's3/prefix/key', 'snapshot': '20220101', 'table_name': 'table'}]})
     """
+
+    log_prefix = "[py_cubic_ods_ingestion][job_helpers]"
 
     env_dict = {}
     try:
         env_dict = json.loads(env_arg)
-    except json.JSONDecodeError as e:
-        pass
+    except json.JSONDecodeError as error:
+        logging.error("%s Unable to decode `env_arg` JSON blob: %s", log_prefix, env_arg)
+        raise error
 
     input_dict = {}
     try:
         input_dict = json.loads(input_arg)
-    except json.JSONDecodeError as e:
-        pass
+    except json.JSONDecodeError as error:
+        logging.error("%s Unable to decode `input_arg` JSON blob: %s", log_prefix, input_arg)
+        raise error
 
     return (env_dict, input_dict)
