@@ -129,6 +129,8 @@ jobs:
         run: poetry run black . --check
       - name: Check static typing with mypy
         run: poetry run mypy .
+      - name: Run linting with pylint
+        run: poetry run pylint lib/ tests/
       - name: Run tests with coverage
         run: poetry run coverage run -m pytest
       - name: Generate coverage file

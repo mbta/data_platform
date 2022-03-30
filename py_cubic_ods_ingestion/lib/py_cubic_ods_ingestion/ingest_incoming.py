@@ -1,15 +1,14 @@
-import typing
+"""
+Module contains the 'run' function utilized by the Glue Job defined in `aws/s3/glue_jobs/cubic_ods_ingest.py`.
+"""
+
 import os
-import logging
-import json
 import sys
-from awsglue.transforms import *
-from awsglue.utils import getResolvedOptions
-from pyspark.context import SparkContext
-from awsglue.context import GlueContext
-from awsglue.job import Job
-from awsglue.dynamicframe import DynamicFrame
-from pyspark.sql.functions import lit
+from awsglue.context import GlueContext  # pylint: disable=import-error
+from awsglue.job import Job  # pylint: disable=import-error
+from awsglue.utils import getResolvedOptions  # pylint: disable=import-error
+from pyspark.context import SparkContext  # pylint: disable=import-error
+from pyspark.sql.functions import lit  # pylint: disable=import-error
 
 from py_cubic_ods_ingestion import job_helpers
 
