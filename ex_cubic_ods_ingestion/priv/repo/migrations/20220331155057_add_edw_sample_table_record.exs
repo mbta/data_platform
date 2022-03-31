@@ -10,7 +10,6 @@ defmodule ExCubicOdsIngestion.Repo.Migrations.AddEdwSampleTableRecord do
     Repo.insert!(%CubicOdsTable{
       name: @table_name,
       s3_prefix: "cubic_ods_qlik/EDW.SAMPLE/",
-      snapshot: DateTime.truncate(DateTime.now!("Etc/UTC"), :second),
       snapshot_s3_key: "cubic_ods_qlik/EDW.SAMPLE/LOAD1.csv"
     })
   end
