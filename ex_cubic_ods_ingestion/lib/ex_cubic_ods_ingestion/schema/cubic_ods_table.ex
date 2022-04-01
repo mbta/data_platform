@@ -52,7 +52,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
   @doc """
   Given an enumerable of S3 prefixes, return those prefixes which represent a #{__MODULE__} and their table.
   """
-  @spec filter_to_existing_prefixes(Enumerable.t()) :: [{String.t(), t()}] | []
+  @spec filter_to_existing_prefixes(Enumerable.t()) :: [{String.t(), t()}]
   def filter_to_existing_prefixes(prefixes) do
     # in order to prevent querying with an empty list, we just return an empty list
     if Enum.empty?(prefixes) do
