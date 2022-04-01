@@ -38,10 +38,10 @@ def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
     Examples
     --------
     >>> parse_job_arguments(
-    ...   '{"GLUE_DATABASE_NAME": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
+    ...   '{"GLUE_DATABASE_INCOMING": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
     ...   '{"loads":[{"s3_key":"s3/prefix/key","snapshot":"20220101","table_name":"table"}]}'
     ... )
-    ({'GLUE_DATABASE_NAME': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'},
+    ({'GLUE_DATABASE_INCOMING': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'},
     ...{'loads': [{'s3_key': 's3/prefix/key', 'snapshot': '20220101', 'table_name': 'table'}]})
     """
 
