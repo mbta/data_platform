@@ -42,7 +42,7 @@ def run() -> None:
             f"{os.path.dirname(load_s3_key)}/",
             env_dict.get("S3_BUCKET_PREFIX_INCOMING", ""),
         )
-        data_catalog_table_name = f'incoming__{load["table_name"]}'
+        data_catalog_table_name = load["table_name"]
 
         # for cdc, we want to suffix table name by '__ct'
         if load_table_s3_prefix.endswith("__ct"):
@@ -50,7 +50,7 @@ def run() -> None:
 
         # create table dataframe using the data catalog table in glue
         table_df = glue_context.create_dynamic_frame.from_catalog(
-            database=env_dict["GLUE_DATABASE_NAME"],
+            database=env_dict["GLUE_DATABASE_INCOMING"],
             table_name=data_catalog_table_name,
             additional_options={"paths": [f's3://{env_dict["S3_BUCKET_INCOMING"]}/{load_s3_key}']},
             transformation_ctx=f"{job_name}_table_df_read",

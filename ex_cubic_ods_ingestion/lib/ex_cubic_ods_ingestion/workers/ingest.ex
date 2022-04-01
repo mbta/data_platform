@@ -11,7 +11,7 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
 
   require Logger
 
-  @log_prefix "[ex_cubic_ods_ingestion][workers][ingest]"
+  @log_prefix "[ex_cubic_ods_ingestion] [workers] [ingest]"
   # 15 minutes
   @job_timeout_in_sec 900
 
@@ -88,7 +88,9 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
 
   @spec construct_glue_job_payload([integer()]) :: {String.t(), String.t()}
   defp construct_glue_job_payload(load_rec_ids) do
-    glue_database = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_database)
+    glue_database_incoming =
+      Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_database_incoming)
+
     bucket_incoming = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_incoming)
     bucket_springboard = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_springboard)
 
@@ -107,7 +109,7 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
       end)
 
     {Jason.encode!(%{
-       GLUE_DATABASE_NAME: glue_database,
+       GLUE_DATABASE_INCOMING: glue_database_incoming,
        S3_BUCKET_INCOMING: bucket_incoming,
        S3_BUCKET_PREFIX_INCOMING: prefix_incoming,
        S3_BUCKET_SPRINGBOARD: bucket_springboard,

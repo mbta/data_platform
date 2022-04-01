@@ -28,6 +28,17 @@ defmodule ExCubicOdsIngestion.Application do
 
     children = sys_children ++ app_children
 
+    # attach telemetry to Oban, so exceptions get logged
+    oban_events = [[:oban, :job, :start], [:oban, :job, :stop], [:oban, :job, :exception]]
+
+    :ok =
+      :telemetry.attach_many(
+        "oban-handler",
+        oban_events,
+        &ExCubicOdsIngestion.ObanLogger.handle_event/4,
+        []
+      )
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: ExCubicOdsIngestion.Supervisor]

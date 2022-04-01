@@ -54,26 +54,31 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTable do
   """
   @spec filter_to_existing_prefixes(Enumerable.t()) :: [{String.t(), t()}]
   def filter_to_existing_prefixes(prefixes) do
-    # strip any change tracking suffix
-    without_change_tracking =
-      prefixes
-      |> MapSet.new(&String.replace_suffix(&1, "__ct/", "/"))
-      |> Enum.to_list()
+    # in order to prevent querying with an empty list, we just return an empty list
+    if Enum.empty?(prefixes) do
+      []
+    else
+      # strip any change tracking suffix
+      without_change_tracking =
+        prefixes
+        |> MapSet.new(&String.replace_suffix(&1, "__ct/", "/"))
+        |> Enum.to_list()
 
-    query =
-      from(table in __MODULE__,
-        where: table.s3_prefix in ^without_change_tracking
-      )
+      query =
+        from(table in __MODULE__,
+          where: table.s3_prefix in ^without_change_tracking
+        )
 
-    valid_prefix_map =
-      query
-      |> Repo.all()
-      |> Map.new(&{&1.s3_prefix, &1})
+      valid_prefix_map =
+        query
+        |> Repo.all()
+        |> Map.new(&{&1.s3_prefix, &1})
 
-    for prefix <- prefixes,
-        short_prefix = String.replace_suffix(prefix, "__ct/", "/"),
-        %__MODULE__{} = table <- [Map.get(valid_prefix_map, short_prefix)] do
-      {prefix, table}
+      for prefix <- prefixes,
+          short_prefix = String.replace_suffix(prefix, "__ct/", "/"),
+          %__MODULE__{} = table <- [Map.get(valid_prefix_map, short_prefix)] do
+        {prefix, table}
+      end
     end
   end
 

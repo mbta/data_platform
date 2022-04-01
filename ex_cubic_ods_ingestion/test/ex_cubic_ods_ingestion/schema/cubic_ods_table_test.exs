@@ -16,6 +16,10 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsTableTest do
   end
 
   describe "filter_to_existing_prefixes/1" do
+    test "providing empty prefixes list" do
+      assert [] == CubicOdsTable.filter_to_existing_prefixes([])
+    end
+
     test "limits the provided prefixes to those with an existing table", %{table: table} do
       # note: purposely leaving out incoming bucket prefix config
       prefixes = [
