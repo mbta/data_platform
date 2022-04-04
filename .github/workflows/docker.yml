@@ -3,8 +3,8 @@ name: ExCubicOdsIngestion Docker build
 on: [push]
 
 jobs:
-  docker:
-    name: Build Docker image
+  docker_ex_cubic_ods_ingestion:
+    name: Build Docker image for 'ex_cubic_ods_ingestion' app
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2

@@ -1,5 +1,13 @@
 import Config
 
+config :ex_cubic_ods_ingestion, ExCubicOdsIngestion.Repo,
+  username: System.get_env("DB_USER"),
+  database: System.get_env("DB_NAME"),
+  hostname: System.get_env("DB_HOST"),
+  password: System.get_env("DB_PASSWORD"),
+  port: "DB_PORT" |> System.get_env("5432") |> String.to_integer(),
+  configure: {ExCubicOdsIngestion.Repo, :before_connect, []}
+
 config :ex_cubic_ods_ingestion,
   s3_bucket_operations: System.get_env("S3_BUCKET_OPERATIONS", ""),
   s3_bucket_prefix_operations: System.get_env("S3_BUCKET_PREFIX_OPERATIONS", ""),
