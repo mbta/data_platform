@@ -57,10 +57,17 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
 
   @spec start_glue_job_run(module(), String.t(), String.t()) :: map()
   defp start_glue_job_run(lib_ex_aws, env_payload, input_payload) do
+    bucket_operations = Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_operations)
+
+    prefix_operations =
+      Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_operations)
+
     glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
 
     lib_ex_aws.request!(
       ExAws.Glue.start_job_run(glue_job_name, %{
+        "--extra-py-files":
+          "s3://#{bucket_operations}/#{prefix_operations}packages/py_cubic_ods_ingestion.zip",
         "--ENV": env_payload,
         "--INPUT": input_payload
       })
