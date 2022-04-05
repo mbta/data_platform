@@ -110,7 +110,7 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
       Enum.map(CubicOdsLoad.get_many_with_table(load_rec_ids), fn {load_rec, table_rec} ->
         %{
           s3_key: load_rec.s3_key,
-          snapshot: load_rec.snapshot,
+          snapshot: Calendar.strftime(load_rec.snapshot, "%Y%m%dT%H%M%SZ"),
           table_name: table_rec.name
         }
       end)
