@@ -4,7 +4,7 @@ defmodule ExCubicOdsIngestion.Workers.Archive do
   """
 
   use Oban.Worker,
-    queue: :ingest,
+    queue: :archive,
     max_attempts: 1
 
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
