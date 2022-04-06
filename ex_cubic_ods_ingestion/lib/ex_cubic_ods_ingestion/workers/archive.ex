@@ -37,7 +37,7 @@ defmodule ExCubicOdsIngestion.Workers.Archive do
       Enum.join([
         archive_prefix,
         Path.dirname(load_rec.s3_key),
-        "/snapshot=#{Calendar.strftime(load_rec.snapshot, "%Y%m%d%H%M%S")}/",
+        "/snapshot=#{Calendar.strftime(load_rec.snapshot, "%Y%m%dT%H%M%SZ")}/",
         Path.basename(load_rec.s3_key)
       ])
 

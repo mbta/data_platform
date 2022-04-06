@@ -38,7 +38,7 @@ defmodule ExCubicOdsIngestion.Workers.Error do
       Enum.join([
         error_prefix,
         Path.dirname(load_rec.s3_key),
-        "/timestamp=#{Calendar.strftime(load_rec.s3_modified, "%Y%m%d%H%M%S")}/",
+        "/timestamp=#{Calendar.strftime(load_rec.s3_modified, "%Y%m%dT%H%M%SZ")}/",
         Path.basename(load_rec.s3_key)
       ])
 

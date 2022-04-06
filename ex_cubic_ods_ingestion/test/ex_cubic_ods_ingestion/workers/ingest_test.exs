@@ -3,6 +3,7 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
   use Oban.Testing, repo: ExCubicOdsIngestion.Repo
 
   alias ExCubicOdsIngestion.Schema.CubicOdsLoad
+  alias ExCubicOdsIngestion.StartIngestion
   alias ExCubicOdsIngestion.Workers.Ingest
 
   require MockExAws
@@ -19,8 +20,12 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
           new_table_rec
         )
 
+      # get records and update snapshots
       first_load_rec = List.first(new_load_recs)
+      StartIngestion.update_snapshot(first_load_rec)
+
       last_load_rec = List.last(new_load_recs)
+      StartIngestion.update_snapshot(last_load_rec)
 
       assert :ok =
                perform_job(Ingest, %{
