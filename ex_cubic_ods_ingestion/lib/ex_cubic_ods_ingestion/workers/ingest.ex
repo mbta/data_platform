@@ -62,7 +62,8 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
     prefix_operations =
       Application.fetch_env!(:ex_cubic_ods_ingestion, :s3_bucket_prefix_operations)
 
-    glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
+    glue_job_name =
+      Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest_incoming)
 
     lib_ex_aws.request!(
       ExAws.Glue.start_job_run(glue_job_name, %{
@@ -76,7 +77,8 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
 
   @spec get_glue_job_run_status(module(), String.t()) :: map()
   defp get_glue_job_run_status(lib_ex_aws, run_id) do
-    glue_job_name = Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest)
+    glue_job_name =
+      Application.fetch_env!(:ex_cubic_ods_ingestion, :glue_job_cubic_ods_ingest_incoming)
 
     # pause a litte before getting status
     Process.sleep(5000)
