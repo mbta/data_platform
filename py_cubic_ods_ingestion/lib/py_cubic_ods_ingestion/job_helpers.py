@@ -62,3 +62,11 @@ def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
         raise error
 
     return (env_dict, input_dict)
+
+
+def get_table_name_suffix(load_table_s3_prefix: str) -> str:
+    """
+    Table name suffix should be '__ct' if the S3 prefix is from change tracking.
+    """
+
+    return "__ct" if load_table_s3_prefix.endswith("__ct/") else ""
