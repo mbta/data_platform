@@ -38,3 +38,15 @@ def test_parse_args() -> None:
 
     # test invalid keys are ignored
     # assert ({}, {}) == job_helpers.parse_args("{\"key\":\"invalid\"}", "{\"key\":\"invalid\"}")
+
+
+def test_get_table_name_suffix() -> None:
+    """
+    Testing table name adjustment for change tracking prefixes.
+    """
+
+    # without ct
+    assert "" == job_helpers.get_table_name_suffix("cubic_ods_qlik/EDW.TEST/")
+
+    # with ct
+    assert "__ct" == job_helpers.get_table_name_suffix("cubic_ods_qlik/EDW.TEST__ct/")
