@@ -46,13 +46,12 @@ defmodule ExCubicOdsIngestion.Workers.Ingest do
 
         CubicOdsLoad.update_many(load_rec_ids, status: "ready_for_archiving")
 
+        :ok
+
       _other_glue_job_run_state ->
-        Logger.error("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
-
-        CubicOdsLoad.update_many(load_rec_ids, status: "ready_for_erroring")
+        # note: error will be handled within ObanIngestWorkerError module
+        {:error, "Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}"}
     end
-
-    :ok
   end
 
   @spec start_glue_job_run(module(), String.t(), String.t()) :: map()

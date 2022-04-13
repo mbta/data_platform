@@ -39,6 +39,15 @@ defmodule ExCubicOdsIngestion.Application do
         []
       )
 
+    # attach a specific error handler for the 'ingest' Oban worker
+    :ok =
+      :telemetry.attach(
+        "oban-ingest-worker-error",
+        [:oban, :job, :exception],
+        &ExCubicOdsIngestion.ObanIngestWorkerError.handle_event/4,
+        []
+      )
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: ExCubicOdsIngestion.Supervisor]
