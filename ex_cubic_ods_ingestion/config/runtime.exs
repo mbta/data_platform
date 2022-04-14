@@ -8,6 +8,12 @@ config :ex_cubic_ods_ingestion, ExCubicOdsIngestion.Repo,
   port: "DB_PORT" |> System.get_env("5432") |> String.to_integer(),
   configure: {ExCubicOdsIngestion.Repo, :before_connect, []}
 
+# for testing, we'd like to change the database
+if config_env() == :test do
+  config :ex_cubic_ods_ingestion, ExCubicOdsIngestion.Repo,
+    database: "#{System.get_env("DB_NAME")}_test"
+end
+
 config :ex_cubic_ods_ingestion,
   s3_bucket_operations: System.get_env("S3_BUCKET_OPERATIONS", ""),
   s3_bucket_prefix_operations: System.get_env("S3_BUCKET_PREFIX_OPERATIONS", ""),

@@ -16,7 +16,7 @@ defmodule ExCubicOdsIngestion.Workers.IngestTest do
       # insert load records
       {:ok, new_load_recs} =
         CubicOdsLoad.insert_new_from_objects_with_table(
-          MockExAws.Data.load_objects(),
+          MockExAws.Data.load_objects_without_bucket_prefix(),
           new_table_rec
         )
 
