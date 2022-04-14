@@ -184,9 +184,9 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
   end
 
   # @todo consider making this more specific to use cases
-  @spec update_many([integer()], Keyword.t()) :: [integer()]
+  @spec update_many([integer()], Keyword.t()) :: [t()]
   def update_many(load_rec_ids, change) do
-    {:ok, updated_load_rec_ids} =
+    {:ok, {_count, updated_load_recs}} =
       Repo.transaction(fn ->
         Repo.update_all(
           query_many(load_rec_ids),
@@ -194,7 +194,7 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
         )
       end)
 
-    updated_load_rec_ids
+    updated_load_recs
   end
 
   # private

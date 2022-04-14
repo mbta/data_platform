@@ -186,4 +186,17 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoadTest do
                )
     end
   end
+
+  describe "update_many/2" do
+    test "updating status to 'ready' for many IDs", %{table: table, load_objects: load_objects} do
+      {:ok, new_load_recs} = CubicOdsLoad.insert_new_from_objects_with_table(load_objects, table)
+
+      new_load_rec_ids = Enum.map(new_load_recs, fn rec -> rec.id end)
+
+      CubicOdsLoad.update_many(new_load_rec_ids, status: "ready")
+
+      assert ["ready", "ready"] ==
+               Enum.map(new_load_rec_ids, fn id -> CubicOdsLoad.get!(id).status end)
+    end
+  end
 end
