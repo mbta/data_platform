@@ -10,16 +10,25 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
   require MockExAws.Data
   require Logger
 
-  defp new_load_recs(_tags) do
-    new_table_rec = Repo.insert!(MockExAws.Data.table())
+  setup do
+    # insert table
+    table = Repo.insert!(MockExAws.Data.table())
 
+    # insert load records
     {:ok, load_recs} =
       CubicOdsLoad.insert_new_from_objects_with_table(
-        MockExAws.Data.load_objects(),
-        new_table_rec
+        MockExAws.Data.load_objects_without_bucket_prefix(),
+        table
       )
 
-    {:ok, %{load_recs: load_recs}}
+    [first_load_rec, last_load_rec] = load_recs
+
+    {:ok,
+     %{
+       load_recs: load_recs,
+       first_load_rec: first_load_rec,
+       last_load_rec: last_load_rec
+     }}
   end
 
   describe "status/0" do
@@ -35,14 +44,11 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
       assert :ok == ProcessIngestion.process_loads([])
     end
 
-    setup :new_load_recs
-
     test "processing with one ready for archiving load and one ready for erroring", %{
-      load_recs: new_load_recs
+      load_recs: new_load_recs,
+      first_load_rec: first_load_rec,
+      last_load_rec: last_load_rec
     } do
-      first_load_rec = List.first(new_load_recs)
-      last_load_rec = List.last(new_load_recs)
-
       CubicOdsLoad.update(first_load_rec, %{status: "ready_for_archiving"})
       CubicOdsLoad.update(last_load_rec, %{status: "ready_for_erroring"})
 
@@ -51,11 +57,9 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
   end
 
   describe "archive/1" do
-    setup :new_load_recs
-
-    test "archiving load after ingestion", %{load_recs: new_load_recs} do
-      first_load_rec = List.first(new_load_recs)
-
+    test "archiving load after ingestion", %{
+      first_load_rec: first_load_rec
+    } do
       # insert job
       ProcessIngestion.archive(first_load_rec)
 
@@ -67,11 +71,9 @@ defmodule ExCubicOdsIngestion.ProcessIngestionTest do
   end
 
   describe "error/1" do
-    setup :new_load_recs
-
-    test "processing error in ingestion", %{load_recs: new_load_recs} do
-      first_load_rec = List.first(new_load_recs)
-
+    test "processing error in ingestion", %{
+      first_load_rec: first_load_rec
+    } do
       # insert job
       ProcessIngestion.error(first_load_rec)
 
