@@ -16,7 +16,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
              :table_id,
              :status,
              :snapshot,
-             :is_cdc,
              :s3_key,
              :s3_modified,
              :s3_size,
@@ -30,7 +29,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
           table_id: integer(),
           status: String.t() | nil,
           snapshot: DateTime.t() | nil,
-          is_cdc: boolean() | nil,
           s3_key: String.t() | nil,
           s3_modified: DateTime.t() | nil,
           s3_size: integer() | nil,
@@ -44,7 +42,6 @@ defmodule ExCubicOdsIngestion.Schema.CubicOdsLoad do
     # @todo specify the different statuses
     field(:status, :string)
     field(:snapshot, :utc_datetime)
-    field(:is_cdc, :boolean)
     field(:s3_key, :string)
     field(:s3_modified, :utc_datetime)
     field(:s3_size, :integer)
