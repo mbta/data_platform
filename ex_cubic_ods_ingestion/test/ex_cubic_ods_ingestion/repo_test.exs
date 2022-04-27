@@ -36,15 +36,29 @@ defmodule ExCubicOdsIngestion.RepoTest do
       assert Keyword.fetch!(connection_config, :password) == "pass"
     end
 
-    test "generates RDS IAM auth token if rds module is configured" do
+    test "generates RDS IAM configuration if rds module is configured" do
       # set use_iam_token to true
       current_repo_config = Application.get_env(:ex_cubic_ods_ingestion, Repo)
       updated_repo_config = Keyword.merge(current_repo_config, use_iam_token: true)
       Application.put_env(:ex_cubic_ods_ingestion, Repo, updated_repo_config)
 
-      connection_config = Repo.before_connect(username: "u", hostname: "h", port: 4000)
+      hostname = "h"
 
+      connection_config = Repo.before_connect(username: "u", hostname: hostname, port: 4000)
+
+      # assert token is the same as what is mocked
       assert Keyword.fetch!(connection_config, :password) == "iam_token"
+
+      expected_ssl_opts = [
+        cacertfile: Application.app_dir(:ex_cubic_ods_ingestion, ["priv", "aws-cert-bundle.pem"]),
+        verify: :verify_peer,
+        server_name_indication: String.to_charlist(hostname),
+        verify_fun:
+          {&:ssl_verify_hostname.verify_fun/3, [check_hostname: String.to_charlist(hostname)]}
+      ]
+
+      # assert the ssl options are expected
+      assert Keyword.fetch!(connection_config, :ssl_opts) == expected_ssl_opts
     end
   end
 end

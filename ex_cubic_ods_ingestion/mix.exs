@@ -47,6 +47,7 @@ defmodule ExCubicOdsIngestion.MixProject do
       {:lcov_ex, "~> 0.2", only: [:dev, :test], runtime: false},
       {:oban, "~> 2.11"},
       {:postgrex, "~> 0.16"},
+      {:ssl_verify_fun, "~> 1.1"},
       {:sweet_xml, "~> 0.7"},
       {:telemetry, "~> 1.0"}
       # {:dep_from_hexpm, "~> 0.3.0"},

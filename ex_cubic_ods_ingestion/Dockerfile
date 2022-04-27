@@ -4,12 +4,18 @@ FROM hexpm/elixir:1.13.2-erlang-24.2-alpine-3.13.6 AS builder
 RUN mix local.hex --force && \
   mix local.rebar --force
 
-# Install git
-RUN apk --no-cache add git make
+# Install necessary tools
+RUN apk --no-cache add git make curl
 
 ENV MIX_ENV=prod
 
 WORKDIR /root
+
+# fetch RDS cert to be used in SSL connection to database
+RUN curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    -o aws-cert-bundle.pem
+# run SHA256 sum check
+RUN echo "75f921bbabaeb88e35a0d3e3b4c629a340612decd3918d094f80d2941235c204  aws-cert-bundle.pem" | sha256sum -c -
 
 COPY mix.exs mix.exs
 COPY mix.lock mix.lock
@@ -40,6 +46,9 @@ WORKDIR /home/ingestion
 ENV MIX_ENV=prod TERM=xterm LANG=C.UTF-8
 
 COPY --from=builder --chown=ingestion:ingestion /root/_build/prod/rel /home/ingestion/rel
+
+# copy cert to 'priv' folder where it's referenced by the code
+COPY --from=builder --chown=ingestion:ingestion /root/aws-cert-bundle.pem ./priv/aws-cert-bundle.pem
 
 # Ensure SSL support is enabled
 RUN /home/ingestion/rel/ex_cubic_ods_ingestion/bin/ex_cubic_ods_ingestion eval ":crypto.supports()"

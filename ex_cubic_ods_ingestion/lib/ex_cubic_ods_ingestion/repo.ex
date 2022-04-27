@@ -24,8 +24,18 @@ defmodule ExCubicOdsIngestion.Repo do
       port = Keyword.fetch!(config, :port)
       token = aws_rds.generate_db_auth_token(hostname, username, port, %{})
 
-      # update password with token
-      Keyword.put(config, :password, token)
+      # update password with token and update ssl options (if set) to ref rds cert
+      Keyword.merge(config,
+        password: token,
+        ssl_opts: [
+          cacertfile:
+            Application.app_dir(:ex_cubic_ods_ingestion, ["priv", "aws-cert-bundle.pem"]),
+          verify: :verify_peer,
+          server_name_indication: String.to_charlist(hostname),
+          verify_fun:
+            {&:ssl_verify_hostname.verify_fun/3, [check_hostname: String.to_charlist(hostname)]}
+        ]
+      )
     else
       config
     end
