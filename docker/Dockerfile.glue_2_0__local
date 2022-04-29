@@ -12,7 +12,7 @@ RUN apt install -y software-properties-common git curl openjdk-8-jdk-headless zi
 # fetch specific python version as needed for spark
 RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt update
-RUN apt install -y python3.7 python3.7-dev
+RUN apt install -y python3.7 python3.7-dev python3.7-distutils
 # symlink so spark uses the right version (ubuntu has python3 installed)
 RUN ln -s /usr/bin/python3.7 /usr/bin/python
 # install pip since it's not available in the docker image

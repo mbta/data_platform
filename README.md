@@ -9,6 +9,7 @@ Run the following:
 asdf plugin-add adr-tools
 asdf plugin-add elixir
 asdf plugin-add erlang
+asdf plugin-add java
 asdf plugin-add poetry
 asdf plugin-add python
 asdf plugin-add terraform
@@ -34,7 +35,7 @@ psql -U postgres -d data_platform
 To run glue jobs:
 ```sh
 # ex.
-docker-compose run --rm glue__local /glue/bin/gluesparksubmit /data_platform/aws/s3/glue_jobs/{glue_script_name}.py --JOB_NAME {glue_job_name} [--ARGS "..."]
+docker-compose run --rm glue_2_0__local /glue/bin/gluesparksubmit /data_platform/aws/s3/glue_jobs/{glue_script_name}.py --JOB_NAME {glue_job_name} [--ARGS "..."]
 ```
 
 
