@@ -36,16 +36,22 @@ cubic__ods_qlik__edw_sample__ct
 **cubic_tables**  
   name: 'cubic__ods_qlik__edw_sample'  
   s3_prefix: 'cubic/ods_qlik/EDW.SAMPLE/'  
+
+**cubic_table_ods_snapshots**  
+  table_id: {cubic_tables.id}  
   snapshot: {utc_datetime} # when data collection was started/restarted  
   snapshot_s3_key: 'cubic/ods_qlik/EDW.SAMPLE/LOAD001.csv.gz'  
 
 **cubic_loads**  
   table_id: {cubic_tables.id}  
   status: 'ready', 'ingesting', 'ready_for_archiving', 'ready_for_erroring', 'archiving', 'erroring', 'archived', 'errored'  
-  snapshot: {cubic_tables.snapshot} # note: at the time of creation  
   s3_key: {s3.object.key} # 'cubic/ods_qlik/EDW.SAMPLE/LOAD001.csv.gz' or 'cubic/ods_qlik/EDW.SAMPLE__ct/20220304-134556444.csv.gz'  
   s3_modified: {s3.object.modified}  
   s3_size: {s3.size}  
+
+**cubic_load_ods_snapshots**  
+  load_id: {cubic_loads.id}  
+  snapshot: {cubic_table_ods_snapshots.snapshot} # note: at the time of creation  
 
 
 ### Cubic DMAP
@@ -66,13 +72,10 @@ cubic__dmap__agg_sample
 **cubic_tables**  
   name: 'cubic__dmap__agg_sample'  
   s3_prefix: 'cubic/dmap/agg_sample/'  
-  snapshot: {utc_datetime} # when data collection was started/restarted  
-  snapshot_s3_key: null  
 
 **cubic_loads**  
   table_id: {cubic_tables.id}  
   status: 'ready', 'ingesting', 'ready_for_archiving', 'ready_for_erroring', 'archiving', 'erroring', 'archived', 'errored'  
-  snapshot: {cubic_tables.snapshot} # note: at the time of creation  
   s3_key: {s3.object.key} # 'cubic/dmap/agg_sample/20220304.csv'  
   s3_modified: {s3.object.modified}  
   s3_size: {s3.size}  
@@ -80,6 +83,9 @@ cubic__dmap__agg_sample
 
 ### Cubic Kafka
 
+**[TBD]**
+
+One approach:  
 A Kinesis Data Stream will receive Cubic's Kafka output. A Lambda will be triggered after 10,000 records or one hour has passed, whichever is first. The Lambda will create a file with these records and upload it to the Incoming bucket. The file paths will look like this:
 
 * cubic/kafka/sample/vytxeTZskVKR7C7WgdSP3d.json # uuid
@@ -97,13 +103,10 @@ cubic__kafka__sample
 **cubic_tables**  
   name: 'cubic__kafka__sample'  
   s3_prefix: 'cubic/kafka/sample/'  
-  snapshot: {utc_datetime} # when data collection was started/restarted  
-  snapshot_s3_key: null  
 
 **cubic_loads**  
   table_id: {cubic_tables.id}  
   status: 'ready', 'ingesting', 'ready_for_archiving', 'ready_for_erroring', 'archiving', 'erroring', 'archived', 'errored'  
-  snapshot: {cubic_tables.snapshot} # note: at the time of creation  
   s3_key: {s3.object.key} # 'cubic/kafka/sample/20220304.csv'  
   s3_modified: {s3.object.modified}  
   s3_size: {s3.size}  
@@ -118,9 +121,18 @@ Here we describe a path to implementation and refactoring of the current ingesti
 **Tables**  
 cubic_ods_tables -> cubic_tables  
 cubic_ods_loads -> cubic_loads  
+cubic_table_ods_snapshots (new)  
+  table_id  
+  snapshot  
+  snapshot_s3_key  
+cubic_load_ods_snapshots (new)  
+  load_id  
+  snapshot  
 
 **Columns**  
-cubic_ods_tables.snapshot_s3_key -> nullable  
+cubic_tables.snapshot (drop)
+cubic_tables.snapshot_s3_key (drop)
+cubic_loads.snapshot (drop)
 
 ### ExCubicOdsIngestion -> ExCubicIngestion
 
@@ -130,7 +142,10 @@ Tests will need to be adjusted to be more specific to the `cubic/` prefix.
 
 #### Schemas
 
-`CubicOdsTable -> CubicTable` schema needs to be updated to make `snapshot_s3_key` nullable.
+`CubicOdsTable -> CubicTable` schema needs to be updated to drop `snapshot` and `snapshot_s3_key`.  
+`CubicOdsLoad -> CubicLoad` schema needs to be updated to drop `snapshot`.  
+`CubidTableOdsSnapshot` schema will be added.  
+`CubidLoadOdsSnapshot` schema will be added.  
 
 #### GenServers
 
@@ -144,7 +159,7 @@ Comments should be updated to remove any callouts to 'ODS'.
 
 #### Glue Job
 
-`cubic_ods_ingest_incoming.py -> cubic__ingest_incoming.py`
+`cubic_ods_ingest_incoming.py -> cubic__ingest_incoming.py` will take into account ODS tables and writing with an additional 'snapshot' partition.
 
 ## Consequences
 
