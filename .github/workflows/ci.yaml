@@ -35,7 +35,7 @@ jobs:
     needs: asdf
     defaults:
       run:
-        working-directory: ex_cubic_ods_ingestion
+        working-directory: ex_cubic_ingestion
 
     env:
       DB_HOST: localhost
@@ -71,7 +71,7 @@ jobs:
         id: deps-cache
         uses: actions/cache@v2
         with:
-          path: ex_cubic_ods_ingestion/deps
+          path: ex_cubic_ingestion/deps
           key: ${{ runner.os }}-mix-v2-${{ hashFiles('**/mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-v2
       - name: Install dependencies (if needed)
@@ -94,11 +94,11 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: elixir-lcov
-          path: ex_cubic_ods_ingestion/cover/
+          path: ex_cubic_ingestion/cover/
           if-no-files-found: error
       - uses: mbta/actions/dialyzer@v1
         with:
-          working-directory: ex_cubic_ods_ingestion
+          working-directory: ex_cubic_ingestion
 
   py_build:
     name: Python Build and test
@@ -106,7 +106,7 @@ jobs:
     needs: asdf
     defaults:
       run:
-        working-directory: py_cubic_ods_ingestion
+        working-directory: py_cubic_ingestion
 
     steps:
       - name: Checkout repository code
@@ -144,5 +144,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: python-lcov
-          path: py_cubic_ods_ingestion/cover/
+          path: py_cubic_ingestion/cover/
           if-no-files-found: error

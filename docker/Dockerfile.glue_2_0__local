@@ -32,12 +32,12 @@ RUN /glue/bin/gluesparksubmit --version
 
 # python packaging
 RUN pip install poetry
-# install py_cubic_ods_ingestion's required python dependencies
-COPY ./py_cubic_ods_ingestion /data_platform/py_cubic_ods_ingestion
-WORKDIR /data_platform/py_cubic_ods_ingestion
+# install py_cubic_ingestion's required python dependencies
+COPY ./py_cubic_ingestion /data_platform/py_cubic_ingestion
+WORKDIR /data_platform/py_cubic_ingestion
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev
-# install an editable link of py_cubic_ods_ingestion
+# install an editable link of py_cubic_ingestion
 RUN pip install --editable .
 
 CMD ["echo", "Container 'glue__local' ready!"]

@@ -1,0 +1,52 @@
+# poetry
+[tool.poetry]
+name = "py_cubic_ingestion"
+version = "0.1.0"
+description = ""
+authors = ["MBTA CTD <developer@mbta.com>"]
+packages = [
+  { include = "py_cubic_ingestion", from = "lib" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[tool.poetry.dev-dependencies]
+black = "^22.1.0"
+pytest = "^7.1.1"
+mypy = "^0.941"
+coverage = "6.3.2"
+pylint = "^2.13.3"
+pyspark = "3.1.1"
+
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# black
+[tool.black]
+line-length = 120 # matches 'ex_cubic_ingestion/.credo.exs'
+target-version = ['py37']
+
+# mypy
+[tool.mypy]
+python_version = 3.7
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+  'pyspark.*',
+  'awsglue.*'
+]
+ignore_missing_imports = true
+
+# pytest
+[tool.pytest.ini_options]
+testpaths = [
+  "tests"
+]
