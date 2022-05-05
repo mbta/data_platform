@@ -7,8 +7,7 @@ import sys
 from awsglue.context import GlueContext  # pylint: disable=import-error
 from awsglue.job import Job  # pylint: disable=import-error
 from awsglue.utils import getResolvedOptions  # pylint: disable=import-error
-from pyspark.context import SparkContext  # pylint: disable=import-error
-from pyspark.sql.functions import lit  # pylint: disable=import-error
+from pyspark.context import SparkContext
 
 from py_cubic_ods_ingestion import job_helpers
 
@@ -37,32 +36,26 @@ def run() -> None:
 
     # run glue transformations for each cubic ods load
     for load in input_dict.get("loads", []):
-        load_s3_key = load["s3_key"]
+        from_catalog_kwargs = job_helpers.from_catalog_kwargs(load, env_dict)
+        # create table dataframe using the data catalog table in glue
+        table_df = glue_context.create_dynamic_frame.from_catalog(**from_catalog_kwargs)
+
+        # add partition columns
+        table_spark_df = job_helpers.df_with_snapshot_identifier(
+            table_df.toDF(),  # convert to spark df so we can use the withColumn functionality
+            load["snapshot"],
+            os.path.basename(load["s3_key"]),
+        )
+
+        # write out to springboard bucket using the same prefix as incoming
         load_table_s3_prefix = job_helpers.removeprefix(
-            f"{os.path.dirname(load_s3_key)}/",
+            f'{os.path.dirname(load["s3_key"])}/',
             env_dict.get("S3_BUCKET_PREFIX_INCOMING", ""),
         )
-        data_catalog_table_name_suffix = job_helpers.get_table_name_suffix(load_table_s3_prefix)
-
-        # create table dataframe using the data catalog table in glue
-        table_df = glue_context.create_dynamic_frame.from_catalog(
-            database=env_dict["GLUE_DATABASE_INCOMING"],
-            table_name=f'{load["table_name"]}{data_catalog_table_name_suffix}',
-            additional_options={"paths": [f's3://{env_dict["S3_BUCKET_INCOMING"]}/{load_s3_key}']},
-            transformation_ctx=f"{job_name}_table_df_read",
-        )
-
-        # convert to spark dataframe so we can use the withColumn functionality
-        table_spark_df = table_df.toDF()
-        # add partition columns
-        table_spark_df = table_spark_df.withColumn("snapshot", lit(load["snapshot"])).withColumn(
-            "identifier", lit(os.path.basename(load_s3_key))
-        )
-
-        # write out to springboard bucket with overwrite mode
-        table_spark_df.write.mode("overwrite").partitionBy("snapshot", "identifier").parquet(
-            f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}/'
-            f'{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{load_table_s3_prefix}'
+        job_helpers.write_parquet(
+            table_spark_df,
+            f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}'
+            f'/{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{load_table_s3_prefix}',
         )
 
     job.commit()
