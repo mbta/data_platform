@@ -107,7 +107,7 @@ defmodule MockExAws do
     cubic_ods_qlik = cubic <> "ods_qlik/"
     cubic_ods_qlik_sample = cubic_ods_qlik <> "SAMPLE/"
     cubic_dmap = cubic <> "dmap/"
-    cubic_dmap_agg_sample = cubic_dmap <> "agg_sample/"
+    cubic_dmap_sample = cubic_dmap <> "sample/"
 
     case params do
       %{"prefix" => ^cubic_ods_qlik, "delimiter" => "/"} ->
@@ -124,8 +124,18 @@ defmodule MockExAws do
         {:ok,
          %{
            body: %{
-             common_prefixes: [%{prefix: cubic_dmap_agg_sample}],
+             common_prefixes: [%{prefix: cubic_dmap_sample}],
              contents: [],
+             next_continuation_token: ""
+           }
+         }}
+
+      %{"prefix" => ^cubic_dmap_sample} ->
+        {:ok,
+         %{
+           body: %{
+             common_prefixes: [],
+             contents: MockExAws.Data.load_objects(cubic_dmap_sample),
              next_continuation_token: ""
            }
          }}
@@ -135,7 +145,7 @@ defmodule MockExAws do
          %{
            body: %{
              common_prefixes: [],
-             contents: MockExAws.Data.load_objects(),
+             contents: MockExAws.Data.load_objects(cubic_ods_qlik_sample),
              next_continuation_token: ""
            }
          }}

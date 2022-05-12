@@ -1,6 +1,7 @@
 defmodule ExCubicIngestion.Schema.CubicLoad do
   @moduledoc """
-  Schema.CubicLoad @todo
+  Contains information on the objects passing through the 'incoming' S3 bucket, as well
+  their status while transitioning through the various steps in the data pipeline process.
   """
   use Ecto.Schema
 
@@ -97,7 +98,9 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
         Enum.reduce(filters, __MODULE__, fn {s3_key, s3_modified}, query ->
           # query
           from(load in query,
-            or_where: load.s3_key == ^s3_key and load.s3_modified == ^s3_modified
+            or_where:
+              is_nil(load.deleted_at) and load.s3_key == ^s3_key and
+                load.s3_modified == ^s3_modified
           )
         end)
 
@@ -123,10 +126,9 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   @spec get_status_ready :: [t()]
   def get_status_ready do
-    # @todo add deleted filter
     query =
       from(load in __MODULE__,
-        where: load.status == "ready",
+        where: is_nil(load.deleted_at) and load.status == "ready",
         order_by: [load.s3_modified, load.s3_key]
       )
 
@@ -135,10 +137,10 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   @spec get_status_ready_for :: [t()]
   def get_status_ready_for do
-    # @todo add deleted filter
     query =
       from(load in __MODULE__,
-        where: load.status in ["ready_for_archiving", "ready_for_erroring"]
+        where:
+          is_nil(load.deleted_at) and load.status in ["ready_for_archiving", "ready_for_erroring"]
       )
 
     Repo.all(query)
@@ -150,7 +152,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
       from(load in __MODULE__,
         join: table in CubicTable,
         on: table.id == load.table_id,
-        where: load.id in ^load_rec_ids,
+        where: is_nil(load.deleted_at) and load.id in ^load_rec_ids,
         select: {load, table}
       )
     )

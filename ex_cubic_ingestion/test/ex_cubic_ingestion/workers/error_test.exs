@@ -3,31 +3,35 @@ defmodule ExCubicIngestion.Workers.ErrorTest do
   use Oban.Testing, repo: ExCubicIngestion.Repo
 
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicTable
   alias ExCubicIngestion.Workers.Error
 
   require MockExAws
 
   describe "perform/1" do
     test "run job without error" do
-      # insert a new table
-      new_table_rec = Repo.insert!(MockExAws.Data.table())
+      dmap_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_dmap__sample",
+          s3_prefix: "cubic/dmap/sample/"
+        })
 
-      # insert load records
-      {:ok, new_load_recs} =
-        CubicLoad.insert_new_from_objects_with_table(
-          MockExAws.Data.load_objects_without_bucket_prefix(),
-          new_table_rec
-        )
-
-      first_load_rec = List.first(new_load_recs)
+      dmap_load_1 =
+        Repo.insert!(%CubicLoad{
+          table_id: dmap_table.id,
+          status: "ready_for_erroring",
+          s3_key: "cubic/dmap/sample/20220101.csv",
+          s3_modified: ~U[2022-01-01 20:49:50Z],
+          s3_size: 197
+        })
 
       assert :ok ==
                perform_job(Error, %{
-                 load_rec_id: first_load_rec.id,
+                 load_rec_id: dmap_load_1.id,
                  lib_ex_aws: "MockExAws"
                })
 
-      assert "errored" == CubicLoad.get!(first_load_rec.id).status
+      assert "errored" == CubicLoad.get!(dmap_load_1.id).status
     end
   end
 end

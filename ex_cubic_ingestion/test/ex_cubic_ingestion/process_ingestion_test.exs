@@ -4,6 +4,7 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
 
   alias ExCubicIngestion.ProcessIngestion
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicTable
   alias ExCubicIngestion.Workers.Archive
   alias ExCubicIngestion.Workers.Error
 
@@ -11,23 +12,36 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
   require Logger
 
   setup do
-    # insert table
-    table = Repo.insert!(MockExAws.Data.table())
+    # insert tables
+    dmap_table =
+      Repo.insert!(%CubicTable{
+        name: "cubic_dmap__sample",
+        s3_prefix: "cubic/dmap/sample/"
+      })
 
-    # insert load records
-    {:ok, load_recs} =
-      CubicLoad.insert_new_from_objects_with_table(
-        MockExAws.Data.load_objects_without_bucket_prefix(),
-        table
-      )
+    # insert loads
+    dmap_load_1 =
+      Repo.insert!(%CubicLoad{
+        table_id: dmap_table.id,
+        status: "ready_for_archiving",
+        s3_key: "cubic/dmap/sample/20220101.csv",
+        s3_modified: ~U[2022-01-01 20:49:50Z],
+        s3_size: 197
+      })
 
-    [first_load_rec, last_load_rec] = load_recs
+    dmap_load_2 =
+      Repo.insert!(%CubicLoad{
+        table_id: dmap_table.id,
+        status: "ready_for_erroring",
+        s3_key: "cubic/dmap/sample/20220102.csv",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197
+      })
 
     {:ok,
      %{
-       load_recs: load_recs,
-       first_load_rec: first_load_rec,
-       last_load_rec: last_load_rec
+       dmap_load_1: dmap_load_1,
+       dmap_load_2: dmap_load_2
      }}
   end
 
@@ -45,42 +59,38 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
     end
 
     test "processing with one ready for archiving load and one ready for erroring", %{
-      load_recs: new_load_recs,
-      first_load_rec: first_load_rec,
-      last_load_rec: last_load_rec
+      dmap_load_1: dmap_load_1,
+      dmap_load_2: dmap_load_2
     } do
-      CubicLoad.update(first_load_rec, %{status: "ready_for_archiving"})
-      CubicLoad.update(last_load_rec, %{status: "ready_for_erroring"})
-
-      assert :ok == ProcessIngestion.process_loads(new_load_recs)
+      assert :ok == ProcessIngestion.process_loads([dmap_load_1, dmap_load_2])
     end
   end
 
   describe "archive/1" do
     test "archiving load after ingestion", %{
-      first_load_rec: first_load_rec
+      dmap_load_1: dmap_load_1
     } do
       # insert job
-      ProcessIngestion.archive(first_load_rec)
+      ProcessIngestion.archive(dmap_load_1)
 
-      # make sure at least of the load records is in an "archiving" status
-      assert "archiving" == CubicLoad.get!(first_load_rec.id).status
+      # make sure record is in an "archiving" status
+      assert "archiving" == CubicLoad.get!(dmap_load_1.id).status
 
-      assert_enqueued(worker: Archive, args: %{load_rec_id: first_load_rec.id})
+      assert_enqueued(worker: Archive, args: %{load_rec_id: dmap_load_1.id})
     end
   end
 
   describe "error/1" do
     test "processing error in ingestion", %{
-      first_load_rec: first_load_rec
+      dmap_load_1: dmap_load_1
     } do
       # insert job
-      ProcessIngestion.error(first_load_rec)
+      ProcessIngestion.error(dmap_load_1)
 
-      # make sure at least of the load records is in an "archiving" status
-      assert "erroring" == CubicLoad.get!(first_load_rec.id).status
+      # make sure record is in "erroring" status
+      assert "erroring" == CubicLoad.get!(dmap_load_1.id).status
 
-      assert_enqueued(worker: Error, args: %{load_rec_id: first_load_rec.id})
+      assert_enqueued(worker: Error, args: %{load_rec_id: dmap_load_1.id})
     end
   end
 end

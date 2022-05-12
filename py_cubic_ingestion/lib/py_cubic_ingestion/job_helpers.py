@@ -32,13 +32,13 @@ def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
     --------
     >>> parse_job_arguments(
     ...   '{"GLUE_DATABASE_INCOMING": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
-    ...   '{"loads":[{"s3_key":"s3/prefix/key","snapshot":"20220101","table_name":"table"}]}'
+    ...   '{"generic_loads":[...],"ods_loads":[...]}'
     ... )
     ({'GLUE_DATABASE_INCOMING': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'},
-    ...{'loads': [{'s3_key': 's3/prefix/key', 'snapshot': '20220101', 'table_name': 'table'}]})
+    ...{'generic_loads': [...],"ods_loads":[...]})
     """
 
-    log_prefix = "[py_cubic_ingestion][job_helpers]"
+    log_prefix = "[py_cubic_ingestion] [job_helpers]"
 
     env_dict = {}
     try:
@@ -109,27 +109,28 @@ def from_catalog_kwargs(load: dict, env: dict) -> dict:
     }
 
 
-def df_with_identifier(df: DataFrame, identifier_val: str) -> DataFrame:
+def df_with_partition_columns(df: DataFrame, partition_columns: list) -> DataFrame:
     """
-    Construct a new DataFrame with 'identifier' column added
-
+    Construct a new DataFrame with 'snapshot' and 'identifier' columns added
     Parameters
     ----------
     df : DataFrame
         DataFrame containing the data
-    identifier_val : str
-        Value of the 'identifier' column
-
+    partition_columns: list
+        List of tuples with partition name and value
     Returns
     -------
     DataFrame
-        Updated DataFrame containing the 'identifier' column
+        Updated DataFrame containing the partition columns
     """
 
-    return df.withColumn("identifier", lit(identifier_val))
+    for (name, val) in partition_columns:
+        df = df.withColumn(name, lit(val))
+
+    return df
 
 
-def write_parquet(df: DataFrame, destination: str) -> None:
+def write_parquet(df: DataFrame, partition_names: list, destination: str) -> None:
     """
     Write a DataFrame to Parquet in the designated path
 
@@ -137,8 +138,11 @@ def write_parquet(df: DataFrame, destination: str) -> None:
     ----------
     df : DataFrame
         DataFrame containing the data
+    partition_names : list
+        List of partition names to partition by
     destination : str
         Path to write to
     """
+    print(partition_names)
 
-    df.write.mode("overwrite").partitionBy("identifier").parquet(destination)
+    df.write.mode("overwrite").partitionBy(partition_names).parquet(destination)

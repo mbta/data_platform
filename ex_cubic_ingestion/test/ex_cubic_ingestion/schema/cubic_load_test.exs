@@ -7,59 +7,61 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
   alias ExCubicIngestion.Schema.CubicTable
 
   setup do
-    table = Repo.insert!(MockExAws.Data.table())
-    {:ok, %{table: table, load_objects: MockExAws.Data.load_objects_without_bucket_prefix()}}
+    incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+    cubic_dmap_sample = "#{incoming_prefix}cubic/dmap/sample/"
+
+    # insert tables
+    dmap_table =
+      Repo.insert!(%CubicTable{
+        name: "cubic_dmap__sample",
+        s3_prefix: "cubic/dmap/sample/"
+      })
+
+    # only working with dmap loads as distinction doesn't matter in tests
+    {:ok,
+     %{
+       dmap_table: dmap_table,
+       dmap_load_objects: MockExAws.Data.load_objects_without_bucket_prefix(cubic_dmap_sample)
+     }}
   end
 
   describe "insert_new_from_objects_with_table/1" do
-    test "providing a non-empty list of objects", %{table: table, load_objects: load_objects} do
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+    test "providing a non-empty list of objects", %{
+      dmap_table: dmap_table,
+      dmap_load_objects: dmap_load_objects
+    } do
+      {:ok, new_load_recs} =
+        CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
-      assert [
-               %{
-                 status: "ready",
-                 s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv",
-                 s3_modified: ~U[2022-02-08 20:49:50Z],
-                 s3_size: 197
-               },
-               %{
-                 status: "ready",
-                 s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv",
-                 s3_modified: ~U[2022-02-08 20:50:50Z],
-                 s3_size: 123
-               }
-             ] ==
-               Enum.map(new_load_recs, fn new_load_rec ->
-                 %{
-                   status: new_load_rec.status,
-                   s3_key: new_load_rec.s3_key,
-                   s3_modified: new_load_rec.s3_modified,
-                   s3_size: new_load_rec.s3_size
-                 }
-               end)
+      assert Enum.map(dmap_load_objects, &%{s3_key: &1[:key]}) ==
+               Enum.map(new_load_recs, &%{s3_key: &1.s3_key})
     end
 
-    test "providing an empty list of objects", %{table: table} do
-      assert {:ok, []} == CubicLoad.insert_new_from_objects_with_table([], table)
+    test "providing an empty list of objects", %{
+      dmap_table: dmap_table
+    } do
+      assert {:ok, []} == CubicLoad.insert_new_from_objects_with_table([], dmap_table)
     end
   end
 
   describe "get_by_objects/1" do
     test "getting records just added by providing the list we added from", %{
-      table: table,
-      load_objects: load_objects
+      dmap_table: dmap_table,
+      dmap_load_objects: dmap_load_objects
     } do
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+      {:ok, new_load_recs} =
+        CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
-      assert new_load_recs ==
-               CubicLoad.get_by_objects(load_objects)
+      assert new_load_recs == CubicLoad.get_by_objects(dmap_load_objects)
     end
 
     test "getting no records by providing a list with a load object not in db", %{
-      table: table,
-      load_objects: load_objects
+      dmap_table: dmap_table,
+      dmap_load_objects: dmap_load_objects
     } do
-      {:ok, _new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+      # put some records in DB
+      CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       assert [] ==
                CubicLoad.get_by_objects([
@@ -77,13 +79,13 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     test "getting no records by providing an empty list" do
       assert [] == CubicLoad.get_by_objects([])
     end
-
-    # @todo test for improper load object map
   end
 
   describe "not_added/2" do
-    test "object NOT found in database records", %{load_objects: load_objects} do
-      load_object = List.first(load_objects)
+    test "object NOT found in database records", %{
+      dmap_load_objects: dmap_load_objects
+    } do
+      load_object = List.first(dmap_load_objects)
 
       load_recs = [
         %CubicLoad{
@@ -95,13 +97,15 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       assert CubicLoad.not_added(load_object, load_recs)
     end
 
-    test "object found in database records", %{load_objects: load_objects} do
-      load_object = List.first(load_objects)
+    test "object found in database records", %{
+      dmap_load_objects: dmap_load_objects
+    } do
+      load_object = List.first(dmap_load_objects)
 
       load_recs = [
         %CubicLoad{
-          s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv",
-          s3_modified: ~U[2022-02-08 20:49:50Z]
+          s3_key: "cubic/dmap/sample/20220101.csv",
+          s3_modified: ~U[2022-01-01 20:49:50Z]
         }
       ]
 
@@ -111,31 +115,29 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
   describe "get_status_ready/0" do
     test "getting load records with the status 'ready'", %{
-      table: table,
-      load_objects: load_objects
+      dmap_table: dmap_table,
+      dmap_load_objects: dmap_load_objects
     } do
       # insert records as ready
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+      {:ok, [first_new_load_rec | rest_new_load_recs]} =
+        CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       # set the first record to 'archived'
-      {:ok, _archived_load_rec} =
-        Repo.transaction(fn ->
-          Repo.update!(change(List.first(new_load_recs), status: "archived"))
-        end)
-
-      ready_load_recs = CubicLoad.get_status_ready()
-      # filter down to the ones we just inserted
-      filtered_ready_load_recs = Enum.filter(ready_load_recs, &Enum.member?(new_load_recs, &1))
+      Repo.update!(change(first_new_load_rec, status: "archived"))
 
       # assert that the last record inserted comes back
-      assert [List.last(new_load_recs)] == filtered_ready_load_recs
+      assert rest_new_load_recs == CubicLoad.get_status_ready()
     end
   end
 
   describe "update/2" do
-    test "setting an 'archived' status", %{table: table, load_objects: load_objects} do
+    test "setting an 'archived' status", %{
+      dmap_table: dmap_table,
+      dmap_load_objects: dmap_load_objects
+    } do
       # insert records as ready
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+      {:ok, new_load_recs} =
+        CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       # use the first record
       first_load_rec = List.first(new_load_recs)
@@ -143,7 +145,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       # update it to 'archived' status
       updated_load_rec = CubicLoad.update(first_load_rec, status: "archived")
 
-      assert Repo.get!(CubicLoad, first_load_rec.id) == updated_load_rec
+      assert CubicLoad.get!(first_load_rec.id) == updated_load_rec
     end
   end
 
@@ -152,50 +154,40 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       assert [] == CubicLoad.get_many_with_table([])
     end
 
-    test "getting records by passing load records with tables attached", %{
-      table: table,
-      load_objects: load_objects
+    test "getting records by passing load record IDs", %{
+      dmap_table: dmap_table,
+      dmap_load_objects: dmap_load_objects
     } do
       # insert records as ready
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+      {:ok, new_load_recs} =
+        CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
-      # use the first record
-      first_load_rec = List.first(new_load_recs)
+      new_load_rec_ids = Enum.map(new_load_recs, & &1.id)
 
-      # insert new table
-      new_table_rec = %CubicTable{
-        name: "vendor__sample",
-        s3_prefix: "vendor/SAMPLE/"
-      }
-
-      {:ok, inserted_table_rec} =
-        Repo.transaction(fn ->
-          Repo.insert!(new_table_rec)
-        end)
-
-      # update table_id for first load rec
-      CubicLoad.update(first_load_rec, %{table_id: inserted_table_rec.id})
-
-      assert [{first_load_rec.id, inserted_table_rec.id}] ==
-               Enum.map(
-                 CubicLoad.get_many_with_table([first_load_rec.id]),
-                 fn {load_rec, table_rec} ->
-                   {load_rec.id, table_rec.id}
-                 end
+      # sort actual recs, as sometimes they might come back out of order
+      assert Enum.map(new_load_recs, &{&1, dmap_table}) ==
+               Enum.sort(
+                 CubicLoad.get_many_with_table(new_load_rec_ids),
+                 &(elem(&1, 0).id < elem(&2, 0).id)
                )
     end
   end
 
   describe "update_many/2" do
-    test "updating status to 'ready' for many IDs", %{table: table, load_objects: load_objects} do
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+    test "updating status to 'ready' for many IDs", %{
+      dmap_table: dmap_table,
+      dmap_load_objects: dmap_load_objects
+    } do
+      {:ok, new_load_recs} =
+        CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
-      new_load_rec_ids = Enum.map(new_load_recs, fn rec -> rec.id end)
+      new_load_rec_ids = Enum.map(new_load_recs, & &1.id)
 
       CubicLoad.update_many(new_load_rec_ids, status: "ready")
 
-      assert ["ready", "ready"] ==
-               Enum.map(new_load_rec_ids, fn id -> CubicLoad.get!(id).status end)
+      # assert all are in 'ready' status
+      assert Enum.map(new_load_rec_ids, fn _rec_id -> "ready" end) ==
+               Enum.map(new_load_rec_ids, &CubicLoad.get!(&1).status)
     end
   end
 end

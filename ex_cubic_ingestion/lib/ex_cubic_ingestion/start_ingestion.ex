@@ -7,6 +7,7 @@ defmodule ExCubicIngestion.StartIngestion do
 
   alias ExCubicIngestion.Repo
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicOdsLoadSnapshot
   alias ExCubicIngestion.Workers.Ingest
 
   require Oban
@@ -51,14 +52,30 @@ defmodule ExCubicIngestion.StartIngestion do
     {:reply, state.status, state}
   end
 
-  # server helper functions
+  @doc """
+  Get list of load records that are in 'ready' state, ordered by s3_modified, s3_key,
+  and prepare them for processing.
+  """
   @spec run() :: :ok
   def run do
-    # get list of load records that are in 'ready' state, ordered by s3_modified, s3_key
-    # prepare them for processing, and kick off separate flows
-    CubicLoad.get_status_ready()
+    ready_loads = CubicLoad.get_status_ready()
+
+    # for ODS loads, update snapshots
+    :ok =
+      ready_loads
+      |> Enum.filter(&String.starts_with?(&1.s3_key, "cubic/ods_qlik/"))
+      |> Enum.each(&CubicOdsLoadSnapshot.update_snapshot(&1))
+
+    # start ingestion
+    ready_loads
     |> chunk_loads()
     |> Enum.each(&process_loads/1)
+  end
+
+  @spec chunk_loads([CubicLoad.t()]) :: [[CubicLoad.t(), ...]]
+  defp chunk_loads(loads) do
+    # @todo replace chunk_every with chunk_while for more fine-tuned control
+    Enum.chunk_every(loads, 3)
   end
 
   @spec process_loads([CubicLoad.t(), ...]) ::
@@ -67,12 +84,6 @@ defmodule ExCubicIngestion.StartIngestion do
     start_ingestion(Enum.map(ready_load_chunk, & &1.id))
 
     :ok
-  end
-
-  @spec chunk_loads([CubicLoad.t()]) :: [[CubicLoad.t(), ...]]
-  defp chunk_loads(loads) do
-    # @todo replace chunk_every with chunk_while for more fine-tuned control
-    Enum.chunk_every(loads, 3)
   end
 
   @spec start_ingestion([integer()]) :: {atom(), map()}

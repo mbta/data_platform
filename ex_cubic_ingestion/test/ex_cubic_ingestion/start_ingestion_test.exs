@@ -3,32 +3,62 @@ defmodule ExCubicIngestion.StartIngestionTest do
   use Oban.Testing, repo: ExCubicIngestion.Repo
 
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
+  alias ExCubicIngestion.Schema.CubicTable
   alias ExCubicIngestion.StartIngestion
   alias ExCubicIngestion.Workers.Ingest
 
   require MockExAws.Data
   require Logger
 
-  # setup server for each test
   setup do
-    # insert table
-    table = Repo.insert!(MockExAws.Data.table())
+    # insert tables
+    dmap_table =
+      Repo.insert!(%CubicTable{
+        name: "cubic_dmap__sample",
+        s3_prefix: "cubic/dmap/sample/"
+      })
 
-    # insert load records
-    {:ok, load_recs} =
-      CubicLoad.insert_new_from_objects_with_table(
-        MockExAws.Data.load_objects_without_bucket_prefix(),
-        table
-      )
+    ods_table =
+      Repo.insert!(%CubicTable{
+        name: "cubic_ods_qlik__sample",
+        s3_prefix: "cubic/ods_qlik/SAMPLE/"
+      })
 
-    [first_load_rec, last_load_rec] = load_recs
+    # insert ODS table
+    ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+
+    Repo.insert!(%CubicOdsTableSnapshot{
+      table_id: ods_table.id,
+      snapshot: nil,
+      snapshot_s3_key: ods_snapshot_s3_key
+    })
+
+    # insert loads
+    dmap_load_1 =
+      Repo.insert!(%CubicLoad{
+        table_id: dmap_table.id,
+        status: "ready",
+        s3_key: "cubic/dmap/sample/20220101.csv",
+        s3_modified: ~U[2022-01-01 20:49:50Z],
+        s3_size: 197
+      })
+
+    ods_load_1 =
+      Repo.insert!(%CubicLoad{
+        table_id: ods_table.id,
+        status: "ready",
+        s3_key: ods_snapshot_s3_key,
+        s3_modified: ~U[2022-01-01 20:49:50Z],
+        s3_size: 197
+      })
 
     {:ok,
      %{
-       table: table,
-       load_recs: load_recs,
-       first_load_rec: first_load_rec,
-       last_load_rec: last_load_rec
+       load_rec_ids: [
+         dmap_load_1.id,
+         ods_load_1.id
+       ]
      }}
   end
 
@@ -41,17 +71,15 @@ defmodule ExCubicIngestion.StartIngestionTest do
   end
 
   describe "run/0" do
-    test "schedules ingestion for ready loads", %{
-      load_recs: new_load_recs
+    test "schedules ingestion jobs for ready loads", %{
+      load_rec_ids: load_rec_ids
     } do
-      assert :ok = StartIngestion.run()
+      :ok = StartIngestion.run()
 
-      for %{id: load_rec_id} <- new_load_recs,
+      for load_rec_id <- load_rec_ids,
           load_rec = CubicLoad.get!(load_rec_id) do
         assert load_rec.status == "ingesting"
       end
-
-      load_rec_ids = Enum.map(new_load_recs, & &1.id)
 
       assert_enqueued(worker: Ingest, args: %{load_rec_ids: load_rec_ids})
     end

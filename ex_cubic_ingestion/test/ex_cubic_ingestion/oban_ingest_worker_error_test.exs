@@ -7,27 +7,40 @@ defmodule ExCubicIngestion.Schema.ObanIngestWorkerErrorTest do
 
   alias ExCubicIngestion.ObanIngestWorkerError
   alias ExCubicIngestion.Schema.CubicLoad
-
-  setup do
-    table = Repo.insert!(MockExAws.Data.table())
-    {:ok, %{table: table, load_objects: MockExAws.Data.load_objects_without_bucket_prefix()}}
-  end
+  alias ExCubicIngestion.Schema.CubicTable
 
   describe "handle_event/4" do
-    test "taking action on attemps as it reaches max attempts", %{
-      table: table,
-      load_objects: load_objects
-    } do
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+    test "taking action on attemps as it reaches max attempts" do
+      dmap_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_dmap__sample",
+          s3_prefix: "cubic/dmap/sample/"
+        })
 
-      new_load_rec_ids = Enum.map(new_load_recs, fn rec -> rec.id end)
+      dmap_load_1 =
+        Repo.insert!(%CubicLoad{
+          table_id: dmap_table.id,
+          status: "ingesting",
+          s3_key: "cubic/dmap/sample/20220101.csv",
+          s3_modified: ~U[2022-01-01 20:49:50Z],
+          s3_size: 197
+        })
+
+      dmap_load_2 =
+        Repo.insert!(%CubicLoad{
+          table_id: dmap_table.id,
+          status: "ready",
+          s3_key: "cubic/dmap/sample/20220102.csv",
+          s3_modified: ~U[2022-01-02 20:49:50Z],
+          s3_size: 197
+        })
 
       worker_meta_data = %{
         worker: "ExCubicIngestion.Workers.Ingest",
         attempt: 1,
         max_attempts: 2,
         args: %{
-          "load_rec_ids" => new_load_rec_ids
+          "load_rec_ids" => [dmap_load_1.id, dmap_load_2.id]
         }
       }
 
@@ -40,18 +53,18 @@ defmodule ExCubicIngestion.Schema.ObanIngestWorkerErrorTest do
                  nil
                )
 
-      # increment attempts
       updated_load_recs =
         ObanIngestWorkerError.handle_event(
           [:oban, :job, :exception],
           nil,
+          # increment attempts
           %{worker_meta_data | attempt: 2},
           nil
         )
 
       # status should be updated for records
       assert ["ready_for_erroring", "ready_for_erroring"] ==
-               Enum.map(updated_load_recs, fn rec -> rec.status end)
+               Enum.map(updated_load_recs, & &1.status)
     end
   end
 end

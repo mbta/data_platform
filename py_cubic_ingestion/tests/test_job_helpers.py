@@ -50,7 +50,7 @@ def assert_equal_collections(actual_collection: list, expected_collection: list)
         assert expected_item in collection_as_dict(actual_collection)
 
 
-def df_with_identifier(spark: SparkSessionType, data: list, columns: list, identifier_val: str) -> DataFrame:
+def df_with_partition_columns(spark: SparkSessionType, data: list, columns: list, partition_columns: list) -> DataFrame:
     """
     Given some data and column names return a DataFrame with additional 'identifier'
     columns
@@ -63,8 +63,8 @@ def df_with_identifier(spark: SparkSessionType, data: list, columns: list, ident
         List of data as dicts
     columns : list
         List of column names
-    identifier_val : list
-        The 'identifier' column value
+    partition_columns : list
+        List of tuples with partition name and value
 
     Returns
     -------
@@ -76,11 +76,11 @@ def df_with_identifier(spark: SparkSessionType, data: list, columns: list, ident
     source_df = spark.createDataFrame(data, columns)
 
     # add 'identifier' column
-    return job_helpers.df_with_identifier(source_df, identifier_val)
+    return job_helpers.df_with_partition_columns(source_df, partition_columns)
 
 
 def write_parquet(
-    spark: SparkSessionType, parquet_path: str, data: list, columns: list, identifier_val: str
+    spark: SparkSessionType, parquet_path: str, data: list, columns: list, partition_columns: list
 ) -> DataFrame:
     """
     Given some data and column names write to Parquet with the path specified.
@@ -95,8 +95,8 @@ def write_parquet(
         List of data as dicts
     columns : list
         List of column names
-    identifier_val : list
-        The 'identifier' column value
+    partition_columns : list
+        List of tuples with partition name and value
 
     Returns
     -------
@@ -105,7 +105,11 @@ def write_parquet(
     """
 
     # write out to parquet
-    job_helpers.write_parquet(df_with_identifier(spark, data, columns, identifier_val), parquet_path)
+    job_helpers.write_parquet(
+        df_with_partition_columns(spark, data, columns, partition_columns),
+        [name for (name, val) in partition_columns],
+        parquet_path,
+    )
 
     # read it out of parquet into a dataframe
     return spark.read.parquet(parquet_path)
@@ -188,9 +192,9 @@ def test_from_catalog_kwargs() -> None:
     }
 
 
-def test_df_with_identifier(spark_session: SparkSessionType) -> None:
+def test_df_with_partition_columns(spark_session: SparkSessionType) -> None:
     """
-    Test creating a DataFrame with the additional 'idetifier' columns
+    Test creating a DataFrame with the additional 'identifier' columns
 
     Parameters
     ----------
@@ -199,11 +203,11 @@ def test_df_with_identifier(spark_session: SparkSessionType) -> None:
     """
 
     # initial dataframe
-    source_df = df_with_identifier(
+    source_df = df_with_partition_columns(
         spark_session,
         [("test_1", "2022-01-01"), ("test_2", "2022-01-02")],
         ["name", "date"],
-        "identifier_1",
+        [("identifier", "identifier_1")],
     )
 
     expected_data = [
@@ -234,14 +238,14 @@ def test_write_parquet(spark_session: SparkSessionType, tmp_path: str) -> None:
         parquet_path,
         [("test_1", "2022-01-01"), ("test_2", "2022-01-02")],
         ["name", "date"],
-        "identifier_1",
+        [("snapshot", "snapshot_1"), ("identifier", "identifier_1")],
     )
 
     expected_data = [
-        ("test_1", "2022-01-01", "identifier_1"),
-        ("test_2", "2022-01-02", "identifier_1"),
+        ("test_1", "2022-01-01", "snapshot_1", "identifier_1"),
+        ("test_2", "2022-01-02", "snapshot_1", "identifier_1"),
     ]
-    expected_df = spark_session.createDataFrame(expected_data, ["name", "date", "identifier"])
+    expected_df = spark_session.createDataFrame(expected_data, ["name", "date", "snapshot", "identifier"])
 
     assert_equal_collections(parquet_df.collect(), expected_df.collect())
 
@@ -251,15 +255,15 @@ def test_write_parquet(spark_session: SparkSessionType, tmp_path: str) -> None:
         parquet_path,
         [("test_3", "2022-01-03"), ("test_4", "2022-01-04")],
         ["name", "date"],
-        "identifier_2",
+        [("snapshot", "snapshot_2"), ("identifier", "identifier_2")],
     )
 
     # append to expected data, as partitions are different
     expected_data += [
-        ("test_3", "2022-01-03", "identifier_2"),
-        ("test_4", "2022-01-04", "identifier_2"),
+        ("test_3", "2022-01-03", "snapshot_2", "identifier_2"),
+        ("test_4", "2022-01-04", "snapshot_2", "identifier_2"),
     ]
-    expected_df = spark_session.createDataFrame(expected_data, ["name", "date", "identifier"])
+    expected_df = spark_session.createDataFrame(expected_data, ["name", "date", "snapshot", "identifier"])
 
     assert_equal_collections(parquet_df.collect(), expected_df.collect())
 
@@ -269,15 +273,15 @@ def test_write_parquet(spark_session: SparkSessionType, tmp_path: str) -> None:
         parquet_path,
         [("test_5", "2022-01-05"), ("test_6", "2022-01-06")],
         ["name", "date"],
-        "identifier_1",
+        [("snapshot", "snapshot_1"), ("identifier", "identifier_1")],
     )
 
     expected_data = [
-        ("test_3", "2022-01-03", "identifier_2"),
-        ("test_4", "2022-01-04", "identifier_2"),
-        ("test_5", "2022-01-05", "identifier_1"),
-        ("test_6", "2022-01-06", "identifier_1"),
+        ("test_3", "2022-01-03", "snapshot_2", "identifier_2"),
+        ("test_4", "2022-01-04", "snapshot_2", "identifier_2"),
+        ("test_5", "2022-01-05", "snapshot_1", "identifier_1"),
+        ("test_6", "2022-01-06", "snapshot_1", "identifier_1"),
     ]
-    expected_df = spark_session.createDataFrame(expected_data, ["name", "date", "identifier"])
+    expected_df = spark_session.createDataFrame(expected_data, ["name", "date", "snapshot", "identifier"])
 
     assert_equal_collections(parquet_df.collect(), expected_df.collect())

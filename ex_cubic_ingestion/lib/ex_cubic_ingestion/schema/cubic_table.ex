@@ -1,6 +1,7 @@
 defmodule ExCubicIngestion.Schema.CubicTable do
   @moduledoc """
-  Schema.CubicTable @todo
+  Contains a list of prefixes that are allowed to be processed through the 'incoming' S3 bucket.
+  The name also identifies the table in the Glue Data Catalog databases.
   """
   use Ecto.Schema
 
@@ -29,7 +30,6 @@ defmodule ExCubicIngestion.Schema.CubicTable do
 
   schema "cubic_tables" do
     field(:name, :string)
-    # @todo make this unique
     field(:s3_prefix, :string)
 
     field(:deleted_at, :utc_datetime)
@@ -37,9 +37,14 @@ defmodule ExCubicIngestion.Schema.CubicTable do
     timestamps(type: :utc_datetime)
   end
 
+  @spec not_deleted :: Ecto.Queryable.t()
+  defp not_deleted do
+    from(table in __MODULE__, where: is_nil(table.deleted_at))
+  end
+
   @spec get!(integer()) :: t()
   def get!(id) do
-    Repo.get!(__MODULE__, id)
+    Repo.get!(not_deleted(), id)
   end
 
   @doc """
@@ -51,7 +56,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
     if Enum.empty?(prefixes) do
       []
     else
-      # strip any change tracking suffix
+      # strip any change tracking suffix (in ODS)
       without_change_tracking =
         prefixes
         |> MapSet.new(&String.replace_suffix(&1, "__ct/", "/"))
@@ -59,7 +64,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
 
       query =
         from(table in __MODULE__,
-          where: table.s3_prefix in ^without_change_tracking
+          where: is_nil(table.deleted_at) and table.s3_prefix in ^without_change_tracking
         )
 
       valid_prefix_map =

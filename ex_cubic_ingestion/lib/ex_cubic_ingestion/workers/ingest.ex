@@ -8,6 +8,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
     max_attempts: 3
 
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicOdsLoadSnapshot
 
   require Logger
 
@@ -94,7 +95,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
   end
 
   @spec construct_glue_job_payload([integer()]) :: {String.t(), String.t()}
-  defp construct_glue_job_payload(load_rec_ids) do
+  def construct_glue_job_payload(load_rec_ids) do
     glue_database_incoming = Application.fetch_env!(:ex_cubic_ingestion, :glue_database_incoming)
 
     bucket_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
@@ -108,9 +109,21 @@ defmodule ExCubicIngestion.Workers.Ingest do
     loads =
       Enum.map(CubicLoad.get_many_with_table(load_rec_ids), fn {load_rec, table_rec} ->
         %{
+          id: load_rec.id,
           s3_key: load_rec.s3_key,
           table_name: table_rec.name
         }
+      end)
+
+    {ods_loads, generic_loads} =
+      Enum.split_with(loads, &String.starts_with?(&1[:s3_key], "cubic/ods_qlik/"))
+
+    # for ODS loads, update with the snapshot value
+    ods_loads_with_snapshot =
+      Enum.map(ods_loads, fn load ->
+        ods_load_rec = CubicOdsLoadSnapshot.get_by!(load_id: load[:id])
+
+        Map.put(load, :snapshot, Calendar.strftime(ods_load_rec.snapshot, "%Y%m%dT%H%M%SZ"))
       end)
 
     {Jason.encode!(%{
@@ -119,6 +132,10 @@ defmodule ExCubicIngestion.Workers.Ingest do
        S3_BUCKET_PREFIX_INCOMING: prefix_incoming,
        S3_BUCKET_SPRINGBOARD: bucket_springboard,
        S3_BUCKET_PREFIX_SPRINGBOARD: prefix_springboard
-     }), Jason.encode!(%{loads: loads})}
+     }),
+     Jason.encode!(%{
+       generic_loads: generic_loads,
+       ods_loads: ods_loads_with_snapshot
+     })}
   end
 end

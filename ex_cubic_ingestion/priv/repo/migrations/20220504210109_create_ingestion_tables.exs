@@ -12,6 +12,9 @@ defmodule ExCubicIngestion.Repo.Migrations.CreateIngestionTables do
       timestamps(type: :utc_datetime)
     end
 
+    create unique_index("cubic_tables", :name)
+    create unique_index("cubic_tables", :s3_prefix)
+
     create table(:cubic_loads, primary_key: false) do
       add :id, :bigserial, primary_key: true
       add :table_id, :bigint, null: false
