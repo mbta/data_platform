@@ -47,6 +47,11 @@ defmodule ExCubicIngestion.Schema.CubicTable do
     Repo.get!(not_deleted(), id)
   end
 
+  @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
+  def get_by!(clauses, opts \\ []) do
+    Repo.get_by!(not_deleted(), clauses, opts)
+  end
+
   @doc """
   Given an enumerable of S3 prefixes, return those prefixes which represent a #{__MODULE__} and their table.
   """
