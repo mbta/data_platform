@@ -49,6 +49,16 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     timestamps(type: :utc_datetime)
   end
 
+  @spec not_deleted :: Ecto.Queryable.t()
+  defp not_deleted do
+    from(load in __MODULE__, where: is_nil(load.deleted_at))
+  end
+
+  @spec get!(integer()) :: t()
+  def get!(id) do
+    Repo.get!(not_deleted(), id)
+  end
+
   @spec insert_new_from_objects_with_table([map()], CubicTable.t()) ::
           {:ok, [t()]} | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
@@ -119,16 +129,11 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     )
   end
 
-  @spec get!(integer()) :: t()
-  def get!(id) do
-    Repo.get!(__MODULE__, id)
-  end
-
   @spec get_status_ready :: [t()]
   def get_status_ready do
     query =
-      from(load in __MODULE__,
-        where: is_nil(load.deleted_at) and load.status == "ready",
+      from(load in not_deleted(),
+        where: load.status == "ready",
         order_by: [load.s3_modified, load.s3_key]
       )
 
@@ -138,9 +143,8 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   @spec get_status_ready_for :: [t()]
   def get_status_ready_for do
     query =
-      from(load in __MODULE__,
-        where:
-          is_nil(load.deleted_at) and load.status in ["ready_for_archiving", "ready_for_erroring"]
+      from(load in not_deleted(),
+        where: load.status in ["ready_for_archiving", "ready_for_erroring"]
       )
 
     Repo.all(query)
@@ -149,10 +153,10 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   @spec get_many_with_table([integer()]) :: [{t(), CubicTable.t()}]
   def get_many_with_table(load_rec_ids) do
     Repo.all(
-      from(load in __MODULE__,
+      from(load in not_deleted(),
         join: table in CubicTable,
         on: table.id == load.table_id,
-        where: is_nil(load.deleted_at) and load.id in ^load_rec_ids,
+        where: load.id in ^load_rec_ids,
         select: {load, table}
       )
     )
@@ -176,7 +180,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   @spec query_many([integer()]) :: Ecto.Queryable.t()
   def query_many(load_rec_ids) do
-    from(load in __MODULE__, where: load.id in ^load_rec_ids, select: load)
+    from(load in not_deleted(), where: load.id in ^load_rec_ids, select: load)
   end
 
   # @todo consider making this more specific to use cases

@@ -1,5 +1,6 @@
 """
-Module contains the 'run' function utilized by the Glue Job defined in `aws/s3/glue_jobs/cubic_ods_ingest.py`.
+Module contains the 'run' function utilized by the Glue Job defined
+in `aws/s3/glue_jobs/cubic_ingestion/ingest_incoming.py`.
 """
 
 import os
@@ -35,40 +36,15 @@ def run() -> None:
     job.init(job_name, args)
 
     # run glue transformations for each cubic load
-    for load in input_dict.get("generic_loads", []):
+    for load in input_dict.get("loads", []):
         from_catalog_kwargs = job_helpers.from_catalog_kwargs(load, env_dict)
         # create table dataframe using the data catalog table in glue
         table_df = glue_context.create_dynamic_frame.from_catalog(**from_catalog_kwargs)
 
-        # add partition columns
-        table_spark_df = job_helpers.df_with_partition_columns(
-            table_df.toDF(),  # convert to spark df so we can use the withColumn functionality
-            [("identifier", os.path.basename(load["s3_key"]))],
-        )
-
         # write out to springboard bucket using the same prefix as incoming
         job_helpers.write_parquet(
-            table_spark_df,
-            ["identifier"],
-            f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}'
-            f'/{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{os.path.dirname(load["s3_key"])}/',
-        )
-
-    for load in input_dict.get("ods_loads", []):
-        from_catalog_kwargs = job_helpers.from_catalog_kwargs(load, env_dict)
-        # create table dataframe using the data catalog table in glue
-        table_df = glue_context.create_dynamic_frame.from_catalog(**from_catalog_kwargs)
-
-        # add partition columns
-        table_spark_df = job_helpers.df_with_partition_columns(
-            table_df.toDF(),  # convert to spark df so we can use the withColumn functionality
-            [("snapshot", load["snapshot"]), ("identifier", os.path.basename(load["s3_key"]))],
-        )
-
-        # write out to springboard bucket using the same prefix as incoming
-        job_helpers.write_parquet(
-            table_spark_df,
-            ["snapshot", "identifier"],
+            table_df.toDF(),  # write out to springboard bucket using the same prefix as incoming
+            load.get("partition_columns", []),
             f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}'
             f'/{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{os.path.dirname(load["s3_key"])}/',
         )

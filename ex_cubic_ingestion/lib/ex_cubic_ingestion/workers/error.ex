@@ -1,6 +1,7 @@
 defmodule ExCubicIngestion.Workers.Error do
   @moduledoc """
-  Workers.Error module.
+  Oban Worker for copying loads from the 'Incoming' bucket to the 'Error' one.
+  Also, deletes the load from the 'Incoming' bucket.
   """
 
   use Oban.Worker,
@@ -34,13 +35,7 @@ defmodule ExCubicIngestion.Workers.Error do
 
     source_key = "#{incoming_prefix}#{load_rec.s3_key}"
 
-    destination_key =
-      Enum.join([
-        error_prefix,
-        Path.dirname(load_rec.s3_key),
-        "/timestamp=#{Calendar.strftime(load_rec.s3_modified, "%Y%m%dT%H%M%SZ")}/",
-        Path.basename(load_rec.s3_key)
-      ])
+    destination_key = "#{error_prefix}#{construct_destination_key(load_rec)}"
 
     # copy load file to error bucket
     lib_ex_aws.request!(
@@ -53,5 +48,22 @@ defmodule ExCubicIngestion.Workers.Error do
     CubicLoad.update(load_rec, %{status: "errored"})
 
     :ok
+  end
+
+  @doc """
+  Determine the  destination key for the 'error' bucket (excluding 'error' prefix)
+  """
+  @spec construct_destination_key(CubicLoad.t()) :: String.t()
+  def construct_destination_key(load_rec) do
+    # for ODS, the destination will include the timestamp to prevent from overwriting
+    if String.starts_with?(load_rec.s3_key, "cubic/ods_qlik/") do
+      Enum.join([
+        Path.dirname(load_rec.s3_key),
+        "/timestamp=#{Calendar.strftime(load_rec.s3_modified, "%Y%m%dT%H%M%SZ")}/",
+        Path.basename(load_rec.s3_key)
+      ])
+    else
+      load_rec.s3_key
+    end
   end
 end

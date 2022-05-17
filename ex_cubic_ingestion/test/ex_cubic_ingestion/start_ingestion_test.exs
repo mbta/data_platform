@@ -35,7 +35,7 @@ defmodule ExCubicIngestion.StartIngestionTest do
     })
 
     # insert loads
-    dmap_load_1 =
+    dmap_load =
       Repo.insert!(%CubicLoad{
         table_id: dmap_table.id,
         status: "ready",
@@ -44,7 +44,7 @@ defmodule ExCubicIngestion.StartIngestionTest do
         s3_size: 197
       })
 
-    ods_load_1 =
+    ods_load =
       Repo.insert!(%CubicLoad{
         table_id: ods_table.id,
         status: "ready",
@@ -56,8 +56,8 @@ defmodule ExCubicIngestion.StartIngestionTest do
     {:ok,
      %{
        load_rec_ids: [
-         dmap_load_1.id,
-         ods_load_1.id
+         dmap_load.id,
+         ods_load.id
        ]
      }}
   end

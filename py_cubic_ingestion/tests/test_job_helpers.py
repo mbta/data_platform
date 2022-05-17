@@ -52,7 +52,7 @@ def assert_equal_collections(actual_collection: list, expected_collection: list)
 
 def df_with_partition_columns(spark: SparkSessionType, data: list, columns: list, partition_columns: list) -> DataFrame:
     """
-    Given some data and column names return a DataFrame with additional 'identifier'
+    Given some data and column names return a DataFrame with additional partition
     columns
 
     Parameters
@@ -64,7 +64,7 @@ def df_with_partition_columns(spark: SparkSessionType, data: list, columns: list
     columns : list
         List of column names
     partition_columns : list
-        List of tuples with partition name and value
+        List of dicts with partition information
 
     Returns
     -------
@@ -89,14 +89,14 @@ def write_parquet(
     ----------
     spark : list
         Spark Session to use
-    parquet_path : list
+    parquet_path : str
         Path where Parquet is stored
     data : list
         List of data as dicts
     columns : list
         List of column names
     partition_columns : list
-        List of tuples with partition name and value
+        List of dicts with partition information
 
     Returns
     -------
@@ -104,10 +104,13 @@ def write_parquet(
         Spark DataFrame containing the extra 'identifier' column
     """
 
+    # initial dataframe
+    source_df = spark.createDataFrame(data, columns)
+
     # write out to parquet
     job_helpers.write_parquet(
-        df_with_partition_columns(spark, data, columns, partition_columns),
-        [name for (name, val) in partition_columns],
+        source_df,
+        partition_columns,
         parquet_path,
     )
 
@@ -207,7 +210,7 @@ def test_df_with_partition_columns(spark_session: SparkSessionType) -> None:
         spark_session,
         [("test_1", "2022-01-01"), ("test_2", "2022-01-02")],
         ["name", "date"],
-        [("identifier", "identifier_1")],
+        [{"name": "identifier", "value": "identifier_1"}],
     )
 
     expected_data = [
@@ -238,7 +241,10 @@ def test_write_parquet(spark_session: SparkSessionType, tmp_path: str) -> None:
         parquet_path,
         [("test_1", "2022-01-01"), ("test_2", "2022-01-02")],
         ["name", "date"],
-        [("snapshot", "snapshot_1"), ("identifier", "identifier_1")],
+        [
+            {"name": "snapshot", "value": "snapshot_1"},
+            {"name": "identifier", "value": "identifier_1"},
+        ],
     )
 
     expected_data = [
@@ -255,7 +261,10 @@ def test_write_parquet(spark_session: SparkSessionType, tmp_path: str) -> None:
         parquet_path,
         [("test_3", "2022-01-03"), ("test_4", "2022-01-04")],
         ["name", "date"],
-        [("snapshot", "snapshot_2"), ("identifier", "identifier_2")],
+        [
+            {"name": "snapshot", "value": "snapshot_2"},
+            {"name": "identifier", "value": "identifier_2"},
+        ],
     )
 
     # append to expected data, as partitions are different
@@ -273,7 +282,10 @@ def test_write_parquet(spark_session: SparkSessionType, tmp_path: str) -> None:
         parquet_path,
         [("test_5", "2022-01-05"), ("test_6", "2022-01-06")],
         ["name", "date"],
-        [("snapshot", "snapshot_1"), ("identifier", "identifier_1")],
+        [
+            {"name": "snapshot", "value": "snapshot_1"},
+            {"name": "identifier", "value": "identifier_1"},
+        ],
     )
 
     expected_data = [
@@ -283,5 +295,36 @@ def test_write_parquet(spark_session: SparkSessionType, tmp_path: str) -> None:
         ("test_6", "2022-01-06", "snapshot_1", "identifier_1"),
     ]
     expected_df = spark_session.createDataFrame(expected_data, ["name", "date", "snapshot", "identifier"])
+
+    assert_equal_collections(parquet_df.collect(), expected_df.collect())
+
+
+def test_write_parquet_without_partition_columns(spark_session: SparkSessionType, tmp_path: str) -> None:
+    """
+    Test writing Parquet data without any partitions
+
+    Parameters
+    ----------
+    spark_session : list
+        Fixture that contains the Spark Session to use
+    tmp_path : str
+        Fixture containing the temporary path that we can use to store data
+    """
+
+    parquet_path = f"{tmp_path}/test.parquet"
+
+    parquet_df = write_parquet(
+        spark_session,
+        parquet_path,
+        [("test_1", "2022-01-01"), ("test_2", "2022-01-02")],
+        ["name", "date"],
+        [],
+    )
+
+    expected_data = [
+        ("test_1", "2022-01-01"),
+        ("test_2", "2022-01-02"),
+    ]
+    expected_df = spark_session.createDataFrame(expected_data, ["name", "date"])
 
     assert_equal_collections(parquet_df.collect(), expected_df.collect())

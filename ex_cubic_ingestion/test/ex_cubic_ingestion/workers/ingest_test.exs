@@ -121,7 +121,7 @@ defmodule ExCubicIngestion.Workers.IngestTest do
       ods_load_1: ods_load_1,
       ods_load_2: ods_load_2
     } do
-      {_actual_env, actual_input_with_generic_ods} =
+      {_actual_env, actual_input} =
         Ingest.construct_glue_job_payload([
           dmap_load_1.id,
           dmap_load_2.id,
@@ -129,107 +129,55 @@ defmodule ExCubicIngestion.Workers.IngestTest do
           ods_load_2.id
         ])
 
-      actual_input_with_generic_ods_decoded = Jason.decode!(actual_input_with_generic_ods)
+      actual_input_decoded = Jason.decode!(actual_input)
 
-      expected_input_with_generic_ods = %{
-        "generic_loads" => [
+      expected_input = %{
+        "loads" => [
           %{
             "id" => dmap_load_1.id,
             "s3_key" => dmap_load_1.s3_key,
-            "table_name" => dmap_table.name
+            "table_name" => dmap_table.name,
+            "partition_columns" => [
+              %{"name" => "identifier", "value" => Path.basename(dmap_load_1.s3_key)}
+            ]
           },
           %{
             "id" => dmap_load_2.id,
             "s3_key" => dmap_load_2.s3_key,
-            "table_name" => dmap_table.name
-          }
-        ],
-        "ods_loads" => [
+            "table_name" => dmap_table.name,
+            "partition_columns" => [
+              %{"name" => "identifier", "value" => Path.basename(dmap_load_2.s3_key)}
+            ]
+          },
           %{
             "id" => ods_load_1.id,
             "s3_key" => ods_load_1.s3_key,
             "table_name" => ods_table.name,
-            "snapshot" => Calendar.strftime(ods_snapshot, "%Y%m%dT%H%M%SZ")
+            "partition_columns" => [
+              %{
+                "name" => "snapshot",
+                "value" => Calendar.strftime(ods_snapshot, "%Y%m%dT%H%M%SZ")
+              },
+              %{"name" => "identifier", "value" => Path.basename(ods_load_1.s3_key)}
+            ]
           },
           %{
             "id" => ods_load_2.id,
             "s3_key" => ods_load_2.s3_key,
             "table_name" => ods_table.name,
-            "snapshot" => Calendar.strftime(ods_snapshot, "%Y%m%dT%H%M%SZ")
+            "partition_columns" => [
+              %{
+                "name" => "snapshot",
+                "value" => Calendar.strftime(ods_snapshot, "%Y%m%dT%H%M%SZ")
+              },
+              %{"name" => "identifier", "value" => Path.basename(ods_load_2.s3_key)}
+            ]
           }
         ]
       }
 
-      assert expected_input_with_generic_ods["generic_loads"] ==
-               Enum.sort(
-                 actual_input_with_generic_ods_decoded["generic_loads"],
-                 &(&1["id"] < &2["id"])
-               )
-
-      assert expected_input_with_generic_ods["ods_loads"] ==
-               Enum.sort(
-                 actual_input_with_generic_ods_decoded["ods_loads"],
-                 &(&1["id"] < &2["id"])
-               )
-
-      {_actual_env, actual_input_with_generic} =
-        Ingest.construct_glue_job_payload([dmap_load_1.id, dmap_load_2.id])
-
-      actual_input_with_generic_decoded = Jason.decode!(actual_input_with_generic)
-
-      expected_input_with_generic = %{
-        "generic_loads" => [
-          %{
-            "id" => dmap_load_1.id,
-            "s3_key" => dmap_load_1.s3_key,
-            "table_name" => dmap_table.name
-          },
-          %{
-            "id" => dmap_load_2.id,
-            "s3_key" => dmap_load_2.s3_key,
-            "table_name" => dmap_table.name
-          }
-        ],
-        "ods_loads" => []
-      }
-
-      assert expected_input_with_generic["generic_loads"] ==
-               Enum.sort(
-                 actual_input_with_generic_decoded["generic_loads"],
-                 &(&1["id"] < &2["id"])
-               )
-
-      assert expected_input_with_generic["ods_loads"] ==
-               actual_input_with_generic_decoded["ods_loads"]
-
-      {_actual_env, actual_input_with_ods} =
-        Ingest.construct_glue_job_payload([ods_load_1.id, ods_load_2.id])
-
-      actual_input_with_ods_decoded = Jason.decode!(actual_input_with_ods)
-
-      expected_input_with_ods = %{
-        "generic_loads" => [],
-        "ods_loads" => [
-          %{
-            "id" => ods_load_1.id,
-            "s3_key" => ods_load_1.s3_key,
-            "table_name" => ods_table.name,
-            "snapshot" => Calendar.strftime(ods_snapshot, "%Y%m%dT%H%M%SZ")
-          },
-          %{
-            "id" => ods_load_2.id,
-            "s3_key" => ods_load_2.s3_key,
-            "table_name" => ods_table.name,
-            "snapshot" => Calendar.strftime(ods_snapshot, "%Y%m%dT%H%M%SZ")
-          }
-        ]
-      }
-
-      assert expected_input_with_ods["generic_loads"] ==
-               actual_input_with_ods_decoded["generic_loads"]
-
-      assert expected_input_with_ods["ods_loads"] ==
-               Enum.sort(actual_input_with_ods_decoded["ods_loads"], &(&1["id"] < &2["id"]))
+      assert expected_input["loads"] ==
+               Enum.sort(actual_input_decoded["loads"], &(&1["id"] < &2["id"]))
     end
   end
 end

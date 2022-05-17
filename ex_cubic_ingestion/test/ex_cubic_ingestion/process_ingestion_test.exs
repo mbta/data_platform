@@ -13,25 +13,25 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
 
   setup do
     # insert tables
-    dmap_table =
+    table =
       Repo.insert!(%CubicTable{
         name: "cubic_dmap__sample",
         s3_prefix: "cubic/dmap/sample/"
       })
 
     # insert loads
-    dmap_load_1 =
+    load_1 =
       Repo.insert!(%CubicLoad{
-        table_id: dmap_table.id,
+        table_id: table.id,
         status: "ready_for_archiving",
         s3_key: "cubic/dmap/sample/20220101.csv",
         s3_modified: ~U[2022-01-01 20:49:50Z],
         s3_size: 197
       })
 
-    dmap_load_2 =
+    load_2 =
       Repo.insert!(%CubicLoad{
-        table_id: dmap_table.id,
+        table_id: table.id,
         status: "ready_for_erroring",
         s3_key: "cubic/dmap/sample/20220102.csv",
         s3_modified: ~U[2022-01-02 20:49:50Z],
@@ -40,8 +40,8 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
 
     {:ok,
      %{
-       dmap_load_1: dmap_load_1,
-       dmap_load_2: dmap_load_2
+       load_1: load_1,
+       load_2: load_2
      }}
   end
 
@@ -59,38 +59,38 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
     end
 
     test "processing with one ready for archiving load and one ready for erroring", %{
-      dmap_load_1: dmap_load_1,
-      dmap_load_2: dmap_load_2
+      load_1: load_1,
+      load_2: load_2
     } do
-      assert :ok == ProcessIngestion.process_loads([dmap_load_1, dmap_load_2])
+      assert :ok == ProcessIngestion.process_loads([load_1, load_2])
     end
   end
 
   describe "archive/1" do
     test "archiving load after ingestion", %{
-      dmap_load_1: dmap_load_1
+      load_1: load_1
     } do
       # insert job
-      ProcessIngestion.archive(dmap_load_1)
+      ProcessIngestion.archive(load_1)
 
       # make sure record is in an "archiving" status
-      assert "archiving" == CubicLoad.get!(dmap_load_1.id).status
+      assert "archiving" == CubicLoad.get!(load_1.id).status
 
-      assert_enqueued(worker: Archive, args: %{load_rec_id: dmap_load_1.id})
+      assert_enqueued(worker: Archive, args: %{load_rec_id: load_1.id})
     end
   end
 
   describe "error/1" do
     test "processing error in ingestion", %{
-      dmap_load_1: dmap_load_1
+      load_1: load_1
     } do
       # insert job
-      ProcessIngestion.error(dmap_load_1)
+      ProcessIngestion.error(load_1)
 
       # make sure record is in "erroring" status
-      assert "erroring" == CubicLoad.get!(dmap_load_1.id).status
+      assert "erroring" == CubicLoad.get!(load_1.id).status
 
-      assert_enqueued(worker: Error, args: %{load_rec_id: dmap_load_1.id})
+      assert_enqueued(worker: Error, args: %{load_rec_id: load_1.id})
     end
   end
 end

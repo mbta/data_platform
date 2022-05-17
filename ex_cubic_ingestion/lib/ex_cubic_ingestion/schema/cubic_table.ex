@@ -68,8 +68,8 @@ defmodule ExCubicIngestion.Schema.CubicTable do
         |> Enum.to_list()
 
       query =
-        from(table in __MODULE__,
-          where: is_nil(table.deleted_at) and table.s3_prefix in ^without_change_tracking
+        from(table in not_deleted(),
+          where: table.s3_prefix in ^without_change_tracking
         )
 
       valid_prefix_map =

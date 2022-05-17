@@ -32,10 +32,10 @@ def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
     --------
     >>> parse_job_arguments(
     ...   '{"GLUE_DATABASE_INCOMING": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
-    ...   '{"generic_loads":[...],"ods_loads":[...]}'
+    ...   '{"loads": [...], "partition_columns": [...]}'
     ... )
     ({'GLUE_DATABASE_INCOMING': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'},
-    ...{'generic_loads': [...],"ods_loads":[...]})
+    ...{'loads': [...], 'partition_columns': [...]})
     """
 
     log_prefix = "[py_cubic_ingestion] [job_helpers]"
@@ -111,26 +111,28 @@ def from_catalog_kwargs(load: dict, env: dict) -> dict:
 
 def df_with_partition_columns(df: DataFrame, partition_columns: list) -> DataFrame:
     """
-    Construct a new DataFrame with 'snapshot' and 'identifier' columns added
+    Construct a new DataFrame with partition columns added
+
     Parameters
     ----------
     df : DataFrame
         DataFrame containing the data
-    partition_columns: list
-        List of tuples with partition name and value
+    partition_columns : list
+        List of dicts with partition information
+
     Returns
     -------
     DataFrame
         Updated DataFrame containing the partition columns
     """
 
-    for (name, val) in partition_columns:
-        df = df.withColumn(name, lit(val))
+    for column in partition_columns:
+        df = df.withColumn(column["name"], lit(column["value"]))
 
     return df
 
 
-def write_parquet(df: DataFrame, partition_names: list, destination: str) -> None:
+def write_parquet(df: DataFrame, partition_columns: list, destination: str) -> None:
     """
     Write a DataFrame to Parquet in the designated path
 
@@ -138,11 +140,12 @@ def write_parquet(df: DataFrame, partition_names: list, destination: str) -> Non
     ----------
     df : DataFrame
         DataFrame containing the data
-    partition_names : list
-        List of partition names to partition by
+    partition_columns : list
+        List of dicts with partition information
     destination : str
         Path to write to
     """
-    print(partition_names)
 
-    df.write.mode("overwrite").partitionBy(partition_names).parquet(destination)
+    df_with_partition_columns(df, partition_columns).write.mode("overwrite").partitionBy(
+        [column["name"] for column in partition_columns]
+    ).parquet(destination)

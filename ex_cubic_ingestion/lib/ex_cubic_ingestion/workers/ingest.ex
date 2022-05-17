@@ -1,6 +1,8 @@
 defmodule ExCubicIngestion.Workers.Ingest do
   @moduledoc """
-  Workers.Ingest module.
+  Oban Worker that takes a list of load record IDs and runs a Glue job for all of them.
+  The worker attaches itself to the Glue job by monitoring its status, only succeeding/failing
+  when it succeeds/fails.
   """
 
   use Oban.Worker,
@@ -94,6 +96,10 @@ defmodule ExCubicIngestion.Workers.Ingest do
     end
   end
 
+  @doc """
+  Gets loads map by a list of IDs, and adds the ODS snapshot partition column if an ODS load.
+  Otherwise it just uses the load map as is.
+  """
   @spec construct_glue_job_payload([integer()]) :: {String.t(), String.t()}
   def construct_glue_job_payload(load_rec_ids) do
     glue_database_incoming = Application.fetch_env!(:ex_cubic_ingestion, :glue_database_incoming)
@@ -111,20 +117,15 @@ defmodule ExCubicIngestion.Workers.Ingest do
         %{
           id: load_rec.id,
           s3_key: load_rec.s3_key,
-          table_name: table_rec.name
+          table_name: table_rec.name,
+          partition_columns: [
+            %{"name" => "identifier", "value" => Path.basename(load_rec.s3_key)}
+          ]
         }
       end)
 
-    {ods_loads, generic_loads} =
-      Enum.split_with(loads, &String.starts_with?(&1[:s3_key], "cubic/ods_qlik/"))
-
-    # for ODS loads, update with the snapshot value
-    ods_loads_with_snapshot =
-      Enum.map(ods_loads, fn load ->
-        ods_load_rec = CubicOdsLoadSnapshot.get_by!(load_id: load[:id])
-
-        Map.put(load, :snapshot, Calendar.strftime(ods_load_rec.snapshot, "%Y%m%dT%H%M%SZ"))
-      end)
+    # for loads that are from ODS, attach the snapshot partition
+    loads_with_ods_snapshot = Enum.map(loads, &attach_ods_snapshot(&1))
 
     {Jason.encode!(%{
        GLUE_DATABASE_INCOMING: glue_database_incoming,
@@ -134,8 +135,28 @@ defmodule ExCubicIngestion.Workers.Ingest do
        S3_BUCKET_PREFIX_SPRINGBOARD: prefix_springboard
      }),
      Jason.encode!(%{
-       generic_loads: generic_loads,
-       ods_loads: ods_loads_with_snapshot
+       loads: loads_with_ods_snapshot
      })}
+  end
+
+  @spec attach_ods_snapshot(map()) :: map()
+  defp attach_ods_snapshot(%{partition_columns: partition_columns} = load) do
+    if String.starts_with?(load[:s3_key], "cubic/ods_qlik/") do
+      ods_load_rec = CubicOdsLoadSnapshot.get_by!(load_id: load[:id])
+
+      # note: order of partitions is intentional
+      %{
+        load
+        | partition_columns: [
+            %{
+              "name" => "snapshot",
+              "value" => Calendar.strftime(ods_load_rec.snapshot, "%Y%m%dT%H%M%SZ")
+            }
+            | partition_columns
+          ]
+      }
+    else
+      load
+    end
   end
 end

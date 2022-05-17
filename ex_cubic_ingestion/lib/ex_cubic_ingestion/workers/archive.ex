@@ -1,6 +1,7 @@
 defmodule ExCubicIngestion.Workers.Archive do
   @moduledoc """
-  Workers.Archive module.
+  Oban Worker for copying loads from the 'Incoming' bucket to the 'Archive' one.
+  Also, deletes the load from the 'Incoming' bucket.
   """
 
   use Oban.Worker,
@@ -8,6 +9,7 @@ defmodule ExCubicIngestion.Workers.Archive do
     max_attempts: 1
 
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicOdsLoadSnapshot
 
   @impl Oban.Worker
   def perform(%{args: args} = _job) do
@@ -33,7 +35,7 @@ defmodule ExCubicIngestion.Workers.Archive do
 
     source_key = "#{incoming_prefix}#{load_rec.s3_key}"
 
-    destination_key = "#{archive_prefix}#{load_rec.s3_key}"
+    destination_key = "#{archive_prefix}#{construct_destination_key(load_rec)}"
 
     # copy load file to error bucket
     lib_ex_aws.request!(
@@ -46,5 +48,24 @@ defmodule ExCubicIngestion.Workers.Archive do
     CubicLoad.update(load_rec, %{status: "archived"})
 
     :ok
+  end
+
+  @doc """
+  Determine the  destination key for the 'archive' bucket (excluding 'archive' prefix)
+  """
+  @spec construct_destination_key(CubicLoad.t()) :: String.t()
+  def construct_destination_key(load_rec) do
+    # for ODS, the destination will include the snapshot to prevent from overwriting
+    if String.starts_with?(load_rec.s3_key, "cubic/ods_qlik/") do
+      ods_load_rec = CubicOdsLoadSnapshot.get_by!(load_id: load_rec.id)
+
+      Enum.join([
+        Path.dirname(load_rec.s3_key),
+        '/snapshot=#{Calendar.strftime(ods_load_rec.snapshot, "%Y%m%dT%H%M%SZ")}/',
+        Path.basename(load_rec.s3_key)
+      ])
+    else
+      load_rec.s3_key
+    end
   end
 end
