@@ -49,6 +49,10 @@ defmodule ExCubicIngestion.Workers.Ingest do
 
         CubicLoad.update_many(load_rec_ids, status: "ready_for_archiving")
 
+        # give AWS time to sync the job's status, so we don't run into
+        # throttling issues with concurrency
+        Process.sleep(60_000)
+
         :ok
 
       _other_glue_job_run_state ->
@@ -83,7 +87,27 @@ defmodule ExCubicIngestion.Workers.Ingest do
 
     # pause a litte before getting status
     Process.sleep(5000)
-    glue_job_run_status = lib_ex_aws.request!(ExAws.Glue.get_job_run(glue_job_name, run_id))
+
+    glue_job_run_status =
+      case lib_ex_aws.request(ExAws.Glue.get_job_run(glue_job_name, run_id)) do
+        {:ok, response} ->
+          response
+
+        {:error, {"ThrottlingException", message}} ->
+          # keep running and try again after waiting a bit
+          %{
+            "JobRun" => %{
+              "JobRunState" => "RUNNING",
+              "ExAws.Error" => "ThrottlingException: #{message}"
+            }
+          }
+
+        {:error, {exception, message}} ->
+          # @todo how should we handle these errors?
+          %{
+            "JobRun" => %{"JobRunState" => "RUNNING", "ExAws.Error" => "#{exception}: #{message}"}
+          }
+      end
 
     case glue_job_run_status do
       %{"JobRun" => %{"JobRunState" => "RUNNING"}} ->
