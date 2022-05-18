@@ -9,8 +9,8 @@ defmodule ExCubicIngestion.TestFixtures do
   alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
   alias ExCubicIngestion.Schema.CubicTable
 
-  @spec setup_tables_loads :: {:ok, map()}
-  def setup_tables_loads do
+  @spec setup_tables_loads(any()) :: {:ok, map()}
+  def setup_tables_loads(_context) do
     # tables
     dmap_table =
       Repo.insert!(%CubicTable{

@@ -2,15 +2,14 @@ defmodule ExCubicIngestion.Workers.ArchiveTest do
   use ExCubicIngestion.DataCase, async: true
   use Oban.Testing, repo: ExCubicIngestion.Repo
 
+  import ExCubicIngestion.TestFixtures, only: [setup_tables_loads: 1]
+
   alias ExCubicIngestion.Schema.CubicLoad
-  alias ExCubicIngestion.TestFixtures
   alias ExCubicIngestion.Workers.Archive
 
   require MockExAws
 
-  setup do
-    TestFixtures.setup_tables_loads()
-  end
+  setup :setup_tables_loads
 
   describe "perform/1" do
     test "run job without error", %{
