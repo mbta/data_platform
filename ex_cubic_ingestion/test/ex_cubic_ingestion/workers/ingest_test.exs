@@ -177,7 +177,7 @@ defmodule ExCubicIngestion.Workers.IngestTest do
       }
 
       assert expected_input["loads"] ==
-               Enum.sort(actual_input_decoded["loads"], &(&1["id"] < &2["id"]))
+               Enum.sort_by(actual_input_decoded["loads"], & &1["id"])
     end
   end
 end

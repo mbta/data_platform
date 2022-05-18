@@ -32,10 +32,10 @@ def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
     --------
     >>> parse_job_arguments(
     ...   '{"GLUE_DATABASE_INCOMING": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
-    ...   '{"loads": [...], "partition_columns": [...]}'
+    ...   '{"loads": [{"s3_key": "...", "table_name": "...", "partition_columns": [...]}, ...]}'
     ... )
     ({'GLUE_DATABASE_INCOMING': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'},
-    ...{'loads': [...], 'partition_columns': [...]})
+    ...{'loads': [{'s3_key': '...', 'table_name': '...', 'partition_columns': [...]}, ...]})
     """
 
     log_prefix = "[py_cubic_ingestion] [job_helpers]"

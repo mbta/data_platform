@@ -33,8 +33,8 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     } do
       {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
 
-      assert Enum.map(load_objects, &%{s3_key: &1[:key]}) ==
-               Enum.map(new_load_recs, &%{s3_key: &1.s3_key})
+      assert Enum.map(load_objects, & &1[:key]) ==
+               Enum.map(new_load_recs, & &1.s3_key)
     end
 
     test "providing an empty list of objects", %{
