@@ -56,18 +56,18 @@ jobs:
       - run: exit 1
         if: steps.asdf-cache.outputs.cache-hit != 'true'
       - name: Prepare for installing dependencies and package
-        working-directory: ${{github.workspace}}/py_cubic_ods_ingestion
+        working-directory: ${{github.workspace}}/py_cubic_ingestion
         run: |
           poetry export --output requirements.txt
           poetry build
-      - name: Install dependencies and py_cubic_ods_ingestion package into 'libs'
-        working-directory: ${{github.workspace}}/py_cubic_ods_ingestion
+      - name: Install dependencies and py_cubic_ingestion package into 'libs'
+        working-directory: ${{github.workspace}}/py_cubic_ingestion
         run: |
           pip install -r requirements.txt -t ./libs
-          pip install dist/py_cubic_ods_ingestion-*.whl -t ./libs
+          pip install dist/py_cubic_ingestion-*.whl -t ./libs
 
-      - name: Add to py_cubic_ods_ingestion archive
-        working-directory: ${{github.workspace}}/py_cubic_ods_ingestion/libs
-        run: zip -r ${{github.workspace}}/aws/s3/packages/py_cubic_ods_ingestion.zip ./
+      - name: Add to py_cubic_ingestion archive
+        working-directory: ${{github.workspace}}/py_cubic_ingestion/libs
+        run: zip -r ${{github.workspace}}/aws/s3/packages/py_cubic_ingestion.zip ./
       - name: Sync Glue Jobs and package to operations
         run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://mbta-ctd-dataplatform-${{github.event.inputs.env}}-operations/ --exclude "*/empty"

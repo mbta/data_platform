@@ -8,8 +8,8 @@ on:
         required: true
 
 jobs:
-  deploy_ex_cubic_ods_ingestion:
-    name: Deploy ExCubicOdsIngestion
+  deploy_ex_cubic_ingestion:
+    name: Deploy ExCubicIngestion
     runs-on: ubuntu-latest
 
     steps:
@@ -22,7 +22,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           docker-repo: ${{secrets.DOCKER_REPO}}
-          dockerfile-path: ex_cubic_ods_ingestion
+          dockerfile-path: ex_cubic_ingestion
       - name: Update ECS service with new container build
         uses: mbta/actions/deploy-ecs@v1
         with:

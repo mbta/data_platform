@@ -3,10 +3,10 @@ name: Docker Build
 on: [push]
 
 jobs:
-  docker_ex_cubic_ods_ingestion:
-    name: Build Docker image for 'ex_cubic_ods_ingestion' app
+  docker_ex_cubic_ingestion:
+    name: Build Docker image for 'ex_cubic_ingestion' app
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - run: docker build .
-      working-directory: ex_cubic_ods_ingestion
+      working-directory: ex_cubic_ingestion
