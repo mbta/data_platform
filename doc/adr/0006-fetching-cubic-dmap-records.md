@@ -17,9 +17,9 @@ This ADR will present these implementation details.
 
 ## Assumptions
 
-DMAP data is organized into feeds. We will be polling these feeds with a specific timeframe to get only one set of data for each feed for that timeframe. The feeds are expected to be provided by Cubic through the same API, allowing for reuse of the fetching code for each feed.
+DMAP data is organized into feeds. We will be polling these feeds with the latest `last_updated` date/time that we have in the database for the feed. The feeds are expected to be provided by Cubic through the same API, allowing for reuse of the fetching code for each feed.
 
-The feed will also be updated daily, so there will not be a need to constantly fetch more than on a daily basis.
+The feed are also be updated daily, so there will not be a need to constantly fetch more than on a daily basis.
 
 On the infrastructure side, we will reuse the Data Platform always-on container to scheduel/run the jobs for fetching these dataset.
 
@@ -31,44 +31,51 @@ We will create 2 new Oban workers within the ExCubicIngestion Elixir application
 
 #### Schedule DMAP
 
-This worker will be triggered every morning (exact time TBD) by the [Oban Cron plugin](https://hexdocs.pm/oban/Oban.Plugins.Cron.html). It won't receive any arguments and will do the following:
+This worker will be triggered every morning (ideally after 14:30 UTC) by the [Oban Cron plugin](https://hexdocs.pm/oban/Oban.Plugins.Cron.html). It won't receive any arguments and will do the following:
 
-1. Determine the timeframe (`start_date` and `end_date`) to request data for.
-2. Use a database transaction to insert `Fetch DMAP` Oban jobs for each feed, passing this information about the feed:
-    - URL
-    - Start Date
-    - End Date
+1. Query the `cubic_dmap_feeds` table, and retrieve all active feeds.
+2. Use a database transaction to insert `Fetch DMAP` Oban jobs for each feed, passing `feed.id` as an argument.
 
 #### Fetch DMAP
 
-This worker will be triggered but the `Schedule DMAP` job, but can also be triggered by other processes, such as a one-off script to refetch data for a previous timeframe. It will be perfoming the following steps:
+This worker will be triggered but the `Schedule DMAP` job, but can also be triggered by other processes, such as a one-off script to refetch data. It will be perfoming the following steps:
 
-1. Request the `args.url` of the feed with the `args.start_date` and `args.end_date` as parameters.
-2. For each item in the "results":
-    - Validate the start date requested is less than or equal to the start date of the result.
-    - Validate the end date requested is more than or equal to the end date of the result.
+1. Get feed information from database by `args.feed_id`.
+2. Construct the feed URL with `feed.relative_url` and `{feed.last_updated} + 1ms`, and request.
+3. For each item in the "results":
+    - Validate that the `last_updated` is greater than `feed.last_updated`.
     - Upon validation, append the result to list for further processing.
-3. Loop through the compiled list results and for each `result`:
-    - Store information about it in the database as a record in the `cubic_dmap_datasets` table, with this mapping:
+4. Loop through the compiled list of results and for each `result`:
+    - Upsert information as a record in the `cubic_dmap_datasets` table, with this mapping:
+        * `feed.id` => feed_id
         * `result.id` => type
         * `result.dataset_id` => identifier
         * `result.start_data` => start_date
         * `result.end_data` => end_date
         * `result.last_updated` => last_updated
-    - Request the `result.url` and store file locally as `{result.dataset_id}.csv.gz`
-    - Upload the file to the 'Incoming' bucket, under the `cubic/dmap/{result.id}/` prefix.
-    - Delete the file from local.
+    - Request the `result.url` and store file contents in memory.
+    - Upload the contents to the 'Incoming' bucket under the key `cubic/dmap/{result.id}/{result.dataset_id}.csv.gz`.
 
 ### Database
 
-A new table will be created to store DMAP dataset information.
+Two new tables will be created to store DMAP feed and dataset information.
+
+**cubic_dmap_feeds**  
+
+Contains information about the feed, including when the latest `last_updated` of its datasets (1-to-many relation).
+
+Fields:  
+- relative_url (ex. `/controlledresearchusersapi/transactional/device_event`)  
+- last_updated  
 
 **cubic_dmap_datasets**  
 
+Contains information about the dataset as returned by Cubic's API.
+
 Fields:  
-- status  
-- type  
-- identifier  
+- feed_id  
+- type (ex. `device_event`)  
+- identifier (ex. `device_event_20220517`)  
 - start_date  
 - end_date  
 - last_updated  
@@ -80,4 +87,4 @@ Update IAM for Data Platform's ECS container to be able to write to the 'Incomin
 
 ## Consequences
 
-Scheduled tasks have traditionally been at the system level. Relying on an application that is managing other processes, in addition to scheduling the fetching of DMAP data, has risk. The overburdening of the system should have us consider more power for the container, but this should be evaluated at the time of deployment.
+Scheduled tasks have traditionally been at the system level. Relying on an application that is managing other processes, in addition to scheduling the fetching of DMAP data, has risk. The overburdening of the system should have us consider more power for the container, but this should be evaluated closer to the time of deployment.
