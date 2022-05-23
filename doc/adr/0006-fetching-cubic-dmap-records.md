@@ -38,10 +38,16 @@ This worker will be triggered every morning (ideally after 14:30 UTC) by the [Ob
 
 #### Fetch DMAP
 
-This worker will be triggered but the `Schedule DMAP` job, but can also be triggered by other processes, such as a one-off script to refetch data. It will be perfoming the following steps:
+This worker will be triggered but the `Schedule DMAP` job, but can also be triggered by other processes, such as a one-off script to refetch data.
+
+Job arguments `args` should contain the following information:
+* feed_id
+* last_updated (optional)
+
+It will be perfoming the following steps:
 
 1. Get feed information from database by `args.feed_id`.
-2. Construct the feed URL with `feed.relative_url` and `{feed.last_updated} + 1ms`, and request.
+2. Construct the feed URL with `feed.relative_url` and `{args.last_updated || feed.last_updated} + 1ms`, and request.
 3. For each item in the "results":
     - Validate that the `last_updated` is greater than `feed.last_updated`.
     - Upon validation, append the result to list for further processing.
