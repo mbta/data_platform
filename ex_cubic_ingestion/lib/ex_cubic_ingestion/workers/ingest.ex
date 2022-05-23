@@ -36,32 +36,51 @@ defmodule ExCubicIngestion.Workers.Ingest do
 
     # start glue job
     {env_payload, input_payload} = construct_glue_job_payload(load_rec_ids)
-    %{"JobRunId" => glue_job_run_id} = start_glue_job_run(lib_ex_aws, env_payload, input_payload)
+    glue_job_start_request = start_glue_job_run(lib_ex_aws, env_payload, input_payload)
 
-    Logger.info("#{@log_prefix} Glue Job Run ID: #{glue_job_run_id}")
+    case glue_job_start_request do
+      {:ok, %{"JobRunId" => glue_job_run_id}} ->
+        Logger.info("#{@log_prefix} Glue Job Run ID: #{glue_job_run_id}")
 
-    # monitor for success or failure state in glue job run
-    glue_job_run_status = get_glue_job_run_status(lib_ex_aws, glue_job_run_id)
+        # monitor for success or failure state in glue job run
+        glue_job_run_status = get_glue_job_run_status(lib_ex_aws, glue_job_run_id)
 
-    case glue_job_run_status do
-      %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}} ->
-        Logger.info("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
+        case glue_job_run_status do
+          %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}} ->
+            Logger.info(
+              "#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}"
+            )
 
-        CubicLoad.update_many(load_rec_ids, status: "ready_for_archiving")
+            CubicLoad.update_many(load_rec_ids, status: "ready_for_archiving")
 
-        # give AWS time to sync the job's status, so we don't run into
-        # throttling issues with concurrency
-        Process.sleep(60_000)
+            :ok
 
-        :ok
+          _other_glue_job_run_state ->
+            # note: error will be handled within ObanIngestWorkerError module
+            {:error, "Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}"}
+        end
 
-      _other_glue_job_run_state ->
-        # note: error will be handled within ObanIngestWorkerError module
-        {:error, "Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}"}
+      {:error, {"ConcurrentRunsExceededException", message}} ->
+        Logger.warning(
+          "#{@log_prefix} Glue Job Start Request: ConcurrentRunsExceededException: #{message}"
+        )
+
+        {:snooze, 60}
+
+      {:error, {"ThrottlingException", message}} ->
+        Logger.warning("#{@log_prefix} Glue Job Start Request: ThrottlingException: #{message}")
+
+        {:snooze, 60}
+
+      # everything else is an error
+      _glue_job_start_request_error ->
+        Logger.error("#{@log_prefix} Glue Job Start Request: #{glue_job_start_request}")
+
+        {:error, "Glue Job Start Request: #{glue_job_start_request}"}
     end
   end
 
-  @spec start_glue_job_run(module(), String.t(), String.t()) :: map()
+  @spec start_glue_job_run(module(), String.t(), String.t()) :: {:ok, map()} | {:error, term()}
   defp start_glue_job_run(lib_ex_aws, env_payload, input_payload) do
     bucket_operations = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_operations)
 
@@ -70,7 +89,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
     glue_job_name =
       Application.fetch_env!(:ex_cubic_ingestion, :glue_job_cubic_ingestion_ingest_incoming)
 
-    lib_ex_aws.request!(
+    lib_ex_aws.request(
       ExAws.Glue.start_job_run(glue_job_name, %{
         "--extra-py-files":
           "s3://#{bucket_operations}/#{prefix_operations}packages/py_cubic_ingestion.zip",
