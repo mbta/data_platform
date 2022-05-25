@@ -38,7 +38,7 @@ defmodule ExCubicIngestion.TestFixtures do
     dmap_load =
       Repo.insert!(%CubicLoad{
         table_id: dmap_table.id,
-        status: "ready_for_archiving",
+        status: "ready",
         s3_key: "cubic/dmap/sample/20220101.csv",
         s3_modified: ~U[2022-01-01 20:49:50Z],
         s3_size: 197
@@ -47,7 +47,7 @@ defmodule ExCubicIngestion.TestFixtures do
     ods_load =
       Repo.insert!(%CubicLoad{
         table_id: ods_table.id,
-        status: "ready_for_archiving",
+        status: "ready",
         s3_key: ods_snapshot_s3_key,
         s3_modified: ods_snapshot,
         s3_size: 197
