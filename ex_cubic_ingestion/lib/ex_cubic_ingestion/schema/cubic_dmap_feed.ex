@@ -1,0 +1,54 @@
+defmodule ExCubicIngestion.Schema.CubicDmapFeed do
+  @moduledoc """
+  Contains a list of DMAP feeds. These feeds will be scheduled to be fetched by
+  the ScheduleDmap worker.
+  """
+  use Ecto.Schema
+
+  import Ecto.Query
+
+  alias ExCubicIngestion.Repo
+
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :relative_url,
+             :last_updated_at,
+             :deleted_at,
+             :inserted_at,
+             :updated_at
+           ]}
+
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          relative_url: String.t(),
+          last_updated_at: DateTime.t() | nil,
+          deleted_at: DateTime.t() | nil,
+          inserted_at: DateTime.t(),
+          updated_at: DateTime.t()
+        }
+
+  schema "cubic_dmap_feeds" do
+    field(:relative_url, :string)
+    field(:last_updated_at, :utc_datetime_usec)
+
+    field(:deleted_at, :utc_datetime)
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @spec not_deleted :: Ecto.Queryable.t()
+  defp not_deleted do
+    from(dmap_feed in __MODULE__, where: is_nil(dmap_feed.deleted_at))
+  end
+
+  @spec get!(integer()) :: t()
+  def get!(id) do
+    Repo.get!(not_deleted(), id)
+  end
+
+  @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
+  def get_by!(clauses, opts \\ []) do
+    Repo.get_by!(not_deleted(), clauses, opts)
+  end
+end

@@ -27,4 +27,8 @@ config :ex_cubic_ingestion,
   glue_database_incoming: System.get_env("GLUE_DATABASE_INCOMING", ""),
   glue_database_springboard: System.get_env("GLUE_DATABASE_SPRINGBOARD", ""),
   glue_job_cubic_ingestion_ingest_incoming:
-    System.get_env("GLUE_JOB_CUBIC_INGESTION_INGEST_INCOMING", "")
+    System.get_env("GLUE_JOB_CUBIC_INGESTION_INGEST_INCOMING", ""),
+  dmap_base_url: System.get_env("DMAP_BASE_URL", ""),
+  dmap_dataset_public_users_api_key: System.get_env("DMAP_DATASET_PUBLIC_USERS_API_KEY", ""),
+  dmap_controlled_research_users_api_key:
+    System.get_env("DMAP_CONTROLLED_RESEARCH_USERS_API_KEY", "")

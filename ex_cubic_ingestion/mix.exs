@@ -43,13 +43,15 @@ defmodule ExCubicIngestion.MixProject do
       {:ex_aws_rds, "~> 2.0"},
       {:ex_aws_s3, "~> 2.3"},
       {:hackney, "~> 1.18"},
+      {:httpoison, "~> 1.8"},
       {:jason, "~> 1.0"},
       {:lcov_ex, "~> 0.2", only: [:dev, :test], runtime: false},
       {:oban, "~> 2.11"},
       {:postgrex, "~> 0.16"},
       {:ssl_verify_fun, "~> 1.1"},
       {:sweet_xml, "~> 0.7"},
-      {:telemetry, "~> 1.0"}
+      {:telemetry, "~> 1.0"},
+      {:timex, "~> 3.7"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]

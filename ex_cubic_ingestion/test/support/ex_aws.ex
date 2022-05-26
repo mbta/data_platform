@@ -1,6 +1,6 @@
 defmodule MockExAws do
   @moduledoc """
-  MockExAws @todo
+  Allow for controlling what is returned for a ExAws request.
   """
 
   @spec request(ExAws.Operation.t(), keyword) :: term
