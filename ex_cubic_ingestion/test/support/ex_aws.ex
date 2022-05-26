@@ -162,6 +162,14 @@ defmodule MockExAws do
     end
   end
 
+  def request(%{service: :glue, data: %{RunId: "success_run_id"}}, _config_overrides) do
+    {:ok, %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}}}
+  end
+
+  def request(%{service: :glue, data: %{RunId: "error_run_id"}}, _config_overrides) do
+    {:ok, %{"JobRun" => %{"JobRunState" => "ERROR"}}}
+  end
+
   def request(%{service: :glue} = op, _config_overrides) do
     cond do
       Enum.member?(op.headers, {"x-amz-target", "AWSGlue.StartJobRun"}) ->

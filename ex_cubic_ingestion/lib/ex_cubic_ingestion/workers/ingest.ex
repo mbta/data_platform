@@ -35,30 +35,22 @@ defmodule ExCubicIngestion.Workers.Ingest do
       end
 
     # start glue job
-    {env_payload, input_payload} = construct_glue_job_payload(load_rec_ids)
-    %{"JobRunId" => glue_job_run_id} = start_glue_job_run(lib_ex_aws, env_payload, input_payload)
+    glue_job_start_request =
+      load_rec_ids
+      |> construct_glue_job_payload()
+      |> start_glue_job_run(lib_ex_aws)
 
-    Logger.info("#{@log_prefix} Glue Job Run ID: #{glue_job_run_id}")
+    case glue_job_start_request do
+      {:ok, %{"JobRunId" => glue_job_run_id}} ->
+        monitor_glue_job_run(glue_job_run_id, load_rec_ids, lib_ex_aws)
 
-    # monitor for success or failure state in glue job run
-    glue_job_run_status = get_glue_job_run_status(lib_ex_aws, glue_job_run_id)
-
-    case glue_job_run_status do
-      %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}} ->
-        Logger.info("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
-
-        CubicLoad.update_many(load_rec_ids, status: "ready_for_archiving")
-
-        :ok
-
-      _other_glue_job_run_state ->
-        # note: error will be handled within ObanIngestWorkerError module
-        {:error, "Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}"}
+      _glue_job_start_request_error ->
+        handle_start_glue_job_error(glue_job_start_request)
     end
   end
 
-  @spec start_glue_job_run(module(), String.t(), String.t()) :: map()
-  defp start_glue_job_run(lib_ex_aws, env_payload, input_payload) do
+  @spec start_glue_job_run({String.t(), String.t()}, module()) :: {:ok, map()} | {:error, term()}
+  defp start_glue_job_run({env_payload, input_payload}, lib_ex_aws) do
     bucket_operations = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_operations)
 
     prefix_operations = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_operations)
@@ -66,7 +58,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
     glue_job_name =
       Application.fetch_env!(:ex_cubic_ingestion, :glue_job_cubic_ingestion_ingest_incoming)
 
-    lib_ex_aws.request!(
+    lib_ex_aws.request(
       ExAws.Glue.start_job_run(glue_job_name, %{
         "--extra-py-files":
           "s3://#{bucket_operations}/#{prefix_operations}packages/py_cubic_ingestion.zip",
@@ -83,7 +75,27 @@ defmodule ExCubicIngestion.Workers.Ingest do
 
     # pause a litte before getting status
     Process.sleep(5000)
-    glue_job_run_status = lib_ex_aws.request!(ExAws.Glue.get_job_run(glue_job_name, run_id))
+
+    glue_job_run_status =
+      case lib_ex_aws.request(ExAws.Glue.get_job_run(glue_job_name, run_id)) do
+        {:ok, response} ->
+          response
+
+        {:error, {"ThrottlingException", message}} ->
+          # keep running and try again after waiting a bit
+          %{
+            "JobRun" => %{
+              "JobRunState" => "RUNNING",
+              "ExAws.Error" => "ThrottlingException: #{message}"
+            }
+          }
+
+        {:error, {exception, message}} ->
+          # @todo how should we handle these errors?
+          %{
+            "JobRun" => %{"JobRunState" => "RUNNING", "ExAws.Error" => "#{exception}: #{message}"}
+          }
+      end
 
     case glue_job_run_status do
       %{"JobRun" => %{"JobRunState" => "RUNNING"}} ->
@@ -158,5 +170,57 @@ defmodule ExCubicIngestion.Workers.Ingest do
     else
       load
     end
+  end
+
+  @doc """
+  Given a run ID, check status of it continously until it stops running. If its last
+  status is a success, update loads' status to archive, and let the worker know the job
+  was a success. Any other state should be considered an error for the job.
+  """
+  @spec monitor_glue_job_run(String.t(), [integer()], module()) :: Oban.Worker.result()
+  def monitor_glue_job_run(glue_job_run_id, load_rec_ids, lib_ex_aws) do
+    Logger.info("#{@log_prefix} Glue Job Run ID: #{glue_job_run_id}")
+
+    # monitor for success or failure state in glue job run
+    glue_job_run_status = get_glue_job_run_status(lib_ex_aws, glue_job_run_id)
+
+    case glue_job_run_status do
+      %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}} ->
+        Logger.info("#{@log_prefix} Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}")
+
+        CubicLoad.update_many(load_rec_ids, status: "ready_for_archiving")
+
+        :ok
+
+      _other_glue_job_run_state ->
+        # note: error will be handled within ObanIngestWorkerError module
+        {:error, "Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}"}
+    end
+  end
+
+  @doc """
+  Not all failures are equal when starting a glue job. For when we have exceeded the max
+  concurrency, we just want to snooze the Oban job, so we can retry it again. Same thing
+  for any throttling errors. If any other error occurs, we will also error out the Oban job.
+  """
+  @spec handle_start_glue_job_error({:error, term()}) :: Oban.Worker.result()
+  def handle_start_glue_job_error({:error, {"ConcurrentRunsExceededException", message}}) do
+    Logger.info(
+      "#{@log_prefix} Glue Job Start Request: ConcurrentRunsExceededException: #{message}"
+    )
+
+    {:snooze, 60}
+  end
+
+  def handle_start_glue_job_error({:error, {"ThrottlingException", message}}) do
+    Logger.info("#{@log_prefix} Glue Job Start Request: ThrottlingException: #{message}")
+
+    {:snooze, 60}
+  end
+
+  def handle_start_glue_job_error({:error, {exception, message}}) do
+    Logger.error("#{@log_prefix} Glue Job Start Request: #{exception}: #{message}")
+
+    {:error, "Glue Job Start Request: #{exception}: #{exception}"}
   end
 end
