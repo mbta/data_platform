@@ -89,18 +89,14 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
     recs
   end
 
+  @spec upsert_from_dataset(map(), CubicDmapFeed.t()) :: t()
   defp upsert_from_dataset(dataset, feed_rec) do
     rec = get_by(identifier: dataset["dataset_id"])
 
     if rec do
       Repo.update!(
         Changeset.change(rec, %{
-          start_date: Date.from_iso8601!(dataset["start_date"]),
-          end_date: Date.from_iso8601!(dataset["end_date"]),
-          last_updated_at:
-            dataset["last_updated"]
-            |> Timex.parse!("{ISO:Extended}")
-            |> DateTime.from_naive!("Etc/UTC")
+          last_updated_at: iso_extended_to_datetime(dataset["last_updated"])
         })
       )
     else
@@ -110,11 +106,15 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
         identifier: dataset["dataset_id"],
         start_date: Date.from_iso8601!(dataset["start_date"]),
         end_date: Date.from_iso8601!(dataset["end_date"]),
-        last_updated_at:
-          dataset["last_updated"]
-          |> Timex.parse!("{ISO:Extended}")
-          |> DateTime.from_naive!("Etc/UTC")
+        last_updated_at: iso_extended_to_datetime(dataset["last_updated"])
       })
     end
+  end
+
+  @spec iso_extended_to_datetime(String.t()) :: DateTime.t()
+  defp iso_extended_to_datetime(iso_extended) do
+    iso_extended
+      |> Timex.parse!("{ISO:Extended}")
+      |> DateTime.from_naive!("Etc/UTC")
   end
 end

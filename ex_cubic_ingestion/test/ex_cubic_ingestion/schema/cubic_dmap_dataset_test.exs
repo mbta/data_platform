@@ -15,12 +15,9 @@ defmodule ExCubicIngestion.Schema.CubicDmapDatesetTest do
         feed_id: dmap_feed.id,
         type: "sample",
         identifier: "sample_20220517",
-        start_date: Date.from_iso8601!("2022-05-18"),
-        end_date: Date.from_iso8601!("2022-05-18"),
-        last_updated_at:
-          "2022-05-18T12:12:24.897363"
-          |> Timex.parse!("{ISO:Extended}")
-          |> DateTime.from_naive!("Etc/UTC")
+        start_date: ~D[2022-05-17],
+        end_date: ~D[2022-05-17],
+        last_updated_at: ~U[2022-05-18T12:12:24.897363Z]
       })
 
       datasets = [
@@ -30,7 +27,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapDatesetTest do
           "url" => "https://mbtaqadmapdatalake.blob.core.windows.net/sample/abc123",
           "start_date" => "2022-05-17",
           "end_date" => "2022-05-17",
-          "last_updated" => "2022-05-18T15:12:24.897363"
+          "last_updated" => "2022-05-18T15:12:24.897363" # 3 hours later
         },
         %{
           "id" => "sample",
@@ -42,18 +39,18 @@ defmodule ExCubicIngestion.Schema.CubicDmapDatesetTest do
         }
       ]
 
-      expected =
-        Enum.map(
-          datasets,
-          &%{
-            start_date: Date.from_iso8601!(&1["start_date"]),
-            end_date: Date.from_iso8601!(&1["end_date"]),
-            last_updated_at:
-              &1["last_updated"]
-              |> Timex.parse!("{ISO:Extended}")
-              |> DateTime.from_naive!("Etc/UTC")
-          }
-        )
+      expected = [
+        %{
+          start_date: ~D[2022-05-17],
+          end_date: ~D[2022-05-17],
+          last_updated_at: ~U[2022-05-18T15:12:24.897363Z]
+        },
+        %{
+          start_date: ~D[2022-05-18],
+          end_date: ~D[2022-05-18],
+          last_updated_at: ~U[2022-05-19T12:12:24.897363Z]
+        }
+      ]
 
       actual =
         datasets

@@ -34,10 +34,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-      dmap_controlled_research_users_api_key =
-        Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_research_users_api_key)
+      dmap_api_key =
+        Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
-      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_controlled_research_users_api_key}" ==
+      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}" ==
                FetchDmap.construct_feed_url(dmap_feed)
     end
 
@@ -52,10 +52,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-      dmap_controlled_research_users_api_key =
-        Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_research_users_api_key)
+      dmap_api_key =
+        Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
-      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_controlled_research_users_api_key}&last_updated=2022-05-22T20:49:50.123457" ==
+      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}&last_updated=2022-05-22T20:49:50.123457" ==
                FetchDmap.construct_feed_url(dmap_feed)
     end
 
@@ -72,10 +72,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-      dmap_controlled_research_users_api_key =
-        Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_research_users_api_key)
+      dmap_api_key =
+        Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
-      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_controlled_research_users_api_key}&last_updated=2022-05-01T10:49:50.123456" ==
+      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}&last_updated=2022-05-01T10:49:50.123456" ==
                FetchDmap.construct_feed_url(dmap_feed, last_updated)
     end
   end

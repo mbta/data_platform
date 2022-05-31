@@ -11,7 +11,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
-  alias ExCubicIngestion.Utility
+  alias ExCubicIngestion.Validators
 
   require Logger
 
@@ -60,18 +60,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   def construct_feed_url(feed_rec, last_updated \\ nil) do
     dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-    dmap_dataset_public_users_api_key =
-      Application.fetch_env!(:ex_cubic_ingestion, :dmap_dataset_public_users_api_key)
-
-    dmap_controlled_research_users_api_key =
-      Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_research_users_api_key)
-
-    api_key =
-      if String.starts_with?(feed_rec.relative_url, "/controlledresearchusersapi") do
-        dmap_controlled_research_users_api_key
-      else
-        dmap_dataset_public_users_api_key
-      end
+    dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
     last_updated_query_param =
       cond do
@@ -85,7 +74,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
           ""
       end
 
-    "#{dmap_base_url}#{feed_rec.relative_url}?apikey=#{api_key}#{last_updated_query_param}"
+    "#{dmap_base_url}#{feed_rec.relative_url}?apikey=#{dmap_api_key}#{last_updated_query_param}"
   end
 
   @doc """
@@ -93,7 +82,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   """
   @spec is_valid_dataset(map()) :: boolean()
   def is_valid_dataset(dataset_map) do
-    Utility.map_has_keys(dataset_map, [
+    Validators.map_has_keys?(dataset_map, [
       "id",
       "dataset_id",
       "start_date",
@@ -101,10 +90,10 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
       "last_updated",
       "url"
     ]) &&
-      Utility.is_valid_date(dataset_map["start_date"]) &&
-      Utility.is_valid_date(dataset_map["end_date"]) &&
-      Utility.is_valid_datetime(dataset_map["last_updated"]) &&
-      Utility.is_valid_url(dataset_map["url"])
+      Validators.is_valid_iso_date?(dataset_map["start_date"]) &&
+      Validators.is_valid_iso_date?(dataset_map["end_date"]) &&
+      Validators.is_valid_iso_datetime?(dataset_map["last_updated"]) &&
+      Validators.is_valid_dmap_dataset_url?(dataset_map["url"])
   end
 
   @doc """
