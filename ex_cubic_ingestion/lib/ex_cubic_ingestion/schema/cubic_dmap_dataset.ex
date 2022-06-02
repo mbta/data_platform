@@ -76,17 +76,19 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   end
 
   @doc """
-  For a list of datasets (json blob), upsert to database and return records
+  For a list of datasets (json blob), upsert to database and return records with
+  the dataset urls for further processing.
   """
-  @spec upsert_many_from_datasets(map(), t()) :: [t()]
+  @spec upsert_many_from_datasets(map(), t()) :: [{t(), String.t()}]
   def upsert_many_from_datasets(datasets, feed_rec) do
-    {:ok, recs} =
+    {:ok, recs_with_url} =
       Repo.transaction(fn ->
-        Enum.map(datasets, &upsert_from_dataset(&1, feed_rec))
+        Enum.map(datasets, fn dataset ->
+          {upsert_from_dataset(dataset, feed_rec), dataset["url"]}
+        end)
       end)
 
-    # return records
-    recs
+    recs_with_url
   end
 
   @spec upsert_from_dataset(map(), CubicDmapFeed.t()) :: t()
@@ -114,7 +116,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   @spec iso_extended_to_datetime(String.t()) :: DateTime.t()
   defp iso_extended_to_datetime(iso_extended) do
     iso_extended
-      |> Timex.parse!("{ISO:Extended}")
-      |> DateTime.from_naive!("Etc/UTC")
+    |> Timex.parse!("{ISO:Extended}")
+    |> DateTime.from_naive!("Etc/UTC")
   end
 end

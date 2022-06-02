@@ -9,6 +9,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
     queue: :fetch_dmap,
     max_attempts: 1
 
+  alias ExCubicIngestion.Downloader
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
   alias ExCubicIngestion.Validators
@@ -24,7 +25,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
     # allow for ex_aws module to be passed in as a string, since Oban will need to
     # serialize args to JSON. defaulted to library module.
-    _lib_ex_aws =
+    lib_ex_aws =
       case args do
         %{"lib_ex_aws" => mod_str} -> Module.safe_concat([mod_str])
         _args_lib_ex_aws -> ExAws
@@ -41,19 +42,35 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
     feed_rec = CubicDmapFeed.get!(feed_id)
 
     feed_rec
-    |> construct_feed_url(last_updated)
-    |> get_feed(lib_httpoison)
-    |> Map.get("results", [])
-    |> Enum.filter(&is_valid_dataset(&1))
+    |> get_feed_datasets(last_updated, lib_httpoison)
     |> CubicDmapDataset.upsert_many_from_datasets(feed_rec)
-    |> Enum.map(&fetch_and_upload_to_s3(&1))
+    |> Enum.map(&fetch_and_upload_to_s3(&1, lib_ex_aws, lib_httpoison))
     |> update_last_updated_for_feed(feed_rec)
 
     :ok
   end
 
   @doc """
-  Construct the full URL to the feed, applying some overrriding logic for
+  Make sure that the dataset has all the required fields and has valid data.
+  """
+  @spec is_valid_dataset(map()) :: boolean()
+  def is_valid_dataset(dataset) do
+    Validators.map_has_keys?(dataset, [
+      "id",
+      "dataset_id",
+      "start_date",
+      "end_date",
+      "last_updated",
+      "url"
+    ]) &&
+      Validators.is_valid_iso_date?(dataset["start_date"]) &&
+      Validators.is_valid_iso_date?(dataset["end_date"]) &&
+      Validators.is_valid_iso_datetime?(dataset["last_updated"]) &&
+      Validators.is_valid_dmap_dataset_url?(dataset["url"])
+  end
+
+  @doc """
+  Construct the full URL to the feed, applying some overriding logic for
   last updated (if passed in).
   """
   @spec construct_feed_url(CubicDmapFeed.t(), DateTime.t()) :: String.t()
@@ -78,32 +95,39 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   end
 
   @doc """
-  Make sure that the dataset has all the required fields and has valid data.
+  Using the feed record to construct a URL and get the contents containing the dataset
+  information. Also, checks that datasets are valid an filters out invalid ones.
   """
-  @spec is_valid_dataset(map()) :: boolean()
-  def is_valid_dataset(dataset_map) do
-    Validators.map_has_keys?(dataset_map, [
-      "id",
-      "dataset_id",
-      "start_date",
-      "end_date",
-      "last_updated",
-      "url"
-    ]) &&
-      Validators.is_valid_iso_date?(dataset_map["start_date"]) &&
-      Validators.is_valid_iso_date?(dataset_map["end_date"]) &&
-      Validators.is_valid_iso_datetime?(dataset_map["last_updated"]) &&
-      Validators.is_valid_dmap_dataset_url?(dataset_map["url"])
+  @spec get_feed_datasets(CubicDmapFeed.t(), String.t(), module()) :: map()
+  def get_feed_datasets(feed_rec, last_updated, lib_httpoison) do
+    %HTTPoison.Response{status_code: 200, body: body} =
+      lib_httpoison.get!(construct_feed_url(feed_rec, last_updated))
+
+    body
+    |> Jason.decode!()
+    |> Map.get("results", [])
+    |> Enum.filter(&is_valid_dataset(&1))
   end
 
   @doc """
-  @todo
+  For the dataset, download data with the URL provided, and upload to Incoming bucket.
   """
-  @spec fetch_and_upload_to_s3([CubicDmapDataset.t()]) :: [CubicDmapDataset.t()]
-  def fetch_and_upload_to_s3(dataset_recs) do
-    # @todo
+  @spec fetch_and_upload_to_s3({CubicDmapDataset.t(), String.t()}, module(), module()) ::
+          CubicDmapDataset.t()
+  def fetch_and_upload_to_s3({dataset_rec, dataset_url}, lib_ex_aws, lib_httpoison) do
+    bucket_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
 
-    dataset_recs
+    prefix_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+    dataset_url
+    |> Downloader.stream!(lib_httpoison)
+    |> ExAws.S3.upload(
+      bucket_incoming,
+      "#{prefix_incoming}dmap/#{dataset_rec.type}/#{dataset_rec.identifier}.csv.gz"
+    )
+    |> lib_ex_aws.request!()
+
+    dataset_rec
   end
 
   @doc """
@@ -114,12 +138,5 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
     # @todo
 
     :ok
-  end
-
-  @spec get_feed(String.t(), module()) :: map()
-  defp get_feed(url, lib_httpoison) do
-    %HTTPoison.Response{status_code: 200, body: body} = lib_httpoison.get!(url)
-
-    Jason.decode!(body)
   end
 end
