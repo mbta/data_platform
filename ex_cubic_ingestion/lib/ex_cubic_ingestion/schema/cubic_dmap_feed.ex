@@ -7,6 +7,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeed do
 
   import Ecto.Query
 
+  alias Ecto.Changeset
   alias ExCubicIngestion.Repo
 
   @derive {Jason.Encoder,
@@ -47,8 +48,17 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeed do
     Repo.get!(not_deleted(), id)
   end
 
-  @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
-  def get_by!(clauses, opts \\ []) do
-    Repo.get_by!(not_deleted(), clauses, opts)
+  @doc """
+  Finds the dataset that was last updated and updates the feed's last updated value
+  """
+  @spec update_last_updated_from_datasets([CubicDmapDataset.t()], t()) :: t()
+  def update_last_updated_from_datasets(dataset_recs, rec) do
+    [latest_updated_dataset_rec | _rest] = Enum.sort_by(dataset_recs, & &1.last_updated_at, :desc)
+
+    Repo.update!(
+      Changeset.change(rec, %{
+        last_updated_at: latest_updated_dataset_rec.last_updated_at
+      })
+    )
   end
 end

@@ -33,7 +33,7 @@ defmodule MockHTTPoison do
           }"}
 
       String.starts_with?(url, "https://mbtaqadmapdatalake.blob.core.windows.net/sample") ->
-        %HTTPoison.Response{status_code: 200, body: ""}
+        %HTTPoison.Response{status_code: 200, body: "sample_body"}
 
       true ->
         %HTTPoison.Response{status_code: 404, body: ""}

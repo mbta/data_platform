@@ -9,7 +9,6 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
     queue: :fetch_dmap,
     max_attempts: 1
 
-  alias ExCubicIngestion.Downloader
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
   alias ExCubicIngestion.Validators
@@ -45,7 +44,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
     |> get_feed_datasets(last_updated, lib_httpoison)
     |> CubicDmapDataset.upsert_many_from_datasets(feed_rec)
     |> Enum.map(&fetch_and_upload_to_s3(&1, lib_ex_aws, lib_httpoison))
-    |> update_last_updated_for_feed(feed_rec)
+    |> CubicDmapFeed.update_last_updated_from_datasets(feed_rec)
 
     :ok
   end
@@ -119,24 +118,15 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
     prefix_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
-    dataset_url
-    |> Downloader.stream!(lib_httpoison)
-    |> ExAws.S3.upload(
-      bucket_incoming,
-      "#{prefix_incoming}dmap/#{dataset_rec.type}/#{dataset_rec.identifier}.csv.gz"
+    resp = lib_httpoison.get!(dataset_url)
+
+    bucket_incoming
+    |> ExAws.S3.put_object(
+      "#{prefix_incoming}cubic/dmap/#{dataset_rec.type}/#{dataset_rec.identifier}.csv.gz",
+      resp.body
     )
     |> lib_ex_aws.request!()
 
     dataset_rec
-  end
-
-  @doc """
-  @todo
-  """
-  @spec update_last_updated_for_feed([CubicDmapDataset.t()], CubicDmapFeed.t()) :: :ok
-  def update_last_updated_for_feed(_dataset_recs, _feed_rec) do
-    # @todo
-
-    :ok
   end
 end

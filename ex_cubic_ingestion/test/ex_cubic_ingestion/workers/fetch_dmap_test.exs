@@ -188,7 +188,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
   end
 
   describe "fetch_and_upload_to_s3/1" do
-    test "get from S3" do
+    test "getting file and uploading through mocks" do
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
           relative_url: "/controlledresearchusersapi/sample",
@@ -207,13 +207,6 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       dataset_url =
         "https://mbtaqadmapdatalake.blob.core.windows.net/sample/sample_2022-05-17.csv.gz"
-
-      # assert the object is in S3
-      # ExAws.S3.head_object(
-      #   bucket_incoming,
-      #   "#{prefix_incoming}dmap/#{dataset_rec.type}/#{dataset_rec.identifier}.csv.gz"
-      # )
-      # |> lib_ex_aws.request!()
 
       assert dmap_dataset ==
                FetchDmap.fetch_and_upload_to_s3(

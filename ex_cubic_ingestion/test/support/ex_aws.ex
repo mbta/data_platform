@@ -83,6 +83,23 @@ defmodule MockExAws do
            status_code: 200
          ]}
 
+      String.starts_with?(op.path, "#{incoming_prefix}cubic/dmap/sample/") ->
+        {:ok,
+         %{
+           body: "",
+           headers: [
+             {"x-amz-id-2", "abc123"},
+             {"x-amz-request-id", "abc123"},
+             {"Date", "Fri, 03 Jun 2022 16:17:05 GMT"},
+             {"x-amz-server-side-encryption", "aws:kms"},
+             {"x-amz-server-side-encryption-aws-kms-key-id", ""},
+             {"ETag", "\"abc123\""},
+             {"Server", "AmazonS3"},
+             {"Content-Length", "0"}
+           ],
+           status_code: 200
+         }}
+
       true ->
         {:error,
          [
@@ -180,64 +197,6 @@ defmodule MockExAws do
 
       true ->
         {:error, %{}}
-    end
-  end
-
-  def request(%ExAws.S3.Upload{service: :s3} = op, _config_overrides) do
-    {:ok,
-     %{
-       body:
-         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<CompleteMultipartUploadResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Location>https://s3.amazonaws.com/mbta-ctd-dataplatform-local/ggjura%2Fincoming%2Fdmap%2Fsample%2Fsample_20220517.csv.gz</Location><Bucket>mbta-ctd-dataplatform-local</Bucket><Key>ggjura/incoming/dmap/sample/sample_20220517.csv.gz</Key><ETag>&quot;1a0196d50ce8c2e45cd82a6999ee257b-1&quot;</ETag></CompleteMultipartUploadResult>",
-       headers: [
-         {"x-amz-id-2",
-          "T3ev12loW6XQmNxUnkhN7hspi409yvtPbe8tmx8higrhITw04AHLFKjp9/J5GpZdnmr44AqcbZs="},
-         {"x-amz-request-id", "SV1Y5G934WRCAFQJ"},
-         {"Date", "Thu, 02 Jun 2022 15:06:11 GMT"},
-         {"x-amz-server-side-encryption", "aws:kms"},
-         {"x-amz-server-side-encryption-aws-kms-key-id",
-          "arn:aws:kms:us-east-1:434035161053:key/df815a77-d5a8-4b1a-ba48-373633a52f44"},
-         {"Content-Type", "application/xml"},
-         {"Transfer-Encoding", "chunked"},
-         {"Server", "AmazonS3"}
-       ],
-       status_code: 200
-     }}
-  end
-
-  def request(%{service: :s3, http_method: :head, path: path} = op, _config_overrides) do
-    incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
-
-    cubic = incoming_prefix <> "cubic/"
-    cubic_dmap = cubic <> "dmap/"
-    cubic_dmap_sample = cubic_dmap <> "sample/"
-    cubic_dmap_sample_path = "#{incoming_prefix}#{cubic_dmap_sample}sample_20220517.csv.gz"
-
-    if path == cubic_dmap_sample_path do
-      {:ok,
-       %{
-         headers: [
-           {"x-amz-id-2",
-            "LlGseP4G6aShfC2gsw6eGToDE1euJawXyhgMHPWcymczFB/GoKnpD2obCdOjAxo+7PciGuOnIJQ="},
-           {"x-amz-request-id", "SV1H4HGXNVESFZDZ"},
-           {"Date", "Thu, 02 Jun 2022 15:06:11 GMT"},
-           {"Last-Modified", "Thu, 02 Jun 2022 15:06:10 GMT"},
-           {"ETag", "\"1a0196d50ce8c2e45cd82a6999ee257b-1\""},
-           {"x-amz-server-side-encryption", "aws:kms"},
-           {"x-amz-server-side-encryption-aws-kms-key-id",
-            "arn:aws:kms:us-east-1:434035161053:key/df815a77-d5a8-4b1a-ba48-373633a52f44"},
-           {"Accept-Ranges", "bytes"},
-           {"Content-Type", "application/octet-stream"},
-           {"Server", "AmazonS3"},
-           {"Content-Length", "40322"}
-         ],
-         status_code: 200
-       }}
-    else
-      {:ok,
-       %{
-         headers: [],
-         status_code: nil
-       }}
     end
   end
 

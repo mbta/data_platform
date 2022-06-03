@@ -5,9 +5,6 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   """
   use Ecto.Schema
 
-  import Ecto.Query
-
-  alias Ecto.Changeset
   alias ExCubicIngestion.Repo
 
   @derive {Jason.Encoder,
@@ -50,31 +47,6 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
     timestamps(type: :utc_datetime)
   end
 
-  @spec not_deleted :: Ecto.Queryable.t()
-  defp not_deleted do
-    from(dmap_dataset in __MODULE__, where: is_nil(dmap_dataset.deleted_at))
-  end
-
-  @spec get(integer()) :: t()
-  def get(id) do
-    Repo.get(not_deleted(), id)
-  end
-
-  @spec get!(integer()) :: t()
-  def get!(id) do
-    Repo.get!(not_deleted(), id)
-  end
-
-  @spec get_by(Keyword.t() | map(), Keyword.t()) :: t() | nil
-  def get_by(clauses, opts \\ []) do
-    Repo.get_by(not_deleted(), clauses, opts)
-  end
-
-  @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
-  def get_by!(clauses, opts \\ []) do
-    Repo.get_by!(not_deleted(), clauses, opts)
-  end
-
   @doc """
   For a list of datasets (json blob), upsert to database and return records with
   the dataset urls for further processing.
@@ -93,24 +65,18 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
 
   @spec upsert_from_dataset(map(), CubicDmapFeed.t()) :: t()
   defp upsert_from_dataset(dataset, feed_rec) do
-    rec = get_by(identifier: dataset["dataset_id"])
-
-    if rec do
-      Repo.update!(
-        Changeset.change(rec, %{
-          last_updated_at: iso_extended_to_datetime(dataset["last_updated"])
-        })
-      )
-    else
-      Repo.insert!(%__MODULE__{
+    Repo.insert!(
+      %__MODULE__{
         feed_id: feed_rec.id,
         type: dataset["id"],
         identifier: dataset["dataset_id"],
         start_date: Date.from_iso8601!(dataset["start_date"]),
         end_date: Date.from_iso8601!(dataset["end_date"]),
         last_updated_at: iso_extended_to_datetime(dataset["last_updated"])
-      })
-    end
+      },
+      on_conflict: [set: [last_updated_at: iso_extended_to_datetime(dataset["last_updated"])]],
+      conflict_target: :identifier
+    )
   end
 
   @spec iso_extended_to_datetime(String.t()) :: DateTime.t()

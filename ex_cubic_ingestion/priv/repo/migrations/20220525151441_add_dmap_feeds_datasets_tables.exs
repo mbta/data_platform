@@ -27,6 +27,8 @@ defmodule ExCubicIngestion.Repo.Migrations.AddDmapFeedsDatasetsTables do
 
       timestamps(type: :utc_datetime)
     end
+
+    create unique_index("cubic_dmap_datasets", :identifier)
   end
 
   def down do
