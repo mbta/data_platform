@@ -12,12 +12,20 @@ config :ex_cubic_ingestion,
 
 config :ex_cubic_ingestion, Oban,
   repo: ExCubicIngestion.Repo,
-  plugins: [],
+  plugins: [
+    {
+      Oban.Plugins.Cron,
+      crontab: [
+        {"0 15 * * *", ExCubicIngestion.ScheduleDmap, max_attempts: 1}
+      ]
+    }
+  ],
   queues: [
     archive: 5,
     error: 5,
     fetch_dmap: 1,
-    ingest: 5
+    ingest: 5,
+    schedule_dmap: 1
   ]
 
 # Import environment specific config. This must remain at the bottom
