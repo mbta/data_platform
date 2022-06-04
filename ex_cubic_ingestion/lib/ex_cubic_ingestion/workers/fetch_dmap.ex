@@ -1,3 +1,5 @@
+# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
+
 defmodule ExCubicIngestion.Workers.FetchDmap do
   @moduledoc """
   Oban Worker for fetching a DMAP and the data files available in that feed, ultimately
@@ -12,8 +14,6 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
   alias ExCubicIngestion.Validators
-
-  require Logger
 
   @impl Oban.Worker
   def perform(%{args: args} = _job) do
