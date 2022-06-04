@@ -103,12 +103,11 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
     prefix_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
-    resp = lib_httpoison.get!(dataset_url)
-
-    bucket_incoming
-    |> ExAws.S3.put_object(
-      "#{prefix_incoming}cubic/dmap/#{dataset_rec.type}/#{dataset_rec.identifier}.csv.gz",
-      resp.body
+    dataset_url
+    |> Downloader.stream!(lib_httpoison)
+    |> ExAws.S3.upload(
+      bucket_incoming,
+      "#{prefix_incoming}cubic/dmap/#{dataset_rec.type}/#{dataset_rec.identifier}.csv.gz"
     )
     |> lib_ex_aws.request!()
 
