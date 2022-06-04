@@ -9,6 +9,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeed do
 
   alias Ecto.Changeset
   alias ExCubicIngestion.Repo
+  alias ExCubicIngestion.Schema.CubicDmapDataset
 
   @derive {Jason.Encoder,
            only: [

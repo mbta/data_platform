@@ -6,6 +6,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   use Ecto.Schema
 
   alias ExCubicIngestion.Repo
+  alias ExCubicIngestion.Schema.CubicDmapFeed
 
   @derive {Jason.Encoder,
            only: [
@@ -51,7 +52,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   For a list of datasets (json blob), upsert to database and return records with
   the dataset urls for further processing.
   """
-  @spec upsert_many_from_datasets(map(), t()) :: [{t(), String.t()}]
+  @spec upsert_many_from_datasets([map()], CubicDmapFeed.t()) :: [{t(), String.t()}]
   def upsert_many_from_datasets(datasets, feed_rec) do
     {:ok, recs_with_url} =
       Repo.transaction(fn ->

@@ -115,7 +115,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     end
   end
 
-  describe "construct_feed_url/1" do
+  describe "construct_feed_url/2" do
     test "feed without a last updated timestamp" do
       dmap_feed_relative_url = "/controlledresearchusersapi/sample"
 

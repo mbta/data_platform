@@ -19,7 +19,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   def perform(%{args: args} = _job) do
     # extract required information
     %{"feed_id" => feed_id} = args
-    # extract opitional information
+    # extract optional information
     last_updated = Map.get(args, "last_updated")
 
     # allow for ex_aws module to be passed in as a string, since Oban will need to
@@ -72,7 +72,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   Construct the full URL to the feed, applying some overriding logic for
   last updated (if passed in).
   """
-  @spec construct_feed_url(CubicDmapFeed.t(), DateTime.t()) :: String.t()
+  @spec construct_feed_url(CubicDmapFeed.t(), DateTime.t() | nil) :: String.t()
   def construct_feed_url(feed_rec, last_updated \\ nil) do
     dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
@@ -97,7 +97,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   Using the feed record to construct a URL and get the contents containing the dataset
   information. Also, checks that datasets are valid an filters out invalid ones.
   """
-  @spec get_feed_datasets(CubicDmapFeed.t(), String.t(), module()) :: map()
+  @spec get_feed_datasets(CubicDmapFeed.t(), DateTime.t(), module()) :: [map()]
   def get_feed_datasets(feed_rec, last_updated, lib_httpoison) do
     %HTTPoison.Response{status_code: 200, body: body} =
       lib_httpoison.get!(construct_feed_url(feed_rec, last_updated))
