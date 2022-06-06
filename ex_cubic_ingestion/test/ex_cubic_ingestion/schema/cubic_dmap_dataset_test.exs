@@ -4,6 +4,96 @@ defmodule ExCubicIngestion.Schema.CubicDmapDatesetTest do
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
 
+  describe "valid_dataset?/1" do
+    test "with valid dataset" do
+      dataset = %{
+        "id" => "sample",
+        "dataset_id" => "sample_20220517",
+        "url" => "https://mbtaqadmapdatalake.blob.core.windows.net/sample",
+        "start_date" => "2022-05-17",
+        "end_date" => "2022-05-17",
+        "last_updated" => "2022-05-18T12:12:24.897363"
+      }
+
+      assert CubicDmapDataset.valid_dataset?(dataset)
+    end
+
+    test "with invalid datasets" do
+      dataset_missing_field = %{
+        "dataset_id" => "sample_20220517",
+        "url" => "https://mbtaqadmapdatalake.blob.core.windows.net/sample",
+        "start_date" => "2022-05-17",
+        "end_date" => "2022-05-17",
+        "last_updated" => "2022-05-18T12:12:24.897363"
+      }
+
+      dataset_invalid_start_date = %{
+        "id" => "sample",
+        "dataset_id" => "sample_20220517",
+        "url" => "https://mbtaqadmapdatalake.blob.core.windows.net/sample",
+        "start_date" => "2022-05-45",
+        "end_date" => "2022-05-17",
+        "last_updated" => "2022-05-18T12:12:24.897363"
+      }
+
+      dataset_invalid_end_date = %{
+        "id" => "sample",
+        "dataset_id" => "sample_20220517",
+        "url" => "https://mbtaqadmapdatalake.blob.core.windows.net/sample",
+        "start_date" => "2022-05-17",
+        "end_date" => "2022:05:17",
+        "last_updated" => "2022-05-18T12:12:24.897363"
+      }
+
+      dataset_invalid_last_updated = %{
+        "id" => "sample",
+        "dataset_id" => "sample_20220517",
+        "url" => "https://mbtaqadmapdatalake.blob.core.windows.net/sample",
+        "start_date" => "2022-05-17",
+        "end_date" => "2022-05-17",
+        "last_updated" => "2022:05:18T12:12:24.897363"
+      }
+
+      dataset_invalid_url_wrong_scheme = %{
+        "id" => "sample",
+        "dataset_id" => "sample_20220517",
+        "url" => "file://mbtaqadmapdatalake.blob.core.windows.net/sample",
+        "start_date" => "2022-05-17",
+        "end_date" => "2022-05-17",
+        "last_updated" => "2022-05-18T12:12:24.897363"
+      }
+
+      dataset_invalid_url_empty_path = %{
+        "id" => "sample",
+        "dataset_id" => "sample_20220517",
+        "url" => "https://mbtaqadmapdatalake.blob.core.windows.net",
+        "start_date" => "2022-05-17",
+        "end_date" => "2022-05-17",
+        "last_updated" => "2022-05-18T12:12:24.897363"
+      }
+
+      dataset_invalid_url_invalid_path = %{
+        "id" => "sample",
+        "dataset_id" => "sample_20220517",
+        "url" => "https://mbtaqadmapdatalake.blob.core.windows.net/",
+        "start_date" => "2022-05-17",
+        "end_date" => "2022-05-17",
+        "last_updated" => "2022-05-18T12:12:24.897363"
+      }
+
+      dataset_empty = %{}
+
+      refute CubicDmapDataset.valid_dataset?(dataset_missing_field) ||
+               CubicDmapDataset.valid_dataset?(dataset_invalid_start_date) ||
+               CubicDmapDataset.valid_dataset?(dataset_invalid_end_date) ||
+               CubicDmapDataset.valid_dataset?(dataset_invalid_last_updated) ||
+               CubicDmapDataset.valid_dataset?(dataset_invalid_url_wrong_scheme) ||
+               CubicDmapDataset.valid_dataset?(dataset_invalid_url_empty_path) ||
+               CubicDmapDataset.valid_dataset?(dataset_invalid_url_invalid_path) ||
+               CubicDmapDataset.valid_dataset?(dataset_empty)
+    end
+  end
+
   describe "upsert_many_from_datasets/2" do
     test "updating an existing dataset record and inserting another" do
       dmap_feed =

@@ -7,6 +7,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
 
   alias ExCubicIngestion.Repo
   alias ExCubicIngestion.Schema.CubicDmapFeed
+  alias ExCubicIngestion.Validators
 
   @derive {Jason.Encoder,
            only: [
@@ -46,6 +47,25 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
     field(:deleted_at, :utc_datetime)
 
     timestamps(type: :utc_datetime)
+  end
+
+  @doc """
+  Make sure that the dataset has all the required fields and has valid data.
+  """
+  @spec valid_dataset?(map()) :: boolean()
+  def valid_dataset?(dataset) do
+    Validators.map_has_keys?(dataset, [
+      "id",
+      "dataset_id",
+      "start_date",
+      "end_date",
+      "last_updated",
+      "url"
+    ]) &&
+      Validators.valid_iso_date?(dataset["start_date"]) &&
+      Validators.valid_iso_date?(dataset["end_date"]) &&
+      Validators.valid_iso_datetime?(dataset["last_updated"]) &&
+      Validators.valid_dmap_dataset_url?(dataset["url"])
   end
 
   @doc """

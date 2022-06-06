@@ -54,7 +54,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeed do
   """
   @spec update_last_updated_from_datasets([CubicDmapDataset.t()], t()) :: t()
   def update_last_updated_from_datasets(dataset_recs, rec) do
-    [latest_updated_dataset_rec | _rest] = Enum.sort_by(dataset_recs, & &1.last_updated_at, :desc)
+    latest_updated_dataset_rec = Enum.max_by(dataset_recs, & &1.last_updated_at, DateTime)
 
     Repo.update!(
       Changeset.change(rec, %{

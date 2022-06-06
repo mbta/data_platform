@@ -1,5 +1,3 @@
-# credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
-
 defmodule ExCubicIngestion.Workers.FetchDmap do
   @moduledoc """
   Oban Worker for fetching a DMAP and the data files available in that feed, ultimately
@@ -13,7 +11,6 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
-  alias ExCubicIngestion.Validators
 
   @impl Oban.Worker
   def perform(%{args: args} = _job) do
@@ -50,25 +47,6 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   end
 
   @doc """
-  Make sure that the dataset has all the required fields and has valid data.
-  """
-  @spec is_valid_dataset(map()) :: boolean()
-  def is_valid_dataset(dataset) do
-    Validators.map_has_keys?(dataset, [
-      "id",
-      "dataset_id",
-      "start_date",
-      "end_date",
-      "last_updated",
-      "url"
-    ]) &&
-      Validators.is_valid_iso_date?(dataset["start_date"]) &&
-      Validators.is_valid_iso_date?(dataset["end_date"]) &&
-      Validators.is_valid_iso_datetime?(dataset["last_updated"]) &&
-      Validators.is_valid_dmap_dataset_url?(dataset["url"])
-  end
-
-  @doc """
   Construct the full URL to the feed, applying some overriding logic for
   last updated (if passed in).
   """
@@ -78,16 +56,23 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
     dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
-    last_updated_query_param =
+    last_updated =
       cond do
         not is_nil(last_updated) ->
-          "&last_updated=#{Calendar.strftime(last_updated, "%Y-%m-%dT%H:%M:%S.%f")}"
+          last_updated
 
         not is_nil(feed_rec.last_updated_at) ->
-          "&last_updated=#{Calendar.strftime(DateTime.add(feed_rec.last_updated_at, 1, :microsecond), "%Y-%m-%dT%H:%M:%S.%f")}"
+          DateTime.add(feed_rec.last_updated_at, 1, :microsecond)
 
         true ->
-          ""
+          nil
+      end
+
+    last_updated_query_param =
+      if last_updated do
+        "&last_updated=#{Calendar.strftime(last_updated, "%Y-%m-%dT%H:%M:%S.%f")}"
+      else
+        ""
       end
 
     "#{dmap_base_url}#{feed_rec.relative_url}?apikey=#{dmap_api_key}#{last_updated_query_param}"
@@ -105,7 +90,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
     body
     |> Jason.decode!()
     |> Map.get("results", [])
-    |> Enum.filter(&is_valid_dataset(&1))
+    |> Enum.filter(&CubicDmapDataset.valid_dataset?(&1))
   end
 
   @doc """

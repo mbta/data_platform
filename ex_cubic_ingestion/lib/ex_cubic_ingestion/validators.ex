@@ -3,20 +3,21 @@ defmodule ExCubicIngestion.Validators do
   Module for holding helpful functions for validation
   """
 
-  @spec is_valid_iso_date?(String.t()) :: boolean()
-  def is_valid_iso_date?(date_str) do
+  @spec valid_iso_date?(String.t()) :: boolean()
+  def valid_iso_date?(date_str) do
     match?({:ok, _date}, Date.from_iso8601(date_str))
   end
 
-  @spec is_valid_iso_datetime?(String.t()) :: boolean()
-  def is_valid_iso_datetime?(datetime_str) do
+  @spec valid_iso_datetime?(String.t()) :: boolean()
+  def valid_iso_datetime?(datetime_str) do
     match?({:ok, _datetime}, Timex.parse(datetime_str, "{ISO:Extended}"))
   end
 
-  @spec is_valid_dmap_dataset_url?(String.t()) :: boolean()
-  def is_valid_dmap_dataset_url?(url) do
-    URI.parse(url).scheme == "https" &&
-      URI.parse(url).path not in [nil, "/"]
+  @spec valid_dmap_dataset_url?(String.t()) :: boolean()
+  def valid_dmap_dataset_url?(url) do
+    parsed_url = URI.parse(url)
+
+    parsed_url.scheme == "https" && parsed_url.path not in [nil, "/"]
   end
 
   @spec map_has_keys?(map(), [String.t()]) :: boolean()
