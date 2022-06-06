@@ -159,7 +159,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
   @spec attach_ods_snapshot(map()) :: map()
   defp attach_ods_snapshot(%{partition_columns: partition_columns} = load) do
     if String.starts_with?(load[:s3_key], "cubic/ods_qlik/") do
-      ods_load_rec = CubicOdsLoadSnapshot.get_by!(load_id: load[:id])
+      ods_load_snapshot_rec = CubicOdsLoadSnapshot.get_by!(load_id: load[:id])
 
       # note: order of partitions is intentional
       %{
@@ -167,7 +167,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
         | partition_columns: [
             %{
               "name" => "snapshot",
-              "value" => Calendar.strftime(ods_load_rec.snapshot, "%Y%m%dT%H%M%SZ")
+              "value" => Calendar.strftime(ods_load_snapshot_rec.snapshot, "%Y%m%dT%H%M%SZ")
             }
             | partition_columns
           ]

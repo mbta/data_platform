@@ -3,6 +3,33 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
 
   alias ExCubicIngestion.Schema.CubicTable
 
+  describe "get_by!/2" do
+    test "getting only items that are not deleted or exit" do
+      dmap_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_dmap__sample",
+          s3_prefix: "cubic/dmap/sample/"
+        })
+
+      # insert deleted record
+      Repo.insert!(%CubicTable{
+        name: "cubic_ods_qlik__sample",
+        s3_prefix: "cubic/ods_qlik/SAMPLE/",
+        deleted_at: ~U[2022-01-01 20:50:50Z]
+      })
+
+      assert dmap_table == CubicTable.get_by!(name: "cubic_dmap__sample")
+
+      assert_raise Ecto.NoResultsError, fn ->
+        CubicTable.get_by!(name: "cubic_ods_qlik__sample")
+      end
+
+      assert_raise Ecto.NoResultsError, fn ->
+        CubicTable.get_by!(name: "cubic_ods_qlik__does_not_exist")
+      end
+    end
+  end
+
   describe "filter_to_existing_prefixes/1" do
     test "providing empty prefixes list" do
       assert [] == CubicTable.filter_to_existing_prefixes([])
