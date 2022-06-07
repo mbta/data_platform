@@ -5,6 +5,36 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeedTest do
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
 
+  describe "get_by!/2" do
+    test "getting only items that are not deleted or error" do
+      dmap_feed =
+        Repo.insert!(%CubicDmapFeed{
+          relative_url: "/controlledresearchusersapi/transactional/sample1"
+        })
+
+      # insert deleted record
+      Repo.insert!(%CubicDmapFeed{
+        relative_url: "/controlledresearchusersapi/transactional/sample2",
+        deleted_at: ~U[2022-01-01 20:50:50Z]
+      })
+
+      assert dmap_feed ==
+               CubicDmapFeed.get_by!(
+                 relative_url: "/controlledresearchusersapi/transactional/sample1"
+               )
+
+      assert_raise Ecto.NoResultsError, fn ->
+        CubicDmapFeed.get_by!(relative_url: "/controlledresearchusersapi/transactional/sample2")
+      end
+
+      assert_raise Ecto.NoResultsError, fn ->
+        CubicDmapFeed.get_by!(
+          relative_url: "/controlledresearchusersapi/transactional/does_not_exist"
+        )
+      end
+    end
+  end
+
   describe "update_last_updated_for_feed/2" do
     test "update with the latest updated dataset" do
       dmap_feed =
