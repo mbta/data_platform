@@ -1,6 +1,6 @@
 defmodule MockExAws do
   @moduledoc """
-  MockExAws @todo
+  Allow for controlling what is returned for a ExAws request.
   """
 
   @spec request(ExAws.Operation.t(), keyword) :: term
@@ -82,6 +82,23 @@ defmodule MockExAws do
            ],
            status_code: 200
          ]}
+
+      String.starts_with?(op.path, "#{incoming_prefix}cubic/dmap/sample/") ->
+        {:ok,
+         %{
+           body: "",
+           headers: [
+             {"x-amz-id-2", "abc123"},
+             {"x-amz-request-id", "abc123"},
+             {"Date", "Fri, 03 Jun 2022 16:17:05 GMT"},
+             {"x-amz-server-side-encryption", "aws:kms"},
+             {"x-amz-server-side-encryption-aws-kms-key-id", ""},
+             {"ETag", "\"abc123\""},
+             {"Server", "AmazonS3"},
+             {"Content-Length", "0"}
+           ],
+           status_code: 200
+         }}
 
       true ->
         {:error,

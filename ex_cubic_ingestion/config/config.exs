@@ -16,6 +16,7 @@ config :ex_cubic_ingestion, Oban,
   queues: [
     archive: 5,
     error: 5,
+    fetch_dmap: 1,
     ingest: 5
   ]
 

@@ -42,11 +42,6 @@ defmodule ExCubicIngestion.Schema.CubicTable do
     from(table in __MODULE__, where: is_nil(table.deleted_at))
   end
 
-  @spec get!(integer()) :: t()
-  def get!(id) do
-    Repo.get!(not_deleted(), id)
-  end
-
   @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
   def get_by!(clauses, opts \\ []) do
     Repo.get_by!(not_deleted(), clauses, opts)
