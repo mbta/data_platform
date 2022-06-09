@@ -49,6 +49,16 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeed do
     Repo.get!(not_deleted(), id)
   end
 
+  @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
+  def get_by!(clauses, opts \\ []) do
+    Repo.get_by!(not_deleted(), clauses, opts)
+  end
+
+  @spec all :: [t()]
+  def all do
+    Repo.all(not_deleted())
+  end
+
   @doc """
   Finds the dataset that was last updated and updates the feed's last updated value
   """
