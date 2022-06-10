@@ -44,6 +44,38 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     end
   end
 
+  describe "insert_from_object_with_table/2" do
+    test "insert as 'ready' because it's a typical object", %{
+      table: table
+    } do
+      object = %{
+        e_tag: "\"ghi123\"",
+        key: "cubic/dmap/sample/20220101.csv",
+        last_modified: "2022-01-01T20:49:50.000Z",
+        owner: nil,
+        size: "123",
+        storage_class: "STANDARD"
+      }
+
+      assert "ready" == CubicLoad.insert_from_object_with_table(object, table).status
+    end
+
+    test "insert as 'ready_for_erroring' because of size 0", %{
+      table: table
+    } do
+      object = %{
+        e_tag: "\"ghi123\"",
+        key: "cubic/dmap/sample/20220101.csv",
+        last_modified: "2022-01-01T20:49:50.000Z",
+        owner: nil,
+        size: "0",
+        storage_class: "STANDARD"
+      }
+
+      assert "ready_for_erroring" == CubicLoad.insert_from_object_with_table(object, table).status
+    end
+  end
+
   describe "get_by_objects/1" do
     test "getting records just added by providing the list we added from", %{
       table: table,

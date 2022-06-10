@@ -72,19 +72,19 @@ defmodule ExCubicIngestion.ValidatorsTest do
       assert Validators.valid_s3_object?(object)
     end
 
+    test "is valid even if size is 0" do
+      object = %{
+        # ...
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        size: "0"
+      }
+
+      assert Validators.valid_s3_object?(object)
+    end
+
     test "invalid if missing key" do
       object = %{
         # ...
-        size: "123"
-      }
-
-      refute Validators.valid_s3_object?(object)
-    end
-
-    test "invalid if key ends with '/'" do
-      object = %{
-        # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/",
         size: "123"
       }
 
@@ -100,11 +100,11 @@ defmodule ExCubicIngestion.ValidatorsTest do
       refute Validators.valid_s3_object?(object)
     end
 
-    test "invalid if size is 0" do
+    test "invalid if key ends with '/'" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
-        size: "0"
+        key: "cubic/ods_qlik/EDW.SAMPLE/",
+        size: "123"
       }
 
       refute Validators.valid_s3_object?(object)
