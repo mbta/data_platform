@@ -59,6 +59,10 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     Repo.get!(not_deleted(), id)
   end
 
+  @doc """
+  From a list of S3 objects defined as maps, filter out any that have already
+  been inserted and therefore are being processed, and insert the rest in database.
+  """
   @spec insert_new_from_objects_with_table([map()], CubicTable.t()) ::
           {:ok, [t()]} | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
@@ -75,14 +79,25 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     end)
   end
 
-  @spec insert_from_object_with_table(map(), CubicTable.t()) :: Ecto.Schema.t()
+  @doc """
+  Inserts S3 object into database, by doing some pre-processing and adjusting
+  status to 'ready_for_erroring' if object size is not greater than 0.
+  """
+  @spec insert_from_object_with_table(map(), CubicTable.t()) :: t()
   def insert_from_object_with_table(object, table) do
     last_modified = parse_and_drop_msec(object[:last_modified])
     size = String.to_integer(object[:size])
 
+    status =
+      if size > 0 do
+        "ready"
+      else
+        "ready_for_erroring"
+      end
+
     Repo.insert!(%__MODULE__{
       table_id: table.id,
-      status: "ready",
+      status: status,
       s3_key: object[:key],
       s3_modified: last_modified,
       s3_size: size

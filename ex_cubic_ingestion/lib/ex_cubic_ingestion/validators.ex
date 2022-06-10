@@ -24,4 +24,13 @@ defmodule ExCubicIngestion.Validators do
   def map_has_keys?(map, key_list) do
     Enum.all?(key_list, &Map.has_key?(map, &1))
   end
+
+  @spec valid_s3_object?(map()) :: boolean()
+  def valid_s3_object?(%{key: key, size: _size}) do
+    not String.ends_with?(key, "/")
+  end
+
+  def valid_s3_object?(%{}) do
+    false
+  end
 end

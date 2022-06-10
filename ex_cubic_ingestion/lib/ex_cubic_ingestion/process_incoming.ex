@@ -13,6 +13,7 @@ defmodule ExCubicIngestion.ProcessIncoming do
   alias ExCubicIngestion.S3Scan
   alias ExCubicIngestion.Schema.CubicLoad
   alias ExCubicIngestion.Schema.CubicTable
+  alias ExCubicIngestion.Validators
 
   @wait_interval_ms 5_000
 
@@ -70,7 +71,7 @@ defmodule ExCubicIngestion.ProcessIncoming do
         prefix: "#{incoming_prefix}#{table_prefix}",
         lib_ex_aws: state.lib_ex_aws
       )
-      |> Enum.filter(&Map.has_key?(&1, :key))
+      |> Enum.filter(&Validators.valid_s3_object?(&1))
       |> Enum.map(fn object ->
         %{object | key: String.replace_prefix(object[:key], incoming_prefix, "")}
       end)
