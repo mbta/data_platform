@@ -63,6 +63,10 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeed do
   Finds the dataset that was last updated and updates the feed's last updated value
   """
   @spec update_last_updated_from_datasets([CubicDmapDataset.t()], t()) :: t()
+  def update_last_updated_from_datasets([], rec) do
+    rec
+  end
+
   def update_last_updated_from_datasets(dataset_recs, rec) do
     latest_updated_dataset_rec = Enum.max_by(dataset_recs, & &1.last_updated_at, DateTime)
 
