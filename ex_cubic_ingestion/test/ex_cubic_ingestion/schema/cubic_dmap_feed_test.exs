@@ -36,6 +36,20 @@ defmodule ExCubicIngestion.Schema.CubicDmapFeedTest do
   end
 
   describe "update_last_updated_for_feed/2" do
+    test "no updates are made for empty list of datasets" do
+      dmap_feed =
+        Repo.insert!(%CubicDmapFeed{
+          relative_url: "/controlledresearchusersapi/sample",
+          last_updated_at: ~U[2022-05-16 20:49:50.123456Z]
+        })
+
+      assert ~U[2022-05-16 20:49:50.123456Z] ==
+               CubicDmapFeed.update_last_updated_from_datasets(
+                 [],
+                 dmap_feed
+               ).last_updated_at
+    end
+
     test "update with the latest updated dataset" do
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
