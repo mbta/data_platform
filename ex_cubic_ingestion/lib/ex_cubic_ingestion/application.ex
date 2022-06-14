@@ -16,7 +16,7 @@ defmodule ExCubicIngestion.Application do
     ]
 
     app_children =
-      if Application.get_env(:ex_cubic_ingestion, :start_app?) do
+      if Application.get_env(:ex_cubic_ingestion, :start_app_children?) do
         [
           {ExCubicIngestion.ProcessIncoming, []},
           {ExCubicIngestion.StartIngestion, []},

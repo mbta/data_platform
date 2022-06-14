@@ -4,7 +4,7 @@ import Config
 config :logger, level: :warning
 
 config :ex_cubic_ingestion,
-  start_app?: false
+  start_app_children?: false
 
 config :ex_cubic_ingestion, Oban, queues: false, plugins: false
 

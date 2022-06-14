@@ -14,7 +14,8 @@ defmodule ExCubicIngestion.MixProject do
         tool: LcovEx
       ],
       dialyzer: [
-        ignore_warnings: ".dialyzer.ignore-warnings"
+        ignore_warnings: ".dialyzer.ignore-warnings",
+        plt_add_apps: [:mix]
       ]
     ]
   end

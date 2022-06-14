@@ -8,7 +8,7 @@ config :logger, :console,
 config :ex_cubic_ingestion,
   ecto_repos: [ExCubicIngestion.Repo],
   run_migrations_at_startup?: false,
-  start_app?: true
+  start_app_children?: true
 
 config :ex_cubic_ingestion, Oban,
   repo: ExCubicIngestion.Repo,
