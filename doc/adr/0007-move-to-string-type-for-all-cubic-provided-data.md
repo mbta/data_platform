@@ -9,7 +9,7 @@ Draft
 
 ## Context
 
-We have been using the AWS Glue Crawler to determine the columns and types of data that are coming from Cubic for both ODS and DMAP data feeds. In most cases, the Crawler will sample the data and make the determination. This has worked pretty well in quickly getting the column names, but not that great for figuring out the types of these columns. For some tables with a small amount of data, such as `cubic_ods_qlik__edw_benefit_status_dimension`, the sample size is consitent and many times will not change, resulting in the crawler making an accurate assumption about the types. But for much larger tables, the sample size may be randomly determined causing the crawler to make mistake as to what the types of the columns are (see Assumptions).
+We have been using the AWS Glue Crawler to determine the columns and types of data that are coming from Cubic for both ODS and DMAP data feeds. In most cases, the Crawler will sample the data and make the determination. This has worked pretty well in quickly getting the column names, but not that great for figuring out the types of these columns. For some tables with a small amount of data, such as `cubic_ods_qlik__edw_benefit_status_dimension`, the sample size is consitent and many times will not change, resulting in the crawler making an accurate assumption about the types. But for much larger tables, the data in the sample may not reflect data further along in the file, hence the crawler making an incorrect determination.
 
 Because we are now processing more data from Cubic, these mislabels are creating issues when this data is queried in Athena. Here are examples of such issues:
 
