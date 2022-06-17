@@ -53,7 +53,7 @@ defmodule ExCubicIngestion.ProcessIngestion do
   @spec run(map()) :: map()
   defp run(state) do
     # get list of load records that are ready for archive/error, and process them
-    process_loads(CubicLoad.get_status_ready_for())
+    process_loads(CubicLoad.all_by_status_in(["ready_for_archiving", "ready_for_erroring"]))
 
     # return
     state

@@ -166,11 +166,14 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     Repo.all(query)
   end
 
-  @spec get_status_ready_for :: [t()]
-  def get_status_ready_for do
+  @doc """
+  Get records by a list of statuses.
+  """
+  @spec all_by_status_in([String.t()]) :: [t()]
+  def all_by_status_in(statuses) do
     query =
       from(load in not_deleted(),
-        where: load.status in ["ready_for_archiving", "ready_for_erroring"]
+        where: load.status in ^statuses
       )
 
     Repo.all(query)
