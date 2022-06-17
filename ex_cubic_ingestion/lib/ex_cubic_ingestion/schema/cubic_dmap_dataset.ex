@@ -84,6 +84,18 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
     recs_with_url
   end
 
+  @doc """
+
+  """
+  @spec iso_extended_to_datetime(String.t()) :: DateTime.t() | nil
+  def iso_extended_to_datetime(""), do: nil
+
+  def iso_extended_to_datetime(iso_extended) do
+    iso_extended
+    |> Timex.parse!("{ISO:Extended}")
+    |> DateTime.from_naive!("Etc/UTC")
+  end
+
   @spec upsert_from_dataset(map(), CubicDmapFeed.t()) :: t()
   defp upsert_from_dataset(dataset, feed_rec) do
     Repo.insert!(
@@ -98,12 +110,5 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
       on_conflict: [set: [last_updated_at: iso_extended_to_datetime(dataset["last_updated"])]],
       conflict_target: :identifier
     )
-  end
-
-  @spec iso_extended_to_datetime(String.t()) :: DateTime.t()
-  defp iso_extended_to_datetime(iso_extended) do
-    iso_extended
-    |> Timex.parse!("{ISO:Extended}")
-    |> DateTime.from_naive!("Etc/UTC")
   end
 end

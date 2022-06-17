@@ -11,11 +11,13 @@ defmodule ReleaseTasks.RetryArchiveError do
   alias ExCubicIngestion.Workers.Archive
   alias ExCubicIngestion.Workers.Error
 
-  @app :ex_cubic_ingestion
-
   @spec run :: :ok
+  @doc """
+  Inserts an Archive/Error job for each load with the status "archiving",
+  "archived_unknown", "erroring", and "errored_unknown".
+  """
   def run do
-    start_app()
+    ReleaseTasks.Application.start()
 
     # get all loads that are stuck in 'archiving' and 'erroring'
     {archiving_loads, erroring_loads} =
@@ -36,16 +38,5 @@ defmodule ReleaseTasks.RetryArchiveError do
     end)
 
     :ok
-  end
-
-  defp start_app do
-    # loads application configuration
-    Application.load(@app)
-
-    # disables running the full app and just start Oban and Ecto
-    Application.put_env(@app, :start_app_children?, false)
-
-    # starts app
-    Application.ensure_all_started(@app)
   end
 end
