@@ -37,15 +37,22 @@ defmodule ExCubicIngestion.Workers.Archive do
 
     destination_key = "#{archive_prefix}#{construct_destination_key(load_rec)}"
 
-    # copy load file to error bucket
-    lib_ex_aws.request!(
-      ExAws.S3.put_object_copy(archive_bucket, destination_key, incoming_bucket, source_key)
-    )
+    status =
+      case ExAws.Helpers.copy_and_delete(
+             lib_ex_aws,
+             incoming_bucket,
+             source_key,
+             archive_bucket,
+             destination_key
+           ) do
+        :ok ->
+          "archived"
 
-    # delete load file from incoming bucket
-    lib_ex_aws.request!(ExAws.S3.delete_object(incoming_bucket, source_key))
+        _error ->
+          "archived_unknown"
+      end
 
-    CubicLoad.update(load_rec, %{status: "archived"})
+    CubicLoad.update(load_rec, %{status: status})
 
     :ok
   end

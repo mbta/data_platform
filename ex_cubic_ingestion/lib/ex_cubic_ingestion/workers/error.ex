@@ -23,7 +23,6 @@ defmodule ExCubicIngestion.Workers.Error do
         _args_lib_ex_aws -> ExAws
       end
 
-    # @todo consider moving the code below into a module for both archive and error jobs
     # configs
     incoming_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
     incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
@@ -37,15 +36,22 @@ defmodule ExCubicIngestion.Workers.Error do
 
     destination_key = "#{error_prefix}#{construct_destination_key(load_rec)}"
 
-    # copy load file to error bucket
-    lib_ex_aws.request!(
-      ExAws.S3.put_object_copy(error_bucket, destination_key, incoming_bucket, source_key)
-    )
+    status =
+      case ExAws.Helpers.copy_and_delete(
+             lib_ex_aws,
+             incoming_bucket,
+             source_key,
+             error_bucket,
+             destination_key
+           ) do
+        :ok ->
+          "errored"
 
-    # delete load file from incoming bucket
-    lib_ex_aws.request!(ExAws.S3.delete_object(incoming_bucket, source_key))
+        _error ->
+          "errored_unknown"
+      end
 
-    CubicLoad.update(load_rec, %{status: "errored"})
+    CubicLoad.update(load_rec, %{status: status})
 
     :ok
   end
