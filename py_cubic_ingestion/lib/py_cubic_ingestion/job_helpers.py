@@ -9,6 +9,18 @@ import json
 import typing
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import lit
+import boto3
+
+# helper variables
+glue_client = boto3.client("glue")
+
+athena_type_to_spark_type = {
+    "string": "string",
+    "bigint": "long",
+    "double": "double",
+    "date": "date",
+    "timestamp": "timestamp",
+}
 
 
 def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
@@ -75,6 +87,42 @@ def table_name_suffix(load_table_s3_prefix: str) -> str:
     return "__ct" if load_table_s3_prefix.endswith("__ct/") else ""
 
 
+def get_glue_table_schema_fields_by_load(glue_database_name: str, load: dict) -> list:
+    """
+    Using the load's information, fetch the table information so we can
+    extract the schema fields. Field types are also converted from Athena
+    types to Spark types in the process.
+
+    Parameters
+    ----------
+    glue_database_name : str
+        Glue database to get the table from
+    load : dict
+        Load information
+
+    Returns
+    -------
+    list
+        List of fields with name and type.
+    """
+
+    load_s3_key = load["s3_key"]
+
+    # get suffix for data catalog
+    data_catalog_table_name_suffix = table_name_suffix(
+        f"{os.path.dirname(load_s3_key)}/",
+    )
+
+    response = glue_client.get_table(
+        DatabaseName=glue_database_name, Name=f'{load["table_name"]}{(data_catalog_table_name_suffix)}'
+    )
+
+    return [
+        {"name": column["Name"], "type": athena_type_to_spark_type.get(column["Type"], "string")}
+        for column in response["Table"]["StorageDescriptor"]["Columns"]
+    ]
+
+
 def from_catalog_kwargs(load: dict, env: dict) -> dict:
     """
     Construct kwargs for 'from_catalog'
@@ -107,6 +155,32 @@ def from_catalog_kwargs(load: dict, env: dict) -> dict:
         },
         "transformation_ctx": "table_df_read",
     }
+
+
+def df_with_updated_schema(df: DataFrame, schema_fields: list) -> DataFrame:
+    """
+    Construct a new DataFrame with an updated schema. Columns will
+    be cast with the indicated type. If unable to cast, Spark will
+    set the field to NULL.
+
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame containing the data
+    schema_fields : list
+        List of fields that will be used to update the schema
+
+    Returns
+    -------
+    DataFrame
+        Updated DataFrame containing an updated schema
+    """
+
+    column_statements = []
+    for field in schema_fields:
+        column_statements.append(f'cast ({field["name"]} as {field["type"]}) as {field["name"]}')
+
+    return df.selectExpr(column_statements)
 
 
 def df_with_partition_columns(df: DataFrame, partition_columns: list) -> DataFrame:

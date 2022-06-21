@@ -37,13 +37,19 @@ def run() -> None:
 
     # run glue transformations for each cubic load
     for load in input_dict.get("loads", []):
+        springboard_schema_fields = job_helpers.get_glue_table_schema_fields_by_load(
+            env_dict["GLUE_DATABASE_SPRINGBOARD"], load
+        )
         from_catalog_kwargs = job_helpers.from_catalog_kwargs(load, env_dict)
         # create table dataframe using the data catalog table in glue
         table_df = glue_context.create_dynamic_frame.from_catalog(**from_catalog_kwargs)
 
+        # cast columns with the springboard schema
+        updated_table_df = job_helpers.df_with_updated_schema(table_df.toDF(), springboard_schema_fields)
+
         # write out to springboard bucket using the same prefix as incoming
         job_helpers.write_parquet(
-            table_df.toDF(),  # write out to springboard bucket using the same prefix as incoming
+            updated_table_df,  # write out to springboard bucket using the same prefix as incoming
             load.get("partition_columns", []),
             f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}'
             f'/{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{os.path.dirname(load["s3_key"])}/',

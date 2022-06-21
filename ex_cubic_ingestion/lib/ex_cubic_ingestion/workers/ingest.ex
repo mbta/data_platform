@@ -116,6 +116,9 @@ defmodule ExCubicIngestion.Workers.Ingest do
   def construct_glue_job_payload(load_rec_ids) do
     glue_database_incoming = Application.fetch_env!(:ex_cubic_ingestion, :glue_database_incoming)
 
+    glue_database_springboard =
+      Application.fetch_env!(:ex_cubic_ingestion, :glue_database_springboard)
+
     bucket_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
     bucket_springboard = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_springboard)
 
@@ -141,6 +144,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
 
     {Jason.encode!(%{
        GLUE_DATABASE_INCOMING: glue_database_incoming,
+       GLUE_DATABASE_SPRINGBOARD: glue_database_springboard,
        S3_BUCKET_INCOMING: bucket_incoming,
        S3_BUCKET_PREFIX_INCOMING: prefix_incoming,
        S3_BUCKET_SPRINGBOARD: bucket_springboard,

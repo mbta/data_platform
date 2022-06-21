@@ -4,10 +4,13 @@ Testing module for `job_helpers.py`.
 
 import json
 import pytest
-from pyspark.sql import SparkSession
+import datetime
+from pyspark.sql import SparkSession, Row
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.session import SparkSession as SparkSessionType
 from typing import List
+from botocore.stub import Stubber
+from typing import Iterator
 
 from py_cubic_ingestion import job_helpers
 
@@ -28,6 +31,39 @@ def collection_as_dict(collection: list) -> List[dict]:
     """
 
     return [item.asDict() for item in collection]
+
+
+def stub_glue_get_table(glue_client: Stubber, table_name: str) -> None:
+    """
+    Adds a response to the Stubber for Glue's `get_table` call
+
+    Parameters
+    ----------
+    glue_client : Stubber
+        Stubber for Glue client that the response is added for
+    table_name : str
+        Name of table that Glue Client's stub should return
+    """
+
+    glue_client.add_response(
+        "get_table",
+        expected_params={"DatabaseName": "db", "Name": table_name},
+        service_response={
+            "Table": {
+                "Name": table_name,
+                "StorageDescriptor": {
+                    "Columns": [
+                        {"Name": "string_col", "Type": "string"},
+                        {"Name": "bigint_col", "Type": "bigint"},
+                        {"Name": "double_col", "Type": "double"},
+                        {"Name": "date_col", "Type": "date"},
+                        {"Name": "timestamp_col", "Type": "timestamp"},
+                        {"Name": "other_col", "Type": "array"},
+                    ]
+                },
+            }
+        },
+    )
 
 
 def assert_equal_collections(actual_collection: list, expected_collection: list) -> None:
@@ -136,6 +172,17 @@ def fixture_spark_session() -> SparkSessionType:
     return spark
 
 
+@pytest.fixture(name="glue_client")
+def fixture_glue_client() -> Iterator[Stubber]:
+    """
+    Override Glue client with a Stubber
+    """
+
+    with Stubber(job_helpers.glue_client) as stubber:
+        yield stubber
+        stubber.assert_no_pending_responses()
+
+
 # tests
 def test_parse_args() -> None:
     """
@@ -169,6 +216,36 @@ def test_table_name_suffix() -> None:
     assert "__ct" == job_helpers.table_name_suffix("cubic/ods_qlik/EDW.TEST__ct/")
 
 
+def test_get_glue_table_schema_fields_by_load(glue_client: Stubber) -> None:
+    """
+    Testing that we are able to get a glue table schema and convert the
+    list of fields to the correct types for spark.
+    """
+
+    expected_schema_fields = [
+        {"name": "string_col", "type": "string"},
+        {"name": "bigint_col", "type": "long"},
+        {"name": "double_col", "type": "double"},
+        {"name": "date_col", "type": "date"},
+        {"name": "timestamp_col", "type": "timestamp"},
+        {"name": "other_col", "type": "string"},
+    ]
+
+    stub_glue_get_table(glue_client, "cubic_ods_qlik__edw_test")
+
+    assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
+        "db", {"s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz", "table_name": "cubic_ods_qlik__edw_test"}
+    )
+
+    # also check '__ct' loads
+    stub_glue_get_table(glue_client, "cubic_ods_qlik__edw_test__ct")
+
+    assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
+        "db",
+        {"s3_key": "cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz", "table_name": "cubic_ods_qlik__edw_test"},
+    )
+
+
 def test_from_catalog_kwargs() -> None:
     """
     Test the correct kwargs are constructed from the load and env dicts
@@ -193,6 +270,91 @@ def test_from_catalog_kwargs() -> None:
         "additional_options": {"paths": [f's3://incoming/{load["s3_key"]}']},
         "transformation_ctx": "table_df_read",
     }
+
+
+def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
+    """
+    Test creating a DataFrame with an updated schema and that
+    the data is valid.
+
+    Parameters
+    ----------
+    spark_session : list
+        Fixture that contains the Spark Session to use
+    """
+    original_data = [
+        (
+            "test",
+            "123",
+            "null_123",
+            "123.45",
+            "null_123.45",
+            "2022-01-01",
+            "null_2022-01-01",
+            "2022-01-01 01:23:45",
+            "null_2022-01-01 01:23:45",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "string_col",
+            "bigint_col",
+            "bigint_null_col",
+            "double_col",
+            "double_null_col",
+            "date_col",
+            "date_null_col",
+            "timestamp_col",
+            "timestamp_null_col",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "string_col", "type": "string"},
+            {"name": "bigint_col", "type": "bigint"},
+            {"name": "bigint_null_col", "type": "bigint"},
+            {"name": "double_col", "type": "double"},
+            {"name": "double_null_col", "type": "double"},
+            {"name": "date_col", "type": "date"},
+            {"name": "date_null_col", "type": "date"},
+            {"name": "timestamp_col", "type": "timestamp"},
+            {"name": "timestamp_null_col", "type": "timestamp"},
+        ],
+    )
+    actual_schema = updated_df.schema.jsonValue()
+
+    expected_schema = {
+        "type": "struct",
+        "fields": [
+            {"name": "string_col", "type": "string", "nullable": True, "metadata": {}},
+            {"name": "bigint_col", "type": "long", "nullable": True, "metadata": {}},
+            {"name": "bigint_null_col", "type": "long", "nullable": True, "metadata": {}},
+            {"name": "double_col", "type": "double", "nullable": True, "metadata": {}},
+            {"name": "double_null_col", "type": "double", "nullable": True, "metadata": {}},
+            {"name": "date_col", "type": "date", "nullable": True, "metadata": {}},
+            {"name": "date_null_col", "type": "date", "nullable": True, "metadata": {}},
+            {"name": "timestamp_col", "type": "timestamp", "nullable": True, "metadata": {}},
+            {"name": "timestamp_null_col", "type": "timestamp", "nullable": True, "metadata": {}},
+        ],
+    }
+
+    assert actual_schema == expected_schema
+
+    # assert that the data is correctly casted
+    assert updated_df.first() == Row(
+        string_col="test",
+        bigint_col=123,
+        bigint_null_col=None,
+        double_col=123.45,
+        double_null_col=None,
+        date_col=datetime.date(2022, 1, 1),
+        date_null_col=None,
+        timestamp_col=datetime.datetime(2022, 1, 1, 1, 23, 45),
+        timestamp_null_col=None,
+    )
 
 
 def test_df_with_partition_columns(spark_session: SparkSessionType) -> None:
