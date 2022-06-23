@@ -20,8 +20,13 @@ defmodule ReleaseTasks.RetryArchiveError do
     # get all loads that are stuck in 'archiving' and 'erroring'
     {archiving_loads, erroring_loads} =
       Enum.split_with(
-        CubicLoad.all_by_status_in(["archiving", "erroring"]),
-        &(&1.status == "archiving")
+        CubicLoad.all_by_status_in([
+          "archiving",
+          "archived_unknown",
+          "erroring",
+          "errored_unknown"
+        ]),
+        &(&1.status == "archiving" || &1.status == "archived_unknown")
       )
 
     Repo.transaction(fn ->
