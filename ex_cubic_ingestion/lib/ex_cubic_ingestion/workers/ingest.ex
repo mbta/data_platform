@@ -193,7 +193,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
         :ok
 
       _other_glue_job_run_state ->
-        # note: error will be handled within ObanIngestWorkerError module
+        # note: error will be handled within ObanWorkerError module
         {:error, "Glue Job Run Status: #{Jason.encode!(glue_job_run_status)}"}
     end
   end

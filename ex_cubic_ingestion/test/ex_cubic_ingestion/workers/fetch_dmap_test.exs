@@ -6,9 +6,6 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
   alias ExCubicIngestion.Schema.CubicDmapFeed
   alias ExCubicIngestion.Workers.FetchDmap
 
-  require MockHTTPoison
-  require MockExAws
-
   describe "perform/1" do
     test "run job without error" do
       dmap_feed =

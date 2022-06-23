@@ -2,6 +2,18 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   @moduledoc """
   Contains information on the objects passing through the 'incoming' S3 bucket, as well
   their status while transitioning through the various steps in the data pipeline process.
+
+  Statuses:
+    "ready"
+    "ingesting"
+    "ready_for_archiving"
+    "ready_for_erroring"
+    "archiving"
+    "erroring"
+    "archived"
+    "archived_unknown"
+    "errored"
+    "errored_unknown"
   """
   use Ecto.Schema
 
@@ -38,7 +50,6 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   schema "cubic_loads" do
     field(:table_id, :integer)
-    # @todo specify the different statuses
     field(:status, :string)
     field(:s3_key, :string)
     field(:s3_modified, :utc_datetime)
@@ -155,11 +166,14 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     Repo.all(query)
   end
 
-  @spec get_status_ready_for :: [t()]
-  def get_status_ready_for do
+  @doc """
+  Get records by a list of statuses.
+  """
+  @spec all_by_status_in([String.t()]) :: [t()]
+  def all_by_status_in(statuses) do
     query =
       from(load in not_deleted(),
-        where: load.status in ["ready_for_archiving", "ready_for_erroring"]
+        where: load.status in ^statuses
       )
 
     Repo.all(query)

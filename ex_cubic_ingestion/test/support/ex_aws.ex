@@ -6,107 +6,47 @@ defmodule MockExAws do
   @spec request(ExAws.Operation.t(), keyword) :: term
   def request(op, config_overrides \\ [])
 
-  def request(%{service: :s3, http_method: :delete} = op, _config_overrides) do
+  def request(%{service: :s3, http_method: :delete, path: path}, _config_overrides) do
     valid_paths =
       Enum.map(MockExAws.Data.load_objects(), fn load_object ->
         "#{load_object[:key]}"
-      end)
+      end) ++
+        [
+          "cubic/dmap/sample/already_copied_but_source_not_deleted.csv.gz",
+          "cubic/dmap/sample/move.csv.gz",
+          "cubic/dmap/sample/20220101.csv"
+        ]
 
     # deleting object
-    if Enum.member?(valid_paths, op.path) do
-      {:ok,
-       [
-         body: "",
-         headers: [
-           {"x-amz-id-2", "abc123"},
-           {"x-amz-request-id", "abc123"},
-           {"Date", "Wed, 02 Mar 2022 20:11:48 GMT"},
-           {"Server", "AmazonS3"}
-         ],
-         status_code: 204
-       ]}
+    if Enum.member?(valid_paths, path) do
+      {:ok, %{}}
     else
-      {:error,
-       [
-         body: "",
-         headers: [
-           {"x-amz-id-2", "abc123"},
-           {"x-amz-request-id", "abc123"},
-           {"Date", "Wed, 02 Mar 2022 20:11:48 GMT"},
-           {"Server", "AmazonS3"}
-         ],
-         status_code: 404
-       ]}
+      {:error, %{}}
     end
   end
 
-  def request(%{service: :s3, http_method: :put} = op, _config_overrides) do
+  def request(%{service: :s3, http_method: :put, headers: headers, path: path}, _config_overrides) do
     incoming_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
     incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
+    error_copy_paths = [
+      "#{incoming_bucket}#{incoming_prefix}does_not_exist/file.csv",
+      "/incoming/cubic/dmap/sample/move_with_copy_failing.csv.gz"
+    ]
+
     cond do
       # copying object
-      op.headers["x-amz-copy-source"] ==
-          "#{incoming_bucket}#{incoming_prefix}does_not_exist/file.csv" ->
-        {:error,
-         [
-           body:
-             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<CopyObjectResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><LastModified>2022-03-02T20:11:47.000Z</LastModified><ETag>&quot;abc123&quot;</ETag></CopyObjectResult>",
-           headers: [
-             {"x-amz-id-2", "abc123"},
-             {"x-amz-request-id", "abc123"},
-             {"Date", "Wed, 02 Mar 2022 20:11:47 GMT"},
-             {"x-amz-server-side-encryption", "aws:kms"},
-             {"x-amz-server-side-encryption-aws-kms-key-id", ""},
-             {"Content-Type", "application/xml"},
-             {"Server", "AmazonS3"},
-             {"Content-Length", "234"}
-           ],
-           status_code: 404
-         ]}
+      Enum.member?(error_copy_paths, headers["x-amz-copy-source"]) ->
+        {:error, "copy_object failed"}
 
-      op.headers["x-amz-copy-source"] ->
-        {:ok,
-         [
-           body:
-             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<CopyObjectResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><LastModified>2022-03-02T20:11:47.000Z</LastModified><ETag>&quot;abc123&quot;</ETag></CopyObjectResult>",
-           headers: [
-             {"x-amz-id-2", "abc123"},
-             {"x-amz-request-id", "abc123"},
-             {"Date", "Wed, 02 Mar 2022 20:11:47 GMT"},
-             {"x-amz-server-side-encryption", "aws:kms"},
-             {"x-amz-server-side-encryption-aws-kms-key-id", ""},
-             {"Content-Type", "application/xml"},
-             {"Server", "AmazonS3"},
-             {"Content-Length", "234"}
-           ],
-           status_code: 200
-         ]}
+      headers["x-amz-copy-source"] ->
+        {:ok, %{}}
 
-      String.starts_with?(op.path, "#{incoming_prefix}cubic/dmap/sample/") ->
-        {:ok,
-         %{
-           body: "",
-           headers: [
-             {"x-amz-id-2", "abc123"},
-             {"x-amz-request-id", "abc123"},
-             {"Date", "Fri, 03 Jun 2022 16:17:05 GMT"},
-             {"x-amz-server-side-encryption", "aws:kms"},
-             {"x-amz-server-side-encryption-aws-kms-key-id", ""},
-             {"ETag", "\"abc123\""},
-             {"Server", "AmazonS3"},
-             {"Content-Length", "0"}
-           ],
-           status_code: 200
-         }}
+      String.starts_with?(path, "#{incoming_prefix}cubic/dmap/sample/") ->
+        {:ok, %{}}
 
       true ->
-        {:error,
-         [
-           body: "",
-           headers: [],
-           status_code: 404
-         ]}
+        {:error, "put_object failed"}
     end
   end
 
@@ -176,6 +116,25 @@ defmodule MockExAws do
              next_continuation_token: ""
            }
          }}
+    end
+  end
+
+  def request(%{service: :s3, http_method: :head, path: path}, _config_overrides) do
+    incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+    valid_paths = [
+      "cubic/dmap/sample/already_copied_but_source_not_deleted.csv.gz",
+      "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied_but_source_not_deleted.csv.gz",
+      "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied.csv.gz",
+      "cubic/dmap/sample/move.csv.gz",
+      "cubic/dmap/sample/move_with_copy_failing.csv.gz",
+      "#{incoming_prefix}cubic/dmap/sample/20220101.csv"
+    ]
+
+    if Enum.member?(valid_paths, path) do
+      {:ok, %{}}
+    else
+      {:error, "head_object failed"}
     end
   end
 

@@ -61,6 +61,7 @@ defmodule ExCubicIngestion.TestFixtures do
 
     {:ok,
      %{
+       dmap_table: dmap_table,
        dmap_load: dmap_load,
        ods_load: ods_load
      }}
