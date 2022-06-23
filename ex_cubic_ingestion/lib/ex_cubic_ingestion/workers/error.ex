@@ -36,24 +36,22 @@ defmodule ExCubicIngestion.Workers.Error do
 
     destination_key = "#{error_prefix}#{construct_destination_key(load_rec)}"
 
-    status =
-      case ExAws.Helpers.copy_and_delete(
-             lib_ex_aws,
-             incoming_bucket,
-             source_key,
-             error_bucket,
-             destination_key
-           ) do
-        :ok ->
-          "errored"
+    {move_status, move_req_response} =
+      ExAws.Helpers.move(
+        lib_ex_aws,
+        incoming_bucket,
+        source_key,
+        error_bucket,
+        destination_key
+      )
 
-        _error ->
-          "errored_unknown"
-      end
+    if move_status == :ok do
+      CubicLoad.update(load_rec, %{status: "errored"})
 
-    CubicLoad.update(load_rec, %{status: status})
-
-    :ok
+      :ok
+    else
+      {:error, move_req_response}
+    end
   end
 
   @doc """

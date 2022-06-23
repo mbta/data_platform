@@ -39,12 +39,12 @@ defmodule ExCubicIngestion.Application do
         []
       )
 
-    # attach a specific error handler for the 'ingest' Oban worker
+    # attach a specific error handler for the Oban workers
     :ok =
       :telemetry.attach(
-        "oban-ingest-worker-error",
+        "oban-worker-error",
         [:oban, :job, :exception],
-        &ExCubicIngestion.ObanIngestWorkerError.handle_event/4,
+        &ExCubicIngestion.ObanWorkerError.handle_event/4,
         []
       )
 

@@ -36,7 +36,7 @@ defmodule ExCubicIngestion.Workers.ErrorTest do
           s3_size: 197
         })
 
-      assert :ok ==
+      assert {:error, "head_object failed"} ==
                perform_job(Error, %{
                  load_rec_id: dmap_load_unknown.id,
                  lib_ex_aws: "MockExAws"

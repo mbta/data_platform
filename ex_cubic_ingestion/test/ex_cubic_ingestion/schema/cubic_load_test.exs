@@ -206,7 +206,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       first_load_rec = List.first(new_load_recs)
 
       # update it to 'archived' status
-      updated_load_rec = CubicLoad.update(first_load_rec, status: "archived")
+      updated_load_rec = CubicLoad.update(first_load_rec, %{status: "archived"})
 
       assert CubicLoad.get!(first_load_rec.id) == updated_load_rec
     end

@@ -13,7 +13,7 @@ defmodule MockExAws do
       end) ++
         [
           "cubic/dmap/sample/already_copied_but_source_not_deleted.csv.gz",
-          "cubic/dmap/sample/copy_and_delete.csv.gz",
+          "cubic/dmap/sample/move.csv.gz",
           "cubic/dmap/sample/20220101.csv"
         ]
 
@@ -29,11 +29,15 @@ defmodule MockExAws do
     incoming_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
     incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
+    error_copy_paths = [
+      "#{incoming_bucket}#{incoming_prefix}does_not_exist/file.csv",
+      "/incoming/cubic/dmap/sample/move_with_copy_failing.csv.gz"
+    ]
+
     cond do
       # copying object
-      headers["x-amz-copy-source"] ==
-          "#{incoming_bucket}#{incoming_prefix}does_not_exist/file.csv" ->
-        {:error, %{}}
+      Enum.member?(error_copy_paths, headers["x-amz-copy-source"]) ->
+        {:error, "copy_object failed"}
 
       headers["x-amz-copy-source"] ->
         {:ok, %{}}
@@ -42,7 +46,7 @@ defmodule MockExAws do
         {:ok, %{}}
 
       true ->
-        {:error, %{}}
+        {:error, "put_object failed"}
     end
   end
 
@@ -122,14 +126,15 @@ defmodule MockExAws do
       "cubic/dmap/sample/already_copied_but_source_not_deleted.csv.gz",
       "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied_but_source_not_deleted.csv.gz",
       "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied.csv.gz",
-      "cubic/dmap/sample/copy_and_delete.csv.gz",
+      "cubic/dmap/sample/move.csv.gz",
+      "cubic/dmap/sample/move_with_copy_failing.csv.gz",
       "#{incoming_prefix}cubic/dmap/sample/20220101.csv"
     ]
 
     if Enum.member?(valid_paths, path) do
       {:ok, %{}}
     else
-      {:error, %{}}
+      {:error, "head_object failed"}
     end
   end
 
