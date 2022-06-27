@@ -5,12 +5,12 @@ Testing module for `job_helpers.py`.
 import json
 import pytest
 import datetime
-from pyspark.sql import SparkSession, Row
+from pyspark.sql import Row
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.session import SparkSession as SparkSessionType
+from pyspark.sql.utils import PythonException
 from typing import List
 from botocore.stub import Stubber
-from typing import Iterator
 
 from py_cubic_ingestion import job_helpers
 
@@ -154,35 +154,6 @@ def write_parquet(
     return spark.read.parquet(parquet_path)
 
 
-# fixtures
-@pytest.fixture(name="spark_session")
-def fixture_spark_session() -> SparkSessionType:
-    """
-    Creates Spark session for use in tests
-
-    Returns
-    -------
-    DataFrame
-        Spark Session available to use in tests
-    """
-
-    spark = SparkSession.builder.master("local").appName("test").getOrCreate()
-    spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
-
-    return spark
-
-
-@pytest.fixture(name="glue_client")
-def fixture_glue_client() -> Iterator[Stubber]:
-    """
-    Override Glue client with a Stubber
-    """
-
-    with Stubber(job_helpers.glue_client) as stubber:
-        yield stubber
-        stubber.assert_no_pending_responses()
-
-
 # tests
 def test_parse_args() -> None:
     """
@@ -281,18 +252,16 @@ def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
     ----------
     spark_session : list
         Fixture that contains the Spark Session to use
+    tmp_path : str
+        Fixture containing the temporary path that we can use to store data
     """
     original_data = [
         (
             "test",
             "123",
-            "null_123",
             "123.45",
-            "null_123.45",
             "2022-01-01",
-            "null_2022-01-01",
-            "2022-01-01 01:23:45",
-            "null_2022-01-01 01:23:45",
+            "2022-01-01 12:34:56",
         )
     ]
     original_df = spark_session.createDataFrame(
@@ -300,13 +269,9 @@ def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
         [
             "string_col",
             "bigint_col",
-            "bigint_null_col",
             "double_col",
-            "double_null_col",
             "date_col",
-            "date_null_col",
             "timestamp_col",
-            "timestamp_null_col",
         ],
     )
 
@@ -314,16 +279,13 @@ def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
         original_df,
         [
             {"name": "string_col", "type": "string"},
-            {"name": "bigint_col", "type": "bigint"},
-            {"name": "bigint_null_col", "type": "bigint"},
+            {"name": "bigint_col", "type": "long"},
             {"name": "double_col", "type": "double"},
-            {"name": "double_null_col", "type": "double"},
             {"name": "date_col", "type": "date"},
-            {"name": "date_null_col", "type": "date"},
             {"name": "timestamp_col", "type": "timestamp"},
-            {"name": "timestamp_null_col", "type": "timestamp"},
         ],
     )
+
     actual_schema = updated_df.schema.jsonValue()
 
     expected_schema = {
@@ -331,13 +293,9 @@ def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
         "fields": [
             {"name": "string_col", "type": "string", "nullable": True, "metadata": {}},
             {"name": "bigint_col", "type": "long", "nullable": True, "metadata": {}},
-            {"name": "bigint_null_col", "type": "long", "nullable": True, "metadata": {}},
             {"name": "double_col", "type": "double", "nullable": True, "metadata": {}},
-            {"name": "double_null_col", "type": "double", "nullable": True, "metadata": {}},
             {"name": "date_col", "type": "date", "nullable": True, "metadata": {}},
-            {"name": "date_null_col", "type": "date", "nullable": True, "metadata": {}},
             {"name": "timestamp_col", "type": "timestamp", "nullable": True, "metadata": {}},
-            {"name": "timestamp_null_col", "type": "timestamp", "nullable": True, "metadata": {}},
         ],
     }
 
@@ -347,14 +305,126 @@ def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
     assert updated_df.first() == Row(
         string_col="test",
         bigint_col=123,
-        bigint_null_col=None,
         double_col=123.45,
-        double_null_col=None,
         date_col=datetime.date(2022, 1, 1),
-        date_null_col=None,
-        timestamp_col=datetime.datetime(2022, 1, 1, 1, 23, 45),
-        timestamp_null_col=None,
+        timestamp_col=datetime.datetime(2022, 1, 1, 12, 34, 56),
     )
+
+
+def test_df_with_updated_schema_long_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "123",
+            "123_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "bigint_col",
+            "bigint_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "bigint_col", "type": "long"},
+            {"name": "bigint_col_error", "type": "long"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '123_error'" in excinfo.value.desc
+
+
+def test_df_with_updated_schema_double_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "123.45",
+            "123.45_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "double_col",
+            "double_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "double_col", "type": "double"},
+            {"name": "double_col_error", "type": "double"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '123.45_error'" in excinfo.value.desc
+
+
+def test_df_with_updated_schema_date_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "2022-01-01",
+            "2022-01-01_123_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "date_col",
+            "date_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "date_col", "type": "date"},
+            {"name": "date_col_error", "type": "date"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '2022-01-01_123_error'" in excinfo.value.desc
+
+
+def test_df_with_updated_schema_timestamp_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "2022-01-01 12:34:56",
+            "2022-01-01 12:34:56_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "timestamp_col",
+            "timestamp_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "timestamp_col", "type": "timestamp"},
+            {"name": "timestamp_col_error", "type": "timestamp"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '2022-01-01 12:34:56_error'" in excinfo.value.desc
 
 
 def test_df_with_partition_columns(spark_session: SparkSessionType) -> None:

@@ -3,13 +3,15 @@ Helper functions for `ingest_incoming` module. Also, allows for testing of some 
 in the Glue Job.
 """
 
-import os
-import logging
-import json
-import typing
+from typing import Tuple
+from py_cubic_ingestion import custom_udfs
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import lit
 import boto3
+import logging
+import json
+import os
+
 
 # helper variables
 glue_client = boto3.client("glue")
@@ -23,7 +25,7 @@ athena_type_to_spark_type = {
 }
 
 
-def parse_args(env_arg: str, input_arg: str) -> typing.Tuple[dict, dict]:
+def parse_args(env_arg: str, input_arg: str) -> Tuple[dict, dict]:
     """
     Parses arguments for this Glue Job, and returns a dictionaries.
 
@@ -178,9 +180,20 @@ def df_with_updated_schema(df: DataFrame, schema_fields: list) -> DataFrame:
 
     column_statements = []
     for field in schema_fields:
-        column_statements.append(f'cast ({field["name"]} as {field["type"]}) as {field["name"]}')
+        if field["type"] == "long":
+            column_statements.append(custom_udfs.as_long(field["name"]).alias(field["name"]))
+        elif field["type"] == "double":
+            column_statements.append(custom_udfs.as_double(field["name"]).alias(field["name"]))
+        elif field["type"] == "date":
+            column_statements.append(custom_udfs.as_date(field["name"]).alias(field["name"]))
+        elif field["type"] == "timestamp":
+            column_statements.append(custom_udfs.as_timestamp(field["name"]).alias(field["name"]))
+        else:
+            column_statements.append(field["name"])
 
-    return df.selectExpr(column_statements)
+        # column_statements.append(f'cast ({field["name"]} as {field["type"]}) as {field["name"]}')
+
+    return df.select(column_statements)
 
 
 def df_with_partition_columns(df: DataFrame, partition_columns: list) -> DataFrame:
