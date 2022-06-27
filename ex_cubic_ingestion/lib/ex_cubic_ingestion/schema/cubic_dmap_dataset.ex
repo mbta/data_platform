@@ -85,11 +85,9 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   end
 
   @doc """
-
+  Converts an ISO formatted datetime String to Datetime
   """
-  @spec iso_extended_to_datetime(String.t()) :: DateTime.t() | nil
-  def iso_extended_to_datetime(""), do: nil
-
+  @spec iso_extended_to_datetime(String.t()) :: DateTime.t()
   def iso_extended_to_datetime(iso_extended) do
     iso_extended
     |> Timex.parse!("{ISO:Extended}")
