@@ -36,7 +36,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
       dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
       assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}" ==
-               FetchDmap.construct_feed_url(dmap_feed)
+               FetchDmap.construct_feed_url(dmap_feed, nil)
     end
 
     test "feed with a last updated timestamp" do
@@ -53,7 +53,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
       dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
       assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}&last_updated=2022-05-22T20:49:50.123457" ==
-               FetchDmap.construct_feed_url(dmap_feed)
+               FetchDmap.construct_feed_url(dmap_feed, nil)
     end
 
     test "feed with last updated passed in" do
@@ -72,7 +72,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
       dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
 
       assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}&last_updated=2022-05-01T10:49:50.123456" ==
-               FetchDmap.construct_feed_url(dmap_feed, last_updated)
+               FetchDmap.construct_feed_url(dmap_feed, DateTime.to_string(last_updated))
     end
   end
 
@@ -88,7 +88,11 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       assert ["sample_20220517", "sample_20220518"] =
                Enum.map(
-                 FetchDmap.get_feed_datasets(dmap_feed, last_updated, MockHTTPoison),
+                 FetchDmap.get_feed_datasets(
+                   dmap_feed,
+                   DateTime.to_string(last_updated),
+                   MockHTTPoison
+                 ),
                  & &1["dataset_id"]
                )
     end

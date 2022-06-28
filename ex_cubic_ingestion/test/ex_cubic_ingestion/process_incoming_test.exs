@@ -49,7 +49,8 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
 
       :ok = ProcessIncoming.run(state)
 
-      [ods_load_1, ods_load_2, dmap_load_1, dmap_load_2] = Repo.all(CubicLoad)
+      [ods_load_1, ods_load_2, dmap_load_1, dmap_load_2] =
+        Enum.sort_by(Repo.all(CubicLoad), & &1.id)
 
       assert %CubicLoad{
                s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv",
