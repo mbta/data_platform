@@ -3,9 +3,8 @@ Tests for our custom UDFs
 """
 
 from py_cubic_ingestion import custom_udfs
-from pyspark.sql import Row
-from pyspark.sql.session import SparkSession as SparkSessionType
 import datetime
+import pytest
 
 
 def test_is_empty() -> None:
@@ -20,99 +19,69 @@ def test_is_empty() -> None:
     assert not custom_udfs.is_empty("test")
 
 
-def test_as_long(spark_session: SparkSessionType) -> None:
-    original_data = [
-        (
-            # https://spark.apache.org/docs/latest/sql-ref-datatypes.html
-            "-9223372036854775807",
-            "9223372036854775807",
-        )
-    ]
-    original_df = spark_session.createDataFrame(
-        original_data,
-        [
-            "bigint_col_min",
-            "bigint_col_max",
-        ],
-    )
+def test_as_long() -> None:
+    # empty
+    assert custom_udfs.as_long("") is None
 
-    updated_df = original_df.select(
-        custom_udfs.as_long("bigint_col_min").alias("bigint_col_min"),
-        custom_udfs.as_long("bigint_col_max").alias("bigint_col_max"),
-    )
+    # minimum
+    assert -9223372036854775808 == custom_udfs.as_long("-9223372036854775808")
+    # maximum
+    assert 9223372036854775807 == custom_udfs.as_long("9223372036854775807")
 
-    assert updated_df.first() == Row(bigint_col_min=-9223372036854775807, bigint_col_max=9223372036854775807)
+    # over the limit
+    with pytest.raises(ValueError):
+        custom_udfs.as_long("9223372036854775808")  # 9223372036854775807 + 1
+
+    # parsing error
+    with pytest.raises(ValueError):
+        custom_udfs.as_long("invalid")
 
 
-def test_as_double(spark_session: SparkSessionType) -> None:
-    original_data = [
-        (
-            # https://spark.apache.org/docs/latest/sql-ref-datatypes.html
-            "-9223372036854775807.9223372036854775807",
-            "9223372036854775807.9223372036854775807",
-        )
-    ]
-    original_df = spark_session.createDataFrame(
-        original_data,
-        [
-            "double_col_min",
-            "double_col_max",
-        ],
-    )
+def test_as_double() -> None:
+    # empty
+    assert custom_udfs.as_double("") is None
 
-    updated_df = original_df.select(
-        custom_udfs.as_double("double_col_min").alias("double_col_min"),
-        custom_udfs.as_double("double_col_max").alias("double_col_max"),
-    )
+    # negative
+    assert -123.45 == custom_udfs.as_double("-123.45")
+    # positive
+    assert 123.45 == custom_udfs.as_double("123.45")
 
-    assert updated_df.first() == Row(
-        double_col_min=-9223372036854775807.9223372036854775807, double_col_max=9223372036854775807.9223372036854775807
-    )
+    # parsing error
+    with pytest.raises(ValueError):
+        custom_udfs.as_double("invalid")
 
 
-def test_as_date(spark_session: SparkSessionType) -> None:
-    original_data = [
-        (
-            "2022-01-01",
-            "20220102",
-        )
-    ]
-    original_df = spark_session.createDataFrame(
-        original_data,
-        [
-            "date_col",
-            "date_col_alt",
-        ],
-    )
+def test_as_date() -> None:
+    # empty
+    assert custom_udfs.as_date("") is None
 
-    updated_df = original_df.select(
-        custom_udfs.as_date("date_col").alias("date_col"), custom_udfs.as_date("date_col_alt").alias("date_col_alt")
-    )
+    # typical
+    assert datetime.date(2022, 1, 1) == custom_udfs.as_date("2022-01-01")
+    # different format
+    assert datetime.date(2022, 1, 2) == custom_udfs.as_date("20220102")
+    # timestamp
+    assert datetime.date(2022, 1, 3) == custom_udfs.as_date("2022-01-03 23:34:56")
+    # timestamp with timezome
+    assert datetime.date(2022, 1, 3) == custom_udfs.as_date("2022-01-03 23:34:56-04:00")
 
-    assert updated_df.first() == Row(date_col=datetime.date(2022, 1, 1), date_col_alt=datetime.date(2022, 1, 2))
+    # parsing error
+    with pytest.raises(ValueError):
+        custom_udfs.as_date("invalid")
 
 
-def test_as_timestamp(spark_session: SparkSessionType) -> None:
-    original_data = [
-        (
-            "2022-01-01 12:34:56",
-            "20220102 12:34:56",
-        )
-    ]
-    original_df = spark_session.createDataFrame(
-        original_data,
-        [
-            "timestamp_col",
-            "timestamp_col_alt",
-        ],
-    )
+def test_as_timestamp() -> None:
+    # empty
+    assert custom_udfs.as_timestamp("") is None
 
-    updated_df = original_df.select(
-        custom_udfs.as_timestamp("timestamp_col").alias("timestamp_col"),
-        custom_udfs.as_timestamp("timestamp_col_alt").alias("timestamp_col_alt"),
-    )
+    # typical
+    assert datetime.datetime(2022, 1, 1, 12, 34, 56) == custom_udfs.as_timestamp("2022-01-01 12:34:56")
+    # with timezone
+    assert datetime.datetime(2022, 1, 1, 16, 34, 56) == custom_udfs.as_timestamp("2022-01-01 12:34:56-04:00")
+    # different date format
+    assert datetime.datetime(2022, 1, 2, 12, 34, 56) == custom_udfs.as_timestamp("20220102 12:34:56")
+    # just date
+    assert datetime.datetime(2022, 1, 3, 0, 0, 0) == custom_udfs.as_timestamp("2022-01-03")
 
-    assert updated_df.first() == Row(
-        timestamp_col=datetime.datetime(2022, 1, 1, 12, 34, 56),
-        timestamp_col_alt=datetime.datetime(2022, 1, 2, 12, 34, 56),
-    )
+    # parsing error
+    with pytest.raises(ValueError):
+        custom_udfs.as_timestamp("invalid")

@@ -6,7 +6,8 @@ in the Glue Job.
 from typing import Tuple
 from py_cubic_ingestion import custom_udfs
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import lit
+from pyspark.sql.functions import lit, udf
+from pyspark.sql.types import DateType, DoubleType, LongType, TimestampType
 import boto3
 import logging
 import json
@@ -14,7 +15,7 @@ import os
 
 
 # helper variables
-glue_client = boto3.client("glue")
+glue_client = boto3.client("glue", region_name="us-east-1")
 
 athena_type_to_spark_type = {
     "string": "string",
@@ -23,6 +24,11 @@ athena_type_to_spark_type = {
     "date": "date",
     "timestamp": "timestamp",
 }
+
+as_long_udf = udf(custom_udfs.as_long, LongType())
+as_double_udf = udf(custom_udfs.as_double, DoubleType())
+as_date_udf = udf(custom_udfs.as_date, DateType())
+as_timestamp_udf = udf(custom_udfs.as_timestamp, TimestampType())
 
 
 def parse_args(env_arg: str, input_arg: str) -> Tuple[dict, dict]:
@@ -181,13 +187,13 @@ def df_with_updated_schema(df: DataFrame, schema_fields: list) -> DataFrame:
     column_statements = []
     for field in schema_fields:
         if field["type"] == "long":
-            column_statements.append(custom_udfs.as_long(field["name"]).alias(field["name"]))
+            column_statements.append(as_long_udf(field["name"]).alias(field["name"]))
         elif field["type"] == "double":
-            column_statements.append(custom_udfs.as_double(field["name"]).alias(field["name"]))
+            column_statements.append(as_double_udf(field["name"]).alias(field["name"]))
         elif field["type"] == "date":
-            column_statements.append(custom_udfs.as_date(field["name"]).alias(field["name"]))
+            column_statements.append(as_date_udf(field["name"]).alias(field["name"]))
         elif field["type"] == "timestamp":
-            column_statements.append(custom_udfs.as_timestamp(field["name"]).alias(field["name"]))
+            column_statements.append(as_timestamp_udf(field["name"]).alias(field["name"]))
         else:
             column_statements.append(field["name"])
 
