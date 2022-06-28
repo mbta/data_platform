@@ -1,15 +1,15 @@
-defmodule ReleaseTasks.Application do
+defmodule ReleaseTasks.Utilities do
   @moduledoc """
-  Module containing helper functions for dealing with the application.
+  Module containing functions with commonly-used functionality.
   """
 
   @app :ex_cubic_ingestion
 
-  @spec start :: :ok
+  @spec start_app :: :ok
   @doc """
-  Starts application without the GenServers.
+  Starts 'ex_cubic_ingestion' application without the GenServers.
   """
-  def start do
+  def start_app do
     # loads application configuration
     Application.load(@app)
 

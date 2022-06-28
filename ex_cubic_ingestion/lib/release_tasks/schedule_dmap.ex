@@ -13,7 +13,7 @@ defmodule ReleaseTasks.ScheduleDmap do
   """
   @spec run(map()) :: :ok
   def run(args) do
-    ReleaseTasks.Application.start()
+    ReleaseTasks.Utilities.start_app()
 
     # add a new schedule dmap job
     Oban.insert!(ScheduleDmap.new(args))

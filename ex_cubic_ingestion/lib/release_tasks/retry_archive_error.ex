@@ -17,7 +17,7 @@ defmodule ReleaseTasks.RetryArchiveError do
   "archived_unknown", "erroring", and "errored_unknown".
   """
   def run do
-    ReleaseTasks.Application.start()
+    ReleaseTasks.Utilities.start_app()
 
     # get all loads that are stuck in 'archiving' and 'erroring'
     {archiving_loads, erroring_loads} =

@@ -14,7 +14,7 @@ defmodule ReleaseTasks.FetchDmap do
   updated after the last updated parameter.
   """
   def run(%{feed_id: feed_id, last_updated: %DateTime{} = last_updated}) do
-    ReleaseTasks.Application.start()
+    ReleaseTasks.Utilities.start_app()
 
     Oban.insert(
       FetchDmap.new(%{
