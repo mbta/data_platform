@@ -133,6 +133,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
           id: load_rec.id,
           s3_key: load_rec.s3_key,
           table_name: table_rec.name,
+          is_raw: load_rec.is_raw,
           partition_columns: [
             %{"name" => "identifier", "value" => Path.basename(load_rec.s3_key)}
           ]

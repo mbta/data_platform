@@ -47,12 +47,15 @@ def run() -> None:
         # cast columns with the springboard schema
         updated_table_df = job_helpers.df_with_updated_schema(table_df.toDF(), springboard_schema_fields)
 
+        path_prefix = "raw/" if load["is_raw"] else ""
+
         # write out to springboard bucket using the same prefix as incoming
         job_helpers.write_parquet(
             updated_table_df,  # write out to springboard bucket using the same prefix as incoming
             load.get("partition_columns", []),
             f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}'
-            f'/{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{os.path.dirname(load["s3_key"])}/',
+            f'/{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}'
+            f'{path_prefix}{os.path.dirname(load["s3_key"])}/',
         )
 
     job.commit()

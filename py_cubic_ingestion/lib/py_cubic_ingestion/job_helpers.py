@@ -119,8 +119,10 @@ def get_glue_table_schema_fields_by_load(glue_client: GlueClient, glue_database_
         f"{os.path.dirname(load_s3_key)}/",
     )
 
+    data_catalog_table_name_raw_prefix = "raw_" if load["is_raw"] else ""
+
     response = glue_client.get_table(
-        DatabaseName=glue_database_name, Name=f'{load["table_name"]}{(data_catalog_table_name_suffix)}'
+        DatabaseName=glue_database_name, Name=f'{data_catalog_table_name_raw_prefix}{load["table_name"]}{(data_catalog_table_name_suffix)}'
     )
 
     return [
