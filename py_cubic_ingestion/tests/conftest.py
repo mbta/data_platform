@@ -3,10 +3,11 @@ Test configurations, setups, and fixtures
 """
 
 from botocore.stub import Stubber
-from py_cubic_ingestion import job_helpers
+from mypy_boto3_glue.client import GlueClient
 from pyspark.sql import SparkSession
 from pyspark.sql.session import SparkSession as SparkSessionType
-from typing import Iterator
+from typing import Iterator, Tuple
+import boto3
 import pytest
 
 
@@ -28,12 +29,14 @@ def fixture_spark_session() -> SparkSessionType:
     return spark
 
 
-@pytest.fixture(name="glue_client")
-def fixture_glue_client() -> Iterator[Stubber]:
+@pytest.fixture(name="glue_client_stubber")
+def fixture_glue_client_stubber() -> Iterator[Tuple[GlueClient, Stubber]]:
     """
-    Override Glue client with a Stubber
+    Generate stubber for Glue client
     """
 
-    with Stubber(job_helpers.glue_client) as stubber:
-        yield stubber
+    glue_client = boto3.client("glue", region_name="test")
+
+    with Stubber(glue_client) as stubber:
+        yield (glue_client, stubber)
         stubber.assert_no_pending_responses()

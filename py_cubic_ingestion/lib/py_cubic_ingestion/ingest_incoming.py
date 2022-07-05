@@ -3,14 +3,14 @@ Module contains the 'run' function utilized by the Glue Job defined
 in `aws/s3/glue_jobs/cubic_ingestion/ingest_incoming.py`.
 """
 
-import os
-import sys
 from awsglue.context import GlueContext  # pylint: disable=import-error
 from awsglue.job import Job  # pylint: disable=import-error
 from awsglue.utils import getResolvedOptions  # pylint: disable=import-error
-from pyspark.context import SparkContext
-
 from py_cubic_ingestion import job_helpers
+from pyspark.context import SparkContext
+import boto3
+import os
+import sys
 
 
 def run() -> None:
@@ -38,7 +38,7 @@ def run() -> None:
     # run glue transformations for each cubic load
     for load in input_dict.get("loads", []):
         springboard_schema_fields = job_helpers.get_glue_table_schema_fields_by_load(
-            env_dict["GLUE_DATABASE_SPRINGBOARD"], load
+            boto3.client("glue"), env_dict["GLUE_DATABASE_SPRINGBOARD"], load
         )
         from_catalog_kwargs = job_helpers.from_catalog_kwargs(load, env_dict)
         # create table dataframe using the data catalog table in glue

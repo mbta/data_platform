@@ -3,20 +3,18 @@ Helper functions for `ingest_incoming` module. Also, allows for testing of some 
 in the Glue Job.
 """
 
-from typing import Tuple
+from mypy_boto3_glue.client import GlueClient
 from py_cubic_ingestion import custom_udfs
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import lit, udf
 from pyspark.sql.types import DateType, DoubleType, LongType, TimestampType
-import boto3
-import logging
+from typing import Tuple
 import json
+import logging
 import os
 
 
 # helper variables
-glue_client = boto3.client("glue", region_name="us-east-1")
-
 athena_type_to_spark_type = {
     "string": "string",
     "bigint": "long",
@@ -95,7 +93,7 @@ def table_name_suffix(load_table_s3_prefix: str) -> str:
     return "__ct" if load_table_s3_prefix.endswith("__ct/") else ""
 
 
-def get_glue_table_schema_fields_by_load(glue_database_name: str, load: dict) -> list:
+def get_glue_table_schema_fields_by_load(glue_client: GlueClient, glue_database_name: str, load: dict) -> list:
     """
     Using the load's information, fetch the table information so we can
     extract the schema fields. Field types are also converted from Athena
@@ -184,22 +182,23 @@ def df_with_updated_schema(df: DataFrame, schema_fields: list) -> DataFrame:
         Updated DataFrame containing an updated schema
     """
 
-    column_statements = []
+    columns = []
     for field in schema_fields:
+        column = field["name"]
+
+        # override if we can cast successfully
         if field["type"] == "long":
-            column_statements.append(as_long_udf(field["name"]).alias(field["name"]))
+            column = as_long_udf(field["name"]).alias(field["name"])
         elif field["type"] == "double":
-            column_statements.append(as_double_udf(field["name"]).alias(field["name"]))
+            column = as_double_udf(field["name"]).alias(field["name"])
         elif field["type"] == "date":
-            column_statements.append(as_date_udf(field["name"]).alias(field["name"]))
+            column = as_date_udf(field["name"]).alias(field["name"])
         elif field["type"] == "timestamp":
-            column_statements.append(as_timestamp_udf(field["name"]).alias(field["name"]))
-        else:
-            column_statements.append(field["name"])
+            column = as_timestamp_udf(field["name"]).alias(field["name"])
 
-        # column_statements.append(f'cast ({field["name"]} as {field["type"]}) as {field["name"]}')
+        columns.append(column)
 
-    return df.select(column_statements)
+    return df.select(columns)
 
 
 def df_with_partition_columns(df: DataFrame, partition_columns: list) -> DataFrame:

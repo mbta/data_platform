@@ -2,17 +2,18 @@
 Testing module for `job_helpers.py`.
 """
 
-import json
-import pytest
-import datetime
+from botocore.stub import Stubber
+from mypy_boto3_glue.client import GlueClient
+from py_cubic_ingestion import job_helpers
 from pyspark.sql import Row
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.session import SparkSession as SparkSessionType
 from pyspark.sql.utils import PythonException
-from typing import List
-from botocore.stub import Stubber
+from typing import List, Tuple
+import datetime
+import json
+import pytest
 
-from py_cubic_ingestion import job_helpers
 
 # helper functions
 def collection_as_dict(collection: list) -> List[dict]:
@@ -33,19 +34,19 @@ def collection_as_dict(collection: list) -> List[dict]:
     return [item.asDict() for item in collection]
 
 
-def stub_glue_get_table(glue_client: Stubber, table_name: str) -> None:
+def stub_glue_get_table(stubber: Stubber, table_name: str) -> None:
     """
     Adds a response to the Stubber for Glue's `get_table` call
 
     Parameters
     ----------
-    glue_client : Stubber
+    stubber : Stubber
         Stubber for Glue client that the response is added for
     table_name : str
         Name of table that Glue Client's stub should return
     """
 
-    glue_client.add_response(
+    stubber.add_response(
         "get_table",
         expected_params={"DatabaseName": "db", "Name": table_name},
         service_response={
@@ -187,11 +188,13 @@ def test_table_name_suffix() -> None:
     assert "__ct" == job_helpers.table_name_suffix("cubic/ods_qlik/EDW.TEST__ct/")
 
 
-def test_get_glue_table_schema_fields_by_load(glue_client: Stubber) -> None:
+def test_get_glue_table_schema_fields_by_load(glue_client_stubber: Tuple[GlueClient, Stubber]) -> None:
     """
     Testing that we are able to get a glue table schema and convert the
     list of fields to the correct types for spark.
     """
+
+    glue_client, stubber = glue_client_stubber
 
     expected_schema_fields = [
         {"name": "string_col", "type": "string"},
@@ -202,16 +205,19 @@ def test_get_glue_table_schema_fields_by_load(glue_client: Stubber) -> None:
         {"name": "other_col", "type": "string"},
     ]
 
-    stub_glue_get_table(glue_client, "cubic_ods_qlik__edw_test")
+    stub_glue_get_table(stubber, "cubic_ods_qlik__edw_test")
 
     assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
-        "db", {"s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz", "table_name": "cubic_ods_qlik__edw_test"}
+        glue_client,
+        "db",
+        {"s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz", "table_name": "cubic_ods_qlik__edw_test"},
     )
 
     # also check '__ct' loads
-    stub_glue_get_table(glue_client, "cubic_ods_qlik__edw_test__ct")
+    stub_glue_get_table(stubber, "cubic_ods_qlik__edw_test__ct")
 
     assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
+        glue_client,
         "db",
         {"s3_key": "cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz", "table_name": "cubic_ods_qlik__edw_test"},
     )

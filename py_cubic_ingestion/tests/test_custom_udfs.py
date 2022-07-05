@@ -7,20 +7,24 @@ import datetime
 import pytest
 
 
-def test_is_empty() -> None:
-    assert custom_udfs.is_empty(None)
-    assert custom_udfs.is_empty("")
-    assert custom_udfs.is_empty("  ")
-    assert custom_udfs.is_empty("\t")
-    assert custom_udfs.is_empty("\n")
-    assert custom_udfs.is_empty("\v")
-    assert custom_udfs.is_empty("\f")
-    assert custom_udfs.is_empty("\r")
-    assert not custom_udfs.is_empty("test")
+def test_as_long_optional() -> None:
+    """
+    Checks the optional path which applies to all 'as_...' functions
+    """
+    assert custom_udfs.as_long(None) is None
+    assert custom_udfs.as_long("") is None
+    assert custom_udfs.as_long("  ") is None
+    assert custom_udfs.as_long("\t") is None
+    assert custom_udfs.as_long("\n") is None
+    assert custom_udfs.as_long("\v") is None
+    assert custom_udfs.as_long("\f") is None
+    assert custom_udfs.as_long("\r") is None
+    assert custom_udfs.as_long("1") is not None
 
 
 def test_as_long() -> None:
     # empty
+    assert custom_udfs.as_long(None) is None
     assert custom_udfs.as_long("") is None
 
     # minimum
@@ -39,6 +43,7 @@ def test_as_long() -> None:
 
 def test_as_double() -> None:
     # empty
+    assert custom_udfs.as_double(None) is None
     assert custom_udfs.as_double("") is None
 
     # negative
@@ -53,6 +58,7 @@ def test_as_double() -> None:
 
 def test_as_date() -> None:
     # empty
+    assert custom_udfs.as_date(None) is None
     assert custom_udfs.as_date("") is None
 
     # typical
@@ -71,6 +77,7 @@ def test_as_date() -> None:
 
 def test_as_timestamp() -> None:
     # empty
+    assert custom_udfs.as_timestamp(None) is None
     assert custom_udfs.as_timestamp("") is None
 
     # typical
