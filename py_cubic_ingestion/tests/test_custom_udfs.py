@@ -23,10 +23,6 @@ def test_as_long_optional() -> None:
 
 
 def test_as_long() -> None:
-    # empty
-    assert custom_udfs.as_long(None) is None
-    assert custom_udfs.as_long("") is None
-
     # minimum
     assert -9223372036854775808 == custom_udfs.as_long("-9223372036854775808")
     # maximum

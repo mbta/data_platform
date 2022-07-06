@@ -6,7 +6,7 @@ in the Glue Job.
 from mypy_boto3_glue.client import GlueClient
 from py_cubic_ingestion import custom_udfs
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import lit, udf
+from pyspark.sql.functions import col, lit, udf
 from pyspark.sql.types import DateType, DoubleType, LongType, TimestampType
 from typing import Tuple
 import json
@@ -184,19 +184,20 @@ def df_with_updated_schema(df: DataFrame, schema_fields: list) -> DataFrame:
 
     columns = []
     for field in schema_fields:
-        column = field["name"]
+        field_name = field["name"]
+        column = col(field_name)
 
         # override if we can cast successfully
         if field["type"] == "long":
-            column = as_long_udf(field["name"]).alias(field["name"])
+            column = as_long_udf(field_name)
         elif field["type"] == "double":
-            column = as_double_udf(field["name"]).alias(field["name"])
+            column = as_double_udf(field_name)
         elif field["type"] == "date":
-            column = as_date_udf(field["name"]).alias(field["name"])
+            column = as_date_udf(field_name)
         elif field["type"] == "timestamp":
-            column = as_timestamp_udf(field["name"]).alias(field["name"])
+            column = as_timestamp_udf(field_name)
 
-        columns.append(column)
+        columns.append(column.alias(field_name))
 
     return df.select(columns)
 

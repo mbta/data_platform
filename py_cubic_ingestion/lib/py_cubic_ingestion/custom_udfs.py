@@ -37,7 +37,7 @@ def as_long(s: str) -> int:
     # int is the type for long as well
     val = int(s)
     if val < -9223372036854775808 or val > 9223372036854775807:
-        raise ValueError(f"'{s}', Out of range of Spark LongType data type. Use DecimalType.")
+        raise ValueError("Out of range of Spark LongType data type.")
 
     return val
 
