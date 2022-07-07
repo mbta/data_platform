@@ -9,7 +9,6 @@ from awsglue.utils import getResolvedOptions  # pylint: disable=import-error
 from py_cubic_ingestion import job_helpers
 from pyspark.context import SparkContext
 import boto3
-import os
 import sys
 
 
@@ -25,6 +24,9 @@ def run() -> None:
     spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
     args = getResolvedOptions(sys.argv, ["JOB_NAME", "ENV", "INPUT"])
 
+    # glue client
+    glue_client = boto3.client("glue")
+
     # read arguments
     job_name = args["JOB_NAME"]
     # parse out ENV and INPUT into dicts
@@ -37,25 +39,26 @@ def run() -> None:
 
     # run glue transformations for each cubic load
     for load in input_dict.get("loads", []):
-        springboard_schema_fields = job_helpers.get_glue_table_schema_fields_by_load(
-            boto3.client("glue"), env_dict["GLUE_DATABASE_SPRINGBOARD"], load
+        glue_info = job_helpers.get_glue_info(load, env_dict)
+
+        destination_schema_fields = job_helpers.get_glue_table_schema_fields_by_load(
+            glue_client,
+            env_dict["GLUE_DATABASE_SPRINGBOARD"],
+            glue_info["destination_table_name"],
         )
-        from_catalog_kwargs = job_helpers.from_catalog_kwargs(load, env_dict)
+
         # create table dataframe using the data catalog table in glue
-        table_df = glue_context.create_dynamic_frame.from_catalog(**from_catalog_kwargs)
+        table_df = glue_context.create_dynamic_frame.from_catalog(
+            database=env_dict["GLUE_DATABASE_INCOMING"],
+            table_name=glue_info["source_table_name"],
+            additional_options={"paths": glue_info["source_key"]},
+            transformation_ctx="table_df_read",
+        )
 
         # cast columns with the springboard schema
-        updated_table_df = job_helpers.df_with_updated_schema(table_df.toDF(), springboard_schema_fields)
-
-        path_prefix = "raw/" if load["is_raw"] else ""
+        updated_table_df = job_helpers.df_with_updated_schema(table_df.toDF(), destination_schema_fields)
 
         # write out to springboard bucket using the same prefix as incoming
-        job_helpers.write_parquet(
-            updated_table_df,  # write out to springboard bucket using the same prefix as incoming
-            load.get("partition_columns", []),
-            f's3a://{env_dict["S3_BUCKET_SPRINGBOARD"]}'
-            f'/{env_dict.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}'
-            f'{path_prefix}{os.path.dirname(load["s3_key"])}/',
-        )
+        job_helpers.write_parquet(updated_table_df, load.get("partition_columns", []), glue_info["destination_path"])
 
     job.commit()
