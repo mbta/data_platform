@@ -4,7 +4,7 @@ defmodule ExCubicIngestion.Repo.Migrations.AddIsRawForTablesLoads do
   import Ecto.Query
 
   alias ExCubicIngestion.Repo
-  alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicTable
 
   def up do
     alter table(:cubic_tables) do
@@ -17,7 +17,7 @@ defmodule ExCubicIngestion.Repo.Migrations.AddIsRawForTablesLoads do
 
     flush()
 
-    Repo.update_all(CubicLoad.not_deleted(), set: [is_raw: true])
+    Repo.update_all(CubicTable.not_deleted(), set: [is_raw: true])
   end
 
   def down do

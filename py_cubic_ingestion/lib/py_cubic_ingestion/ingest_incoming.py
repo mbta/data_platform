@@ -51,7 +51,7 @@ def run() -> None:
         table_df = glue_context.create_dynamic_frame.from_catalog(
             database=env_dict["GLUE_DATABASE_INCOMING"],
             table_name=glue_info["source_table_name"],
-            additional_options={"paths": glue_info["source_key"]},
+            additional_options={"paths": [glue_info["source_key"]]},
             transformation_ctx="table_df_read",
         )
 
