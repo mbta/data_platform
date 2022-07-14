@@ -41,7 +41,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
   end
 
   @spec not_deleted :: Ecto.Queryable.t()
-  def not_deleted do
+  defp not_deleted do
     from(table in __MODULE__, where: is_nil(table.deleted_at))
   end
 

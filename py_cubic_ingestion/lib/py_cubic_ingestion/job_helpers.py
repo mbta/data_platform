@@ -118,7 +118,7 @@ def get_glue_info(load: dict, env: dict) -> dict:
     Returns
     -------
     dict
-        Dictionary that contains information
+        Dictionary that contains information for the glue job
     """
 
     load_table_name = load["table_name"]
