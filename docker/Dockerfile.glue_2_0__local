@@ -36,7 +36,7 @@ RUN pip install poetry
 COPY ./py_cubic_ingestion /data_platform/py_cubic_ingestion
 WORKDIR /data_platform/py_cubic_ingestion
 RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev
+RUN poetry install
 # install an editable link of py_cubic_ingestion
 RUN pip install --editable .
 

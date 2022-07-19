@@ -15,7 +15,8 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     table =
       Repo.insert!(%CubicTable{
         name: "cubic_dmap__sample",
-        s3_prefix: "cubic/dmap/sample/"
+        s3_prefix: "cubic/dmap/sample/",
+        is_raw: false
       })
 
     # only working with dmap loads as distinction doesn't matter in tests
@@ -57,7 +58,16 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
         storage_class: "STANDARD"
       }
 
-      assert "ready" == CubicLoad.insert_from_object_with_table(object, table).status
+      table_id = table.id
+
+      assert %CubicLoad{
+               table_id: ^table_id,
+               status: "ready",
+               s3_key: "cubic/dmap/sample/20220101.csv",
+               s3_modified: ~U[2022-01-01 20:49:50Z],
+               s3_size: 123,
+               is_raw: false
+             } = CubicLoad.insert_from_object_with_table(object, table)
     end
 
     test "insert as 'ready_for_erroring' because of size 0", %{

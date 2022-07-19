@@ -15,13 +15,15 @@ defmodule ExCubicIngestion.TestFixtures do
     dmap_table =
       Repo.insert!(%CubicTable{
         name: "cubic_dmap__sample",
-        s3_prefix: "cubic/dmap/sample/"
+        s3_prefix: "cubic/dmap/sample/",
+        is_raw: false
       })
 
     ods_table =
       Repo.insert!(%CubicTable{
         name: "cubic_ods_qlik__sample",
-        s3_prefix: "cubic/ods_qlik/SAMPLE/"
+        s3_prefix: "cubic/ods_qlik/SAMPLE/",
+        is_raw: true
       })
 
     # insert ODS table
@@ -41,7 +43,8 @@ defmodule ExCubicIngestion.TestFixtures do
         status: "ready",
         s3_key: "cubic/dmap/sample/20220101.csv",
         s3_modified: ~U[2022-01-01 20:49:50Z],
-        s3_size: 197
+        s3_size: 197,
+        is_raw: false
       })
 
     ods_load =
@@ -50,7 +53,8 @@ defmodule ExCubicIngestion.TestFixtures do
         status: "ready",
         s3_key: ods_snapshot_s3_key,
         s3_modified: ods_snapshot,
-        s3_size: 197
+        s3_size: 197,
+        is_raw: true
       })
 
     # ODS loads

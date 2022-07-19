@@ -14,6 +14,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
              :id,
              :name,
              :s3_prefix,
+             :is_raw,
              :deleted_at,
              :inserted_at,
              :updated_at
@@ -23,6 +24,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
           id: integer() | nil,
           name: String.t() | nil,
           s3_prefix: String.t() | nil,
+          is_raw: boolean() | nil,
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -31,6 +33,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
   schema "cubic_tables" do
     field(:name, :string)
     field(:s3_prefix, :string)
+    field(:is_raw, :boolean)
 
     field(:deleted_at, :utc_datetime)
 
