@@ -75,36 +75,20 @@ def parse_args(env_arg: str, input_arg: str) -> Tuple[dict, dict]:
     return (env_dict, input_dict)
 
 
-def table_name_suffix(load_table_s3_prefix: str) -> str:
+def get_glue_table_schema_fields_by_load(glue_client: GlueClient, database_name: str, table_name: str) -> list:
     """
-    Table name suffix should be '__ct' if the S3 prefix is from change tracking.
-
-    Parameters
-    ----------
-    load_table_s3_prefix : str
-        The load's prefix as determined by its S3 key.
-
-    Returns
-    -------
-    str
-        "__ct" or "" depending on the load's prefix
-    """
-
-    return "__ct" if load_table_s3_prefix.endswith("__ct/") else ""
-
-
-def get_glue_table_schema_fields_by_load(glue_client: GlueClient, glue_database_name: str, load: dict) -> list:
-    """
-    Using the load's information, fetch the table information so we can
+    Using the database and table name, fetch the table information so we can
     extract the schema fields. Field types are also converted from Athena
     types to Spark types in the process.
 
     Parameters
     ----------
-    glue_database_name : str
+    glue_client : GlueClient
+        Boto3 client for getting the Glue table
+    database_name : str
         Glue database to get the table from
-    load : dict
-        Load information
+    table_name : str
+        Glue data catalog table name
 
     Returns
     -------
@@ -112,16 +96,7 @@ def get_glue_table_schema_fields_by_load(glue_client: GlueClient, glue_database_
         List of fields with name and type.
     """
 
-    load_s3_key = load["s3_key"]
-
-    # get suffix for data catalog
-    data_catalog_table_name_suffix = table_name_suffix(
-        f"{os.path.dirname(load_s3_key)}/",
-    )
-
-    response = glue_client.get_table(
-        DatabaseName=glue_database_name, Name=f'{load["table_name"]}{(data_catalog_table_name_suffix)}'
-    )
+    response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
 
     return [
         {"name": column["Name"], "type": athena_type_to_spark_type.get(column["Type"], "string")}
@@ -129,9 +104,9 @@ def get_glue_table_schema_fields_by_load(glue_client: GlueClient, glue_database_
     ]
 
 
-def from_catalog_kwargs(load: dict, env: dict) -> dict:
+def get_glue_info(load: dict, env: dict) -> dict:
     """
-    Construct kwargs for 'from_catalog'
+    Determine source and destination information for glue based on load criterias
 
     Parameters
     ----------
@@ -143,23 +118,33 @@ def from_catalog_kwargs(load: dict, env: dict) -> dict:
     Returns
     -------
     dict
-        Dictionary that will be passed in as kwargs
+        Dictionary that contains information for the glue job
     """
 
+    load_table_name = load["table_name"]
     load_s3_key = load["s3_key"]
 
-    # get suffix for data catalog
-    data_catalog_table_name_suffix = table_name_suffix(
-        f"{os.path.dirname(load_s3_key)}/",
-    )
+    source_table_name = load_table_name
+    destination_table_name = load_table_name
+    source_key = load_s3_key
+    destination_path = os.path.dirname(load_s3_key)
+
+    # for change tracking loads, add a suffix to the table names
+    if destination_path.endswith("__ct"):
+        source_table_name = f"{source_table_name}__ct"
+        destination_table_name = f"{destination_table_name}__ct"
+
+    # for raw loads, add a prefix to the table_name and adjust the destination path
+    if load["is_raw"]:
+        destination_table_name = f"raw_{destination_table_name}"
+        destination_path = f"raw/{destination_path}"
 
     return {
-        "database": env["GLUE_DATABASE_INCOMING"],
-        "table_name": f'{load["table_name"]}{(data_catalog_table_name_suffix)}',
-        "additional_options": {
-            "paths": [f's3://{env["S3_BUCKET_INCOMING"]}/{env.get("S3_BUCKET_PREFIX_INCOMING", "")}{load_s3_key}']
-        },
-        "transformation_ctx": "table_df_read",
+        "source_table_name": source_table_name,
+        "destination_table_name": destination_table_name,
+        "source_key": f's3://{env["S3_BUCKET_INCOMING"]}/{env.get("S3_BUCKET_PREFIX_INCOMING", "")}{source_key}',
+        "destination_path": f's3a://{env["S3_BUCKET_SPRINGBOARD"]}/'
+        f'{env.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{destination_path}/',
     }
 
 

@@ -176,18 +176,6 @@ def test_parse_args() -> None:
     # assert ({}, {}) == job_helpers.parse_args("{\"key\":\"invalid\"}", "{\"key\":\"invalid\"}")
 
 
-def test_table_name_suffix() -> None:
-    """
-    Testing table name adjustment for change tracking prefixes.
-    """
-
-    # without ct
-    assert "" == job_helpers.table_name_suffix("cubic/ods_qlik/EDW.TEST/")
-
-    # with ct
-    assert "__ct" == job_helpers.table_name_suffix("cubic/ods_qlik/EDW.TEST__ct/")
-
-
 def test_get_glue_table_schema_fields_by_load(glue_client_stubber: Tuple[GlueClient, Stubber]) -> None:
     """
     Testing that we are able to get a glue table schema and convert the
@@ -210,42 +198,69 @@ def test_get_glue_table_schema_fields_by_load(glue_client_stubber: Tuple[GlueCli
     assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
         glue_client,
         "db",
-        {"s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz", "table_name": "cubic_ods_qlik__edw_test"},
+        "cubic_ods_qlik__edw_test",
     )
 
-    # also check '__ct' loads
+    # check '__ct' loads
     stub_glue_get_table(stubber, "cubic_ods_qlik__edw_test__ct")
 
     assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
         glue_client,
         "db",
-        {"s3_key": "cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz", "table_name": "cubic_ods_qlik__edw_test"},
+        "cubic_ods_qlik__edw_test__ct",
+    )
+
+    # check raw loads
+    stub_glue_get_table(stubber, "raw_cubic_ods_qlik__edw_test")
+
+    assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
+        glue_client,
+        "db",
+        "raw_cubic_ods_qlik__edw_test",
     )
 
 
-def test_from_catalog_kwargs() -> None:
+def test_get_glue_info() -> None:
     """
     Test the correct kwargs are constructed from the load and env dicts
     """
 
-    load = {"s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz", "table_name": "cubic_ods_qlik__edw_test"}
-    env = {"GLUE_DATABASE_INCOMING": "glue_db", "S3_BUCKET_INCOMING": "incoming"}
-
-    assert job_helpers.from_catalog_kwargs(load, env) == {
-        "database": "glue_db",
+    load = {
+        "s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz",
         "table_name": "cubic_ods_qlik__edw_test",
-        "additional_options": {"paths": [f's3://incoming/{load["s3_key"]}']},
-        "transformation_ctx": "table_df_read",
+        "is_raw": False,
+    }
+    env = {
+        "GLUE_DATABASE_INCOMING": "glue_db",
+        "S3_BUCKET_INCOMING": "incoming",
+        "S3_BUCKET_SPRINGBOARD": "springboard",
+    }
+
+    assert job_helpers.get_glue_info(load, env) == {
+        "source_table_name": "cubic_ods_qlik__edw_test",
+        "destination_table_name": "cubic_ods_qlik__edw_test",
+        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz",
+        "destination_path": "s3a://springboard/cubic/ods_qlik/EDW.TEST/",
     }
 
     # update s3 key to '__ct' one
     load["s3_key"] = "cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz"
 
-    assert job_helpers.from_catalog_kwargs(load, env) == {
-        "database": "glue_db",
-        "table_name": "cubic_ods_qlik__edw_test__ct",
-        "additional_options": {"paths": [f's3://incoming/{load["s3_key"]}']},
-        "transformation_ctx": "table_df_read",
+    assert job_helpers.get_glue_info(load, env) == {
+        "source_table_name": "cubic_ods_qlik__edw_test__ct",
+        "destination_table_name": "cubic_ods_qlik__edw_test__ct",
+        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz",
+        "destination_path": "s3a://springboard/cubic/ods_qlik/EDW.TEST__ct/",
+    }
+
+    # update to a raw load
+    load["is_raw"] = True
+
+    assert job_helpers.get_glue_info(load, env) == {
+        "source_table_name": "cubic_ods_qlik__edw_test__ct",
+        "destination_table_name": "raw_cubic_ods_qlik__edw_test__ct",
+        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz",
+        "destination_path": "s3a://springboard/raw/cubic/ods_qlik/EDW.TEST__ct/",
     }
 
 

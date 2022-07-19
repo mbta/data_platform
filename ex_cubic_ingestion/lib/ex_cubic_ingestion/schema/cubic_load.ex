@@ -31,6 +31,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
              :s3_key,
              :s3_modified,
              :s3_size,
+             :is_raw,
              :deleted_at,
              :inserted_at,
              :updated_at
@@ -43,6 +44,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
           s3_key: String.t() | nil,
           s3_modified: DateTime.t() | nil,
           s3_size: integer() | nil,
+          is_raw: boolean() | nil,
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -54,6 +56,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     field(:s3_key, :string)
     field(:s3_modified, :utc_datetime)
     field(:s3_size, :integer)
+    field(:is_raw, :boolean)
 
     field(:deleted_at, :utc_datetime)
 
@@ -111,7 +114,8 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
       status: status,
       s3_key: object[:key],
       s3_modified: last_modified,
-      s3_size: size
+      s3_size: size,
+      is_raw: table.is_raw
     })
   end
 
