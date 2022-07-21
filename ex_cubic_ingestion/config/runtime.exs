@@ -6,7 +6,9 @@ config :ex_cubic_ingestion, ExCubicIngestion.Repo,
   hostname: System.get_env("DB_HOST"),
   password: System.get_env("DB_PASSWORD"),
   port: "DB_PORT" |> System.get_env("5432") |> String.to_integer(),
-  configure: {ExCubicIngestion.Repo, :before_connect, []}
+  configure: {ExCubicIngestion.Repo, :before_connect, []},
+  # default to 10
+  pool_size: "DB_POOL_SIZE" |> System.get_env("10") |> String.to_integer()
 
 # for testing, we'd like to change the database
 if config_env() == :test do
