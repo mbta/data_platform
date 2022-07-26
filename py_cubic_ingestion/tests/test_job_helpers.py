@@ -2,14 +2,18 @@
 Testing module for `job_helpers.py`.
 """
 
-import json
-import pytest
-from pyspark.sql import SparkSession
+from botocore.stub import Stubber
+from mypy_boto3_glue.client import GlueClient
+from py_cubic_ingestion import job_helpers
+from pyspark.sql import Row
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.session import SparkSession as SparkSessionType
-from typing import List
+from pyspark.sql.utils import PythonException
+from typing import List, Tuple
+import datetime
+import json
+import pytest
 
-from py_cubic_ingestion import job_helpers
 
 # helper functions
 def collection_as_dict(collection: list) -> List[dict]:
@@ -28,6 +32,39 @@ def collection_as_dict(collection: list) -> List[dict]:
     """
 
     return [item.asDict() for item in collection]
+
+
+def stub_glue_get_table(stubber: Stubber, table_name: str) -> None:
+    """
+    Adds a response to the Stubber for Glue's `get_table` call
+
+    Parameters
+    ----------
+    stubber : Stubber
+        Stubber for Glue client that the response is added for
+    table_name : str
+        Name of table that Glue Client's stub should return
+    """
+
+    stubber.add_response(
+        "get_table",
+        expected_params={"DatabaseName": "db", "Name": table_name},
+        service_response={
+            "Table": {
+                "Name": table_name,
+                "StorageDescriptor": {
+                    "Columns": [
+                        {"Name": "string_col", "Type": "string"},
+                        {"Name": "bigint_col", "Type": "bigint"},
+                        {"Name": "double_col", "Type": "double"},
+                        {"Name": "date_col", "Type": "date"},
+                        {"Name": "timestamp_col", "Type": "timestamp"},
+                        {"Name": "other_col", "Type": "array"},
+                    ]
+                },
+            }
+        },
+    )
 
 
 def assert_equal_collections(actual_collection: list, expected_collection: list) -> None:
@@ -118,24 +155,6 @@ def write_parquet(
     return spark.read.parquet(parquet_path)
 
 
-# fixtures
-@pytest.fixture(name="spark_session")
-def fixture_spark_session() -> SparkSessionType:
-    """
-    Creates Spark session for use in tests
-
-    Returns
-    -------
-    DataFrame
-        Spark Session available to use in tests
-    """
-
-    spark = SparkSession.builder.master("local").appName("test").getOrCreate()
-    spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
-
-    return spark
-
-
 # tests
 def test_parse_args() -> None:
     """
@@ -157,42 +176,276 @@ def test_parse_args() -> None:
     # assert ({}, {}) == job_helpers.parse_args("{\"key\":\"invalid\"}", "{\"key\":\"invalid\"}")
 
 
-def test_table_name_suffix() -> None:
+def test_get_glue_table_schema_fields_by_load(glue_client_stubber: Tuple[GlueClient, Stubber]) -> None:
     """
-    Testing table name adjustment for change tracking prefixes.
+    Testing that we are able to get a glue table schema and convert the
+    list of fields to the correct types for spark.
     """
 
-    # without ct
-    assert "" == job_helpers.table_name_suffix("cubic/ods_qlik/EDW.TEST/")
+    glue_client, stubber = glue_client_stubber
 
-    # with ct
-    assert "__ct" == job_helpers.table_name_suffix("cubic/ods_qlik/EDW.TEST__ct/")
+    expected_schema_fields = [
+        {"name": "string_col", "type": "string"},
+        {"name": "bigint_col", "type": "long"},
+        {"name": "double_col", "type": "double"},
+        {"name": "date_col", "type": "date"},
+        {"name": "timestamp_col", "type": "timestamp"},
+        {"name": "other_col", "type": "string"},
+    ]
+
+    stub_glue_get_table(stubber, "cubic_ods_qlik__edw_test")
+
+    assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
+        glue_client,
+        "db",
+        "cubic_ods_qlik__edw_test",
+    )
+
+    # check '__ct' loads
+    stub_glue_get_table(stubber, "cubic_ods_qlik__edw_test__ct")
+
+    assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
+        glue_client,
+        "db",
+        "cubic_ods_qlik__edw_test__ct",
+    )
+
+    # check raw loads
+    stub_glue_get_table(stubber, "raw_cubic_ods_qlik__edw_test")
+
+    assert expected_schema_fields == job_helpers.get_glue_table_schema_fields_by_load(
+        glue_client,
+        "db",
+        "raw_cubic_ods_qlik__edw_test",
+    )
 
 
-def test_from_catalog_kwargs() -> None:
+def test_get_glue_info() -> None:
     """
     Test the correct kwargs are constructed from the load and env dicts
     """
 
-    load = {"s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz", "table_name": "cubic_ods_qlik__edw_test"}
-    env = {"GLUE_DATABASE_INCOMING": "glue_db", "S3_BUCKET_INCOMING": "incoming"}
-
-    assert job_helpers.from_catalog_kwargs(load, env) == {
-        "database": "glue_db",
+    load = {
+        "s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz",
         "table_name": "cubic_ods_qlik__edw_test",
-        "additional_options": {"paths": [f's3://incoming/{load["s3_key"]}']},
-        "transformation_ctx": "table_df_read",
+        "is_raw": False,
+    }
+    env = {
+        "GLUE_DATABASE_INCOMING": "glue_db",
+        "S3_BUCKET_INCOMING": "incoming",
+        "S3_BUCKET_SPRINGBOARD": "springboard",
+    }
+
+    assert job_helpers.get_glue_info(load, env) == {
+        "source_table_name": "cubic_ods_qlik__edw_test",
+        "destination_table_name": "cubic_ods_qlik__edw_test",
+        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz",
+        "destination_path": "s3a://springboard/cubic/ods_qlik/EDW.TEST/",
     }
 
     # update s3 key to '__ct' one
     load["s3_key"] = "cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz"
 
-    assert job_helpers.from_catalog_kwargs(load, env) == {
-        "database": "glue_db",
-        "table_name": "cubic_ods_qlik__edw_test__ct",
-        "additional_options": {"paths": [f's3://incoming/{load["s3_key"]}']},
-        "transformation_ctx": "table_df_read",
+    assert job_helpers.get_glue_info(load, env) == {
+        "source_table_name": "cubic_ods_qlik__edw_test__ct",
+        "destination_table_name": "cubic_ods_qlik__edw_test__ct",
+        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz",
+        "destination_path": "s3a://springboard/cubic/ods_qlik/EDW.TEST__ct/",
     }
+
+    # update to a raw load
+    load["is_raw"] = True
+
+    assert job_helpers.get_glue_info(load, env) == {
+        "source_table_name": "cubic_ods_qlik__edw_test__ct",
+        "destination_table_name": "raw_cubic_ods_qlik__edw_test__ct",
+        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz",
+        "destination_path": "s3a://springboard/raw/cubic/ods_qlik/EDW.TEST__ct/",
+    }
+
+
+def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
+    """
+    Test creating a DataFrame with an updated schema and that
+    the data is valid.
+
+    Parameters
+    ----------
+    spark_session : list
+        Fixture that contains the Spark Session to use
+    tmp_path : str
+        Fixture containing the temporary path that we can use to store data
+    """
+    original_data = [
+        (
+            "test",
+            "123",
+            "123.45",
+            "2022-01-01",
+            "2022-01-01 12:34:56",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "string_col",
+            "bigint_col",
+            "double_col",
+            "date_col",
+            "timestamp_col",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "string_col", "type": "string"},
+            {"name": "bigint_col", "type": "long"},
+            {"name": "double_col", "type": "double"},
+            {"name": "date_col", "type": "date"},
+            {"name": "timestamp_col", "type": "timestamp"},
+        ],
+    )
+
+    actual_schema = updated_df.schema.jsonValue()
+
+    expected_schema = {
+        "type": "struct",
+        "fields": [
+            {"name": "string_col", "type": "string", "nullable": True, "metadata": {}},
+            {"name": "bigint_col", "type": "long", "nullable": True, "metadata": {}},
+            {"name": "double_col", "type": "double", "nullable": True, "metadata": {}},
+            {"name": "date_col", "type": "date", "nullable": True, "metadata": {}},
+            {"name": "timestamp_col", "type": "timestamp", "nullable": True, "metadata": {}},
+        ],
+    }
+
+    assert actual_schema == expected_schema
+
+    # assert that the data is correctly casted
+    assert updated_df.first() == Row(
+        string_col="test",
+        bigint_col=123,
+        double_col=123.45,
+        date_col=datetime.date(2022, 1, 1),
+        timestamp_col=datetime.datetime(2022, 1, 1, 12, 34, 56),
+    )
+
+
+def test_df_with_updated_schema_long_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "123",
+            "123_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "bigint_col",
+            "bigint_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "bigint_col", "type": "long"},
+            {"name": "bigint_col_error", "type": "long"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '123_error'" in excinfo.value.desc
+
+
+def test_df_with_updated_schema_double_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "123.45",
+            "123.45_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "double_col",
+            "double_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "double_col", "type": "double"},
+            {"name": "double_col_error", "type": "double"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '123.45_error'" in excinfo.value.desc
+
+
+def test_df_with_updated_schema_date_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "2022-01-01",
+            "2022-01-01_123_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "date_col",
+            "date_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "date_col", "type": "date"},
+            {"name": "date_col_error", "type": "date"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '2022-01-01_123_error'" in excinfo.value.desc
+
+
+def test_df_with_updated_schema_timestamp_error(spark_session: SparkSessionType) -> None:
+    original_data = [
+        (
+            "2022-01-01 12:34:56",
+            "2022-01-01 12:34:56_error",
+        )
+    ]
+    original_df = spark_session.createDataFrame(
+        original_data,
+        [
+            "timestamp_col",
+            "timestamp_col_error",
+        ],
+    )
+
+    updated_df = job_helpers.df_with_updated_schema(
+        original_df,
+        [
+            {"name": "timestamp_col", "type": "timestamp"},
+            {"name": "timestamp_col_error", "type": "timestamp"},
+        ],
+    )
+
+    with pytest.raises(PythonException) as excinfo:
+        updated_df.first()
+
+    assert "ValueError: '2022-01-01 12:34:56_error'" in excinfo.value.desc
 
 
 def test_df_with_partition_columns(spark_session: SparkSessionType) -> None:
