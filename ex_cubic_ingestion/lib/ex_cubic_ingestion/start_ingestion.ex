@@ -14,6 +14,9 @@ defmodule ExCubicIngestion.StartIngestion do
   require Oban.Job
 
   @wait_interval_ms 5_000
+  # maxes for each chunk
+  @max_num_of_loads 10
+  @max_size_of_loads 1000
 
   defstruct status: :not_started, continuation_token: "", max_keys: 1_000
 
@@ -68,14 +71,37 @@ defmodule ExCubicIngestion.StartIngestion do
 
     # start ingestion
     ready_loads
-    |> chunk_loads()
+    |> chunk_loads(@max_num_of_loads, @max_size_of_loads)
     |> Enum.each(&process_loads/1)
   end
 
-  @spec chunk_loads([CubicLoad.t()]) :: [[CubicLoad.t(), ...]]
-  defp chunk_loads(loads) do
-    # @todo replace chunk_every with chunk_while for more fine-tuned control
-    Enum.chunk_every(loads, 3)
+  @spec chunk_loads([CubicLoad.t()], integer(), integer()) :: [[CubicLoad.t(), ...]]
+  @doc """
+  Chunks the loads up by a size and number maximum, allowing for more efficient job allocation
+  """
+  def chunk_loads(loads, max_num_of_loads, max_size_of_loads) do
+    chunk_fun = fn element, acc ->
+      total_acc_s3_size =
+        Enum.reduce(acc, 0, fn load, acc_s3_size -> load.s3_size + acc_s3_size end)
+
+      cond do
+        length(acc) == max_num_of_loads ->
+          {:cont, Enum.reverse(acc), [element]}
+
+        total_acc_s3_size + element.s3_size > max_size_of_loads ->
+          {:cont, Enum.reverse(acc), [element]}
+
+        true ->
+          {:cont, [element | acc]}
+      end
+    end
+
+    after_fun = fn
+      [] -> {:cont, []}
+      acc -> {:cont, Enum.reverse(acc), []}
+    end
+
+    Enum.chunk_while(loads, [], chunk_fun, after_fun)
   end
 
   @spec process_loads([CubicLoad.t(), ...]) ::

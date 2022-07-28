@@ -84,4 +84,98 @@ defmodule ExCubicIngestion.StartIngestionTest do
       assert_enqueued(worker: Ingest, args: %{load_rec_ids: load_rec_ids})
     end
   end
+
+  describe "chunk_loads/1" do
+    test "chunking by number of loads" do
+      max_num_of_loads = 2
+      max_size_of_loads = 1000
+
+      loads = [
+        %{
+          s3_key: "test/load1.csv",
+          s3_size: 12
+        },
+        %{
+          s3_key: "test/load2.csv",
+          s3_size: 34
+        },
+        %{
+          s3_key: "test/load3.csv",
+          s3_size: 56
+        },
+        %{
+          s3_key: "test/load4.csv",
+          s3_size: 78
+        },
+        %{
+          s3_key: "test/load5.csv",
+          s3_size: 90
+        }
+      ]
+
+      expected_chunked_loads = [
+        [
+          Enum.at(loads, 0),
+          Enum.at(loads, 1)
+        ],
+        [
+          Enum.at(loads, 2),
+          Enum.at(loads, 3)
+        ],
+        [
+          Enum.at(loads, 4)
+        ]
+      ]
+
+      assert expected_chunked_loads ==
+               StartIngestion.chunk_loads(loads, max_num_of_loads, max_size_of_loads)
+    end
+
+    test "chunking by size of loads" do
+      max_num_of_loads = 3
+      max_size_of_loads = 1000
+
+      loads = [
+        %{
+          s3_key: "test/load1.csv",
+          s3_size: 123
+        },
+        %{
+          s3_key: "test/load2.csv",
+          s3_size: 456
+        },
+        %{
+          s3_key: "test/load3.csv",
+          s3_size: 789
+        },
+        %{
+          s3_key: "test/load4.csv",
+          s3_size: 1000
+        },
+        %{
+          s3_key: "test/load5.csv",
+          s3_size: 1112
+        }
+      ]
+
+      expected_chunked_loads = [
+        [
+          Enum.at(loads, 0),
+          Enum.at(loads, 1)
+        ],
+        [
+          Enum.at(loads, 2)
+        ],
+        [
+          Enum.at(loads, 3)
+        ],
+        [
+          Enum.at(loads, 4)
+        ]
+      ]
+
+      assert expected_chunked_loads ==
+               StartIngestion.chunk_loads(loads, max_num_of_loads, max_size_of_loads)
+    end
+  end
 end
