@@ -40,6 +40,7 @@ defmodule ExCubicIngestion.MixProject do
       {:dialyxir, "~> 1.1", only: :dev, runtime: false},
       {:ecto, "~> 3.7"},
       {:ecto_sql, "~> 3.7"},
+      {:ehmon, git: "https://github.com/mbta/ehmon.git", branch: "master", only: :prod},
       {:ex_aws, "~> 2.2"},
       {:ex_aws_rds, "~> 2.0"},
       {:ex_aws_s3, "~> 2.3"},
