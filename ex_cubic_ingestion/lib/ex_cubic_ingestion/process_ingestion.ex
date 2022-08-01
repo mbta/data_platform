@@ -10,9 +10,9 @@ defmodule ExCubicIngestion.ProcessIngestion do
   alias ExCubicIngestion.Workers.Archive
   alias ExCubicIngestion.Workers.Error
 
-  @wait_interval_ms 5_000
+  @wait_interval_ms 60_000
 
-  defstruct status: :not_started, continuation_token: "", max_keys: 1_000
+  defstruct status: :not_started
 
   # client methods
   @spec start_link(Keyword.t()) :: GenServer.on_start()

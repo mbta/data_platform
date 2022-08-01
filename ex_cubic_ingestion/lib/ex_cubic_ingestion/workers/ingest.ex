@@ -74,7 +74,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
       Application.fetch_env!(:ex_cubic_ingestion, :glue_job_cubic_ingestion_ingest_incoming)
 
     # pause a litte before getting status
-    Process.sleep(5000)
+    Process.sleep(30_000)
 
     glue_job_run_status =
       case lib_ex_aws.request(ExAws.Glue.get_job_run(glue_job_name, run_id)) do
