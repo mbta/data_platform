@@ -16,7 +16,7 @@ defmodule ExCubicIngestion.StartIngestion do
   @wait_interval_ms 5_000
   # maxes for each chunk
   @max_num_of_loads 10
-  @max_size_of_loads 1000
+  @max_size_of_loads 100_000_000
 
   defstruct status: :not_started, continuation_token: "", max_keys: 1_000
 
