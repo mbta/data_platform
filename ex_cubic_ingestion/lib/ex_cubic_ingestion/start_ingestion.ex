@@ -13,7 +13,7 @@ defmodule ExCubicIngestion.StartIngestion do
   require Oban
   require Oban.Job
 
-  @wait_interval_ms 5_000
+  @wait_interval_ms 60_000
   # maxes for each chunk
   @max_num_of_loads 10
   @max_size_of_loads 100_000_000

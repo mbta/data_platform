@@ -8,4 +8,6 @@ config :ex_cubic_ingestion,
 
 config :ex_cubic_ingestion, Oban, queues: false, plugins: false
 
-config :ex_cubic_ingestion, ExCubicIngestion.Repo, pool: Ecto.Adapters.SQL.Sandbox
+config :ex_cubic_ingestion, ExCubicIngestion.Repo,
+  pool: Ecto.Adapters.SQL.Sandbox,
+  timeout: 60_000
