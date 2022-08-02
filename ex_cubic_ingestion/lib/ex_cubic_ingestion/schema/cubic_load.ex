@@ -80,17 +80,21 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   @spec insert_new_from_objects_with_table([map()], CubicTable.t()) ::
           {:ok, [t()]} | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
-    Repo.transaction(fn ->
-      # query loads to see what we can ignore when inserting
-      # usually happens when objects have not been moved out of 'incoming' bucket
-      recs = get_by_objects(objects)
+    # query loads to see what we can ignore when inserting
+    # usually happens when objects have not been moved out of 'incoming' bucket
+    recs = get_by_objects(objects)
 
-      # create a list of objects that have not been added to database
-      new_objects = Enum.filter(objects, &not_added(&1, recs))
+    # create a list of objects that have not been added to database
+    new_objects = Enum.filter(objects, &not_added(&1, recs))
 
-      # insert new objects
-      Enum.map(new_objects, &insert_from_object_with_table(&1, table))
-    end)
+    if Enum.empty?(new_objects) do
+      {:ok, []}
+    else
+      Repo.transaction(fn ->
+        # insert new objects
+        Enum.map(new_objects, &insert_from_object_with_table(&1, table))
+      end)
+    end
   end
 
   @doc """
