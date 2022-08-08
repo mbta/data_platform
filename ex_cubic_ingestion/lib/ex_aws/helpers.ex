@@ -3,8 +3,6 @@ defmodule ExAws.Helpers do
   Central place for useful functions that do ExAws work.
   """
 
-  require Logger
-
   @doc """
   Performs checks, before copying the source object to a destination object
   and deleting the source object (moving).

@@ -103,8 +103,8 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   """
   @spec insert_from_object_with_table(map(), CubicTable.t()) :: t()
   def insert_from_object_with_table(object, table) do
-    last_modified = parse_and_drop_msec(object[:last_modified])
-    size = String.to_integer(object[:size])
+    last_modified = parse_and_drop_msec(object.last_modified)
+    size = String.to_integer(object.size)
 
     status =
       if size > 0 do
@@ -116,21 +116,24 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     Repo.insert!(%__MODULE__{
       table_id: table.id,
       status: status,
-      s3_key: object[:key],
+      s3_key: object.key,
       s3_modified: last_modified,
       s3_size: size,
       is_raw: table.is_raw
     })
   end
 
+  @doc """
+  For a list of S3 objects, get all the possible matching load records.
+  """
   @spec get_by_objects(list()) :: [t()]
   def get_by_objects(objects) do
     # put together filters based on the object info
     filters =
       Enum.map(objects, fn object ->
-        last_modified = parse_and_drop_msec(object[:last_modified])
+        last_modified = parse_and_drop_msec(object.last_modified)
 
-        {object[:key], last_modified}
+        {object.key, last_modified}
       end)
 
     # we only want to query if we have filters because otherwise the query will the return
@@ -154,8 +157,8 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   @spec not_added(map(), list()) :: boolean()
   def not_added(load_object, load_recs) do
-    key = load_object[:key]
-    last_modified = parse_and_drop_msec(load_object[:last_modified])
+    key = load_object.key
+    last_modified = parse_and_drop_msec(load_object.last_modified)
 
     not Enum.any?(
       load_recs,
