@@ -7,10 +7,6 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
   alias ExCubicIngestion.Schema.CubicTable
 
   setup do
-    incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
-
-    cubic_sample = "#{incoming_prefix}cubic/dmap/sample/"
-
     # insert tables
     table =
       Repo.insert!(%CubicTable{
@@ -19,11 +15,33 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
         is_raw: false
       })
 
+    utc_now = DateTime.utc_now()
+
+    load_objects = [
+      %{
+        e_tag: "\"ghi123\"",
+        key: "cubic/dmap/sample/20220101.csv",
+        last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -3600),
+        owner: nil,
+        size: "197",
+        storage_class: "STANDARD"
+      },
+      %{
+        e_tag: "\"jkl123\"",
+        key: "cubic/dmap/sample/20220102.csv",
+        last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -3000),
+        owner: nil,
+        size: "197",
+        storage_class: "STANDARD"
+      }
+    ]
+
     # only working with dmap loads as distinction doesn't matter in tests
     {:ok,
      %{
        table: table,
-       load_objects: MockExAws.Data.load_objects_without_bucket_prefix(cubic_sample)
+       utc_now: utc_now,
+       load_objects: load_objects
      }}
   end
 
@@ -47,42 +65,26 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
   describe "insert_from_object_with_table/2" do
     test "insert as 'ready' because it's a typical object", %{
-      table: table
+      table: table,
+      load_objects: load_objects
     } do
-      object = %{
-        e_tag: "\"ghi123\"",
-        key: "cubic/dmap/sample/20220101.csv",
-        last_modified: "2022-01-01T20:49:50.000Z",
-        owner: nil,
-        size: "123",
-        storage_class: "STANDARD"
-      }
-
       table_id = table.id
 
       assert %CubicLoad{
                table_id: ^table_id,
                status: "ready",
-               s3_key: "cubic/dmap/sample/20220101.csv",
-               s3_modified: ~U[2022-01-01 20:49:50Z],
-               s3_size: 123,
-               is_raw: false
-             } = CubicLoad.insert_from_object_with_table(object, table)
+               s3_key: "cubic/dmap/sample/20220101.csv"
+             } = CubicLoad.insert_from_object_with_table(List.first(load_objects), table)
     end
 
     test "insert as 'ready_for_erroring' because of size 0", %{
-      table: table
+      table: table,
+      load_objects: load_objects
     } do
-      object = %{
-        e_tag: "\"ghi123\"",
-        key: "cubic/dmap/sample/20220101.csv",
-        last_modified: "2022-01-01T20:49:50.000Z",
-        owner: nil,
-        size: "0",
-        storage_class: "STANDARD"
-      }
+      object = List.first(load_objects)
 
-      assert "ready_for_erroring" == CubicLoad.insert_from_object_with_table(object, table).status
+      assert "ready_for_erroring" ==
+               CubicLoad.insert_from_object_with_table(%{object | size: "0"}, table).status
     end
   end
 
@@ -138,6 +140,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     end
 
     test "object found in database records", %{
+      utc_now: utc_now,
       load_objects: load_objects
     } do
       load_object = List.first(load_objects)
@@ -145,7 +148,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       load_recs = [
         %CubicLoad{
           s3_key: "cubic/dmap/sample/20220101.csv",
-          s3_modified: ~U[2022-01-01 20:49:50Z]
+          s3_modified: utc_now |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
         }
       ]
 

@@ -10,11 +10,13 @@ defmodule MockExAws.Data do
   def load_objects(key_starts_with \\ "") do
     incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
+    utc_now = DateTime.utc_now()
+
     objects = [
       %{
         e_tag: "\"ghi123\"",
         key: "#{incoming_prefix}cubic/dmap/sample/20220101.csv",
-        last_modified: "2022-01-01T20:49:50.000Z",
+        last_modified: dt_adjust_and_format(utc_now, -3600),
         owner: nil,
         size: "197",
         storage_class: "STANDARD"
@@ -22,7 +24,7 @@ defmodule MockExAws.Data do
       %{
         e_tag: "\"jkl123\"",
         key: "#{incoming_prefix}cubic/dmap/sample/20220102.csv",
-        last_modified: "2022-01-02T20:49:50.000Z",
+        last_modified: dt_adjust_and_format(utc_now, -3000),
         owner: nil,
         size: "197",
         storage_class: "STANDARD"
@@ -30,7 +32,7 @@ defmodule MockExAws.Data do
       %{
         e_tag: "\"abc123\"",
         key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD1.csv",
-        last_modified: "2022-02-08T20:49:50.000Z",
+        last_modified: dt_adjust_and_format(utc_now, -2400),
         owner: nil,
         size: "197",
         storage_class: "STANDARD"
@@ -38,7 +40,7 @@ defmodule MockExAws.Data do
       %{
         e_tag: "\"def123\"",
         key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD2.csv",
-        last_modified: "2022-02-08T20:50:50.000Z",
+        last_modified: dt_adjust_and_format(utc_now, -1800),
         owner: nil,
         size: "123",
         storage_class: "STANDARD"
@@ -49,14 +51,10 @@ defmodule MockExAws.Data do
   end
 
   @doc """
-  Helper function to eliminate duplication in tests that don't care about the bucket prefix.
+  For a give datetime, adjust it by with the seconds and format it as an S3 timestamp.
   """
-  @spec load_objects_without_bucket_prefix(String.t()) :: [map()]
-  def load_objects_without_bucket_prefix(key_starts_with \\ "") do
-    incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
-
-    Enum.map(load_objects(key_starts_with), fn object ->
-      %{object | key: String.replace_prefix(object[:key], incoming_prefix, "")}
-    end)
+  @spec dt_adjust_and_format(DateTime.t(), Integer.t()) :: String.t()
+  def dt_adjust_and_format(dt, seconds) do
+    dt |> DateTime.add(seconds, :second) |> Calendar.strftime("%Y-%m-%dT%H:%M:%S.000Z")
   end
 end

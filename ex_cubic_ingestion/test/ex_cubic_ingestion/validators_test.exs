@@ -3,6 +3,8 @@ defmodule ExCubicIngestion.ValidatorsTest do
 
   alias ExCubicIngestion.Validators
 
+  @utc_now MockExAws.Data.dt_adjust_and_format(DateTime.utc_now(), -3600)
+
   describe "valid_iso_date?/2" do
     test "string passed in is valid per our requirement" do
       assert Validators.valid_iso_date?("2022-01-01")
@@ -66,6 +68,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
       object = %{
         # ...
         key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        last_modified: @utc_now,
         size: "123"
       }
 
@@ -76,6 +79,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
       object = %{
         # ...
         key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        last_modified: @utc_now,
         size: "0"
       }
 
@@ -85,6 +89,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "invalid if missing key" do
       object = %{
         # ...
+        last_modified: @utc_now,
         size: "123"
       }
 
@@ -94,7 +99,8 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "invalid if missing size" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv"
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        last_modified: @utc_now
       }
 
       refute Validators.valid_s3_object?(object)
@@ -104,10 +110,45 @@ defmodule ExCubicIngestion.ValidatorsTest do
       object = %{
         # ...
         key: "cubic/ods_qlik/EDW.SAMPLE/",
+        last_modified: @utc_now,
         size: "123"
       }
 
       refute Validators.valid_s3_object?(object)
+    end
+  end
+
+  describe "recently_created_s3_object?/1" do
+    test "invalid if missing last_modified" do
+      object = %{
+        # ...
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        size: "123"
+      }
+
+      refute Validators.recently_created_s3_object?(object)
+    end
+
+    test "valid it it's a recent object" do
+      object = %{
+        # ...
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        last_modified: @utc_now,
+        size: "123"
+      }
+
+      assert Validators.recently_created_s3_object?(object)
+    end
+
+    test "invalid if it's not a recent object" do
+      object = %{
+        # ...
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        last_modified: "2022-01-01T20:49:50.000Z",
+        size: "123"
+      }
+
+      refute Validators.recently_created_s3_object?(object)
     end
   end
 end
