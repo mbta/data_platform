@@ -8,6 +8,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
   import Ecto.Query
 
   alias ExCubicIngestion.Repo
+  alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
 
   @derive {Jason.Encoder,
            only: [
@@ -81,5 +82,19 @@ defmodule ExCubicIngestion.Schema.CubicTable do
         {prefix, table}
       end
     end
+  end
+
+  @doc """
+  Get all active tables, including ODS snapshot for ODS tables.
+  """
+  @spec all_with_ods_table_snapshot :: [{t(), CubicOdsTableSnapshot.t()}]
+  def all_with_ods_table_snapshot do
+    Repo.all(
+      from(table in not_deleted(),
+        left_join: ods_table_snapshot in CubicOdsTableSnapshot,
+        on: table.id == ods_table_snapshot.table_id,
+        select: {table, ods_table_snapshot}
+      )
+    )
   end
 end

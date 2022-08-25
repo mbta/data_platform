@@ -73,6 +73,8 @@ defmodule ExCubicIngestion.StartIngestion do
     ready_loads
     |> chunk_loads(@max_num_of_loads, @max_size_of_loads)
     |> Enum.each(&process_loads/1)
+
+    :ok
   end
 
   @spec chunk_loads([CubicLoad.t()], integer(), integer()) :: [[CubicLoad.t(), ...]]

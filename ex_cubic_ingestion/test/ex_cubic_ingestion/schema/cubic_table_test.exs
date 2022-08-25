@@ -1,6 +1,7 @@
 defmodule ExCubicIngestion.Schema.CubicTableTest do
   use ExCubicIngestion.DataCase, async: true
 
+  alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
   alias ExCubicIngestion.Schema.CubicTable
 
   describe "get_by!/2" do
@@ -65,6 +66,52 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
       ]
 
       actual = CubicTable.filter_to_existing_prefixes(prefixes)
+
+      assert expected == actual
+    end
+  end
+
+  describe "all_with_ods_table_snapshot/0" do
+    test "getting table records with any ODS snapshot records" do
+      # insert tables
+      dmap_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_dmap__sample",
+          s3_prefix: "cubic/dmap/sample/"
+        })
+
+      dmap_table_id = dmap_table.id
+
+      ods_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_ods_qlik__sample",
+          s3_prefix: "cubic/ods_qlik/SAMPLE/"
+        })
+
+      ods_table_id = ods_table.id
+
+      # insert ODS table
+      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+
+      ods_table_snapshot =
+        Repo.insert!(%CubicOdsTableSnapshot{
+          table_id: ods_table.id,
+          snapshot: nil,
+          snapshot_s3_key: ods_snapshot_s3_key
+        })
+
+      expected = [
+        {dmap_table, nil},
+        {ods_table, ods_table_snapshot}
+      ]
+
+      actual =
+        Enum.sort_by(
+          Enum.filter(CubicTable.all_with_ods_table_snapshot(), fn {table, _ods_table_snapshot} ->
+            Enum.member?([dmap_table_id, ods_table_id], table.id)
+          end),
+          fn {table, _ods_table_snapshot} -> table.id end
+        )
 
       assert expected == actual
     end
