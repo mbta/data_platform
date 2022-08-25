@@ -46,16 +46,16 @@ defmodule ExCubicIngestion.Workers.IngestTest do
         "loads" => [
           %{
             "id" => dmap_load.id,
-            "s3_key" => "cubic/dmap/sample/20220101.csv",
+            "s3_key" => "cubic/dmap/sample/20220101.csv.gz",
             "table_name" => "cubic_dmap__sample",
             "is_raw" => false,
             "partition_columns" => [
-              %{"name" => "identifier", "value" => "20220101.csv"}
+              %{"name" => "identifier", "value" => "20220101.csv.gz"}
             ]
           },
           %{
             "id" => ods_load.id,
-            "s3_key" => "cubic/ods_qlik/SAMPLE/LOAD1.csv",
+            "s3_key" => "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
             "table_name" => "cubic_ods_qlik__sample",
             "is_raw" => true,
             "partition_columns" => [
@@ -63,7 +63,7 @@ defmodule ExCubicIngestion.Workers.IngestTest do
                 "name" => "snapshot",
                 "value" => "20220101T204950Z"
               },
-              %{"name" => "identifier", "value" => "LOAD1.csv"}
+              %{"name" => "identifier", "value" => "LOAD1.csv.gz"}
             ]
           }
         ]

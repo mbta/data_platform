@@ -20,7 +20,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     load_objects = [
       %{
         e_tag: "\"ghi123\"",
-        key: "cubic/dmap/sample/20220101.csv",
+        key: "cubic/dmap/sample/20220101.csv.gz",
         last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -3600),
         owner: nil,
         size: "197",
@@ -28,7 +28,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       },
       %{
         e_tag: "\"jkl123\"",
-        key: "cubic/dmap/sample/20220102.csv",
+        key: "cubic/dmap/sample/20220102.csv.gz",
         last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -3000),
         owner: nil,
         size: "197",
@@ -73,7 +73,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       assert %CubicLoad{
                table_id: ^table_id,
                status: "ready",
-               s3_key: "cubic/dmap/sample/20220101.csv"
+               s3_key: "cubic/dmap/sample/20220101.csv.gz"
              } = CubicLoad.insert_from_object_with_table(List.first(load_objects), table)
     end
 
@@ -109,7 +109,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
                CubicLoad.get_by_objects([
                  %{
                    e_tag: "\"ghi789\"",
-                   key: "not/in/db.csv",
+                   key: "not/in/db.csv.gz",
                    last_modified: "2022-02-08T21:49:50.000Z",
                    owner: nil,
                    size: "197",
@@ -131,7 +131,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
       load_recs = [
         %CubicLoad{
-          s3_key: "key/not/found.csv",
+          s3_key: "key/not/found.csv.gz",
           s3_modified: ~U[2022-02-08 20:49:50Z]
         }
       ]
@@ -147,7 +147,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
       load_recs = [
         %CubicLoad{
-          s3_key: "cubic/dmap/sample/20220101.csv",
+          s3_key: "cubic/dmap/sample/20220101.csv.gz",
           s3_modified: utc_now |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
         }
       ]
@@ -186,7 +186,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
         Repo.insert!(%CubicLoad{
           table_id: table.id,
           status: "ready_for_archiving",
-          s3_key: "cubic/dmap/sample/20220101.csv",
+          s3_key: "cubic/dmap/sample/20220101.csv.gz",
           s3_modified: ~U[2022-01-01 20:49:50Z],
           s3_size: 197
         })
@@ -195,7 +195,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
         Repo.insert!(%CubicLoad{
           table_id: table.id,
           status: "ready_for_erroring",
-          s3_key: "cubic/dmap/sample/20220102.csv",
+          s3_key: "cubic/dmap/sample/20220102.csv.gz",
           s3_modified: ~U[2022-01-02 20:49:50Z],
           s3_size: 197
         })

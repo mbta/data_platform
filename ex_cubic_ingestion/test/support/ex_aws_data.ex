@@ -15,7 +15,7 @@ defmodule MockExAws.Data do
     objects = [
       %{
         e_tag: "\"ghi123\"",
-        key: "#{incoming_prefix}cubic/dmap/sample/20220101.csv",
+        key: "#{incoming_prefix}cubic/dmap/sample/20220101.csv.gz",
         last_modified: dt_adjust_and_format(utc_now, -3600),
         owner: nil,
         size: "197",
@@ -23,7 +23,7 @@ defmodule MockExAws.Data do
       },
       %{
         e_tag: "\"jkl123\"",
-        key: "#{incoming_prefix}cubic/dmap/sample/20220102.csv",
+        key: "#{incoming_prefix}cubic/dmap/sample/20220102.csv.gz",
         last_modified: dt_adjust_and_format(utc_now, -3000),
         owner: nil,
         size: "197",
@@ -31,7 +31,15 @@ defmodule MockExAws.Data do
       },
       %{
         e_tag: "\"abc123\"",
-        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD1.csv",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
+        last_modified: dt_adjust_and_format(utc_now, -2400),
+        owner: nil,
+        size: "197",
+        storage_class: "STANDARD"
+      },
+      %{
+        e_tag: "\"abc123\"",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD1.dfm",
         last_modified: dt_adjust_and_format(utc_now, -2400),
         owner: nil,
         size: "197",
@@ -39,7 +47,15 @@ defmodule MockExAws.Data do
       },
       %{
         e_tag: "\"def123\"",
-        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD2.csv",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
+        last_modified: dt_adjust_and_format(utc_now, -1800),
+        owner: nil,
+        size: "123",
+        storage_class: "STANDARD"
+      },
+      %{
+        e_tag: "\"def123\"",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD2.dfm",
         last_modified: dt_adjust_and_format(utc_now, -1800),
         owner: nil,
         size: "123",

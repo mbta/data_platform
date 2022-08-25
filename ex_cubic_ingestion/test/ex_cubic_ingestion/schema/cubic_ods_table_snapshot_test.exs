@@ -23,7 +23,7 @@ defmodule ExCubicIngestion.Schema.CubicOdsTableSnapshotTest do
         Repo.insert!(%CubicOdsTableSnapshot{
           table_id: ods_table.id,
           snapshot: ~U[2022-01-01 20:49:50Z],
-          snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+          snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
         })
 
       ods_table_deleted =
@@ -36,7 +36,7 @@ defmodule ExCubicIngestion.Schema.CubicOdsTableSnapshotTest do
       Repo.insert!(%CubicOdsTableSnapshot{
         table_id: ods_table.id,
         snapshot: ~U[2022-01-01 20:49:50Z],
-        snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv",
+        snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
         deleted_at: ~U[2022-01-02 20:50:50Z]
       })
 
@@ -65,7 +65,7 @@ defmodule ExCubicIngestion.Schema.CubicOdsTableSnapshotTest do
         Repo.insert!(%CubicOdsTableSnapshot{
           table_id: ods_table.id,
           snapshot: ~U[2022-01-01 20:49:50Z],
-          snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+          snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
         })
 
       updated_snapshot = ~U[2022-01-02 20:49:50Z]

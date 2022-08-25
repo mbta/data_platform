@@ -40,11 +40,11 @@ defmodule ExCubicIngestion.Validators do
   end
 
   @doc """
-  Only valid if the name ends with '.csv.gz' or '.csv' and has a size specified
+  Only valid if the name ends with '.csv.gz' and has a size specified
   """
   @spec valid_s3_object?(map()) :: boolean()
   def valid_s3_object?(%{key: key, size: _size}) do
-    String.ends_with?(key, ".csv.gz") or String.ends_with?(key, ".csv")
+    String.ends_with?(key, ".csv.gz")
   end
 
   def valid_s3_object?(%{}) do
