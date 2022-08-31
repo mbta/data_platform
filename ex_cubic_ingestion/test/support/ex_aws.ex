@@ -7,6 +7,8 @@ defmodule MockExAws do
   def request(op, config_overrides \\ [])
 
   def request(%{service: :s3, http_method: :delete, path: path}, _config_overrides) do
+    incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
     valid_paths =
       Enum.map(MockExAws.Data.load_objects(), fn load_object ->
         "#{load_object[:key]}"
@@ -14,14 +16,14 @@ defmodule MockExAws do
         [
           "cubic/dmap/sample/already_copied_but_source_not_deleted.csv.gz",
           "cubic/dmap/sample/move.csv.gz",
-          "cubic/dmap/sample/20220101.csv"
+          "#{incoming_prefix}cubic/ods_qlik/SAMPLE/source_metadata_does_not_exist.csv.gz"
         ]
 
     # deleting object
     if Enum.member?(valid_paths, path) do
       {:ok, %{}}
     else
-      {:error, %{}}
+      {:error, "delete_object failed"}
     end
   end
 
@@ -29,8 +31,9 @@ defmodule MockExAws do
     incoming_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
     incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
+    # only fail copying for these paths
     error_copy_paths = [
-      "#{incoming_bucket}#{incoming_prefix}does_not_exist/file.csv",
+      "#{incoming_bucket}#{incoming_prefix}does_not_exist/file.csv.gz",
       "/incoming/cubic/dmap/sample/move_with_copy_failing.csv.gz"
     ]
 
@@ -122,14 +125,18 @@ defmodule MockExAws do
   def request(%{service: :s3, http_method: :head, path: path}, _config_overrides) do
     incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
-    valid_paths = [
-      "cubic/dmap/sample/already_copied_but_source_not_deleted.csv.gz",
-      "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied_but_source_not_deleted.csv.gz",
-      "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied.csv.gz",
-      "cubic/dmap/sample/move.csv.gz",
-      "cubic/dmap/sample/move_with_copy_failing.csv.gz",
-      "#{incoming_prefix}cubic/dmap/sample/20220101.csv"
-    ]
+    valid_paths =
+      Enum.map(MockExAws.Data.load_objects(), fn load_object ->
+        "#{load_object[:key]}"
+      end) ++
+        [
+          "cubic/dmap/sample/already_copied_but_source_not_deleted.csv.gz",
+          "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied_but_source_not_deleted.csv.gz",
+          "cubic/dmap/sample/timestamp=20220101T000000Z/already_copied.csv.gz",
+          "cubic/dmap/sample/move.csv.gz",
+          "cubic/dmap/sample/move_with_copy_failing.csv.gz",
+          "#{incoming_prefix}cubic/ods_qlik/SAMPLE/source_metadata_does_not_exist.csv.gz"
+        ]
 
     if Enum.member?(valid_paths, path) do
       {:ok, %{}}
@@ -155,7 +162,7 @@ defmodule MockExAws do
         {:ok, %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}}}
 
       true ->
-        {:error, %{}}
+        {:error, "glue failed"}
     end
   end
 

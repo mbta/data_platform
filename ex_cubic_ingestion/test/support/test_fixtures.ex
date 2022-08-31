@@ -27,7 +27,7 @@ defmodule ExCubicIngestion.TestFixtures do
       })
 
     # insert ODS table
-    ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+    ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
     ods_snapshot = ~U[2022-01-01 20:49:50Z]
 
     Repo.insert!(%CubicOdsTableSnapshot{
@@ -41,7 +41,7 @@ defmodule ExCubicIngestion.TestFixtures do
       Repo.insert!(%CubicLoad{
         table_id: dmap_table.id,
         status: "ready",
-        s3_key: "cubic/dmap/sample/20220101.csv",
+        s3_key: "cubic/dmap/sample/20220101.csv.gz",
         s3_modified: ~U[2022-01-01 20:49:50Z],
         s3_size: 197,
         is_raw: false
@@ -67,6 +67,7 @@ defmodule ExCubicIngestion.TestFixtures do
      %{
        dmap_table: dmap_table,
        dmap_load: dmap_load,
+       ods_table: ods_table,
        ods_load: ods_load
      }}
   end

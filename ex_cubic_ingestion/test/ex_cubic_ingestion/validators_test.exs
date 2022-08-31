@@ -67,7 +67,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "is valid object" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
         last_modified: @utc_now,
         size: "123"
       }
@@ -78,7 +78,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "is valid even if size is 0" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
         last_modified: @utc_now,
         size: "0"
       }
@@ -99,7 +99,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "invalid if missing size" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
         last_modified: @utc_now
       }
 
@@ -122,7 +122,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "invalid if missing last_modified" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
         size: "123"
       }
 
@@ -132,7 +132,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "valid it it's a recent object" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
         last_modified: @utc_now,
         size: "123"
       }
@@ -143,7 +143,7 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "invalid if it's not a recent object" do
       object = %{
         # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv",
+        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
         last_modified: "2022-01-01T20:49:50.000Z",
         size: "123"
       }

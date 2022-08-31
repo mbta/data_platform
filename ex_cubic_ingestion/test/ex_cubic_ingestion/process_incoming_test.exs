@@ -53,25 +53,25 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
         Enum.sort_by(Repo.all(CubicLoad), & &1.id)
 
       assert %CubicLoad{
-               s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv",
+               s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
                status: "ready",
                table_id: ^ods_table_id
              } = ods_load_1
 
       assert %CubicLoad{
-               s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv",
+               s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
                status: "ready",
                table_id: ^ods_table_id
              } = ods_load_2
 
       assert %CubicLoad{
-               s3_key: "cubic/dmap/sample/20220101.csv",
+               s3_key: "cubic/dmap/sample/20220101.csv.gz",
                status: "ready",
                table_id: ^dmap_table_id
              } = dmap_load_1
 
       assert %CubicLoad{
-               s3_key: "cubic/dmap/sample/20220102.csv",
+               s3_key: "cubic/dmap/sample/20220102.csv.gz",
                status: "ready",
                table_id: ^dmap_table_id
              } = dmap_load_2

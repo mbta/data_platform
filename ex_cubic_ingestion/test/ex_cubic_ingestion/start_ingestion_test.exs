@@ -26,7 +26,7 @@ defmodule ExCubicIngestion.StartIngestionTest do
       })
 
     # insert ODS table
-    ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+    ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
 
     Repo.insert!(%CubicOdsTableSnapshot{
       table_id: ods_table.id,
@@ -39,7 +39,7 @@ defmodule ExCubicIngestion.StartIngestionTest do
       Repo.insert!(%CubicLoad{
         table_id: dmap_table.id,
         status: "ready",
-        s3_key: "cubic/dmap/sample/20220101.csv",
+        s3_key: "cubic/dmap/sample/20220101.csv.gz",
         s3_modified: ~U[2022-01-01 20:49:50Z],
         s3_size: 197
       })
@@ -92,23 +92,23 @@ defmodule ExCubicIngestion.StartIngestionTest do
 
       loads = [
         %{
-          s3_key: "test/load1.csv",
+          s3_key: "test/load1.csv.gz",
           s3_size: 12
         },
         %{
-          s3_key: "test/load2.csv",
+          s3_key: "test/load2.csv.gz",
           s3_size: 34
         },
         %{
-          s3_key: "test/load3.csv",
+          s3_key: "test/load3.csv.gz",
           s3_size: 56
         },
         %{
-          s3_key: "test/load4.csv",
+          s3_key: "test/load4.csv.gz",
           s3_size: 78
         },
         %{
-          s3_key: "test/load5.csv",
+          s3_key: "test/load5.csv.gz",
           s3_size: 90
         }
       ]
@@ -137,23 +137,23 @@ defmodule ExCubicIngestion.StartIngestionTest do
 
       loads = [
         %{
-          s3_key: "test/load1.csv",
+          s3_key: "test/load1.csv.gz",
           s3_size: 123
         },
         %{
-          s3_key: "test/load2.csv",
+          s3_key: "test/load2.csv.gz",
           s3_size: 456
         },
         %{
-          s3_key: "test/load3.csv",
+          s3_key: "test/load3.csv.gz",
           s3_size: 789
         },
         %{
-          s3_key: "test/load4.csv",
+          s3_key: "test/load4.csv.gz",
           s3_size: 1000
         },
         %{
-          s3_key: "test/load5.csv",
+          s3_key: "test/load5.csv.gz",
           s3_size: 1112
         }
       ]

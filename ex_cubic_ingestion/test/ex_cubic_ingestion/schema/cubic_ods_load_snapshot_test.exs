@@ -16,12 +16,12 @@ defmodule ExCubicIngestion.Schema.CubicOdsLoadSnapshotTest do
         })
 
       # insert ODS table
-      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
 
       Repo.insert!(%CubicOdsTableSnapshot{
         table_id: ods_table.id,
         snapshot: nil,
-        snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+        snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
       })
 
       # insert loads
@@ -38,7 +38,7 @@ defmodule ExCubicIngestion.Schema.CubicOdsLoadSnapshotTest do
         Repo.insert!(%CubicLoad{
           table_id: ods_table.id,
           status: "ready",
-          s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv",
+          s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
           s3_modified: ~U[2022-01-01 20:50:50Z],
           s3_size: 197
         })
