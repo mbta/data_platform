@@ -74,18 +74,31 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   end
 
   @doc """
-  From a list of S3 objects defined as maps, filter out any that have already
-  been inserted and therefore are being processed, and insert the rest in database.
+  From a list of S3 objects defined as maps, filter in only new objects and
+  insert them in database.
   """
   @spec insert_new_from_objects_with_table([map()], CubicTable.t()) ::
           {:ok, [t()]} | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
-    # query loads to see what we can ignore when inserting
-    # usually happens when objects have not been moved out of 'incoming' bucket
-    recs = get_by_objects(objects)
+    # get the last inserted load which will be used to further filter the objects
+    last_inserted_load_rec =
+      Repo.one(
+        from(load in not_deleted(),
+          where: load.table_id == ^table.id,
+          order_by: [desc: load.s3_modified],
+          limit: 1
+        )
+      )
 
-    # create a list of objects that have not been added to database
-    new_objects = Enum.filter(objects, &not_added(&1, recs))
+    # create a list of objects that have a last modified that is later than
+    # the last object we have in database
+    new_objects =
+      Enum.filter(objects, fn object ->
+        last_modified = parse_and_drop_msec(object.last_modified)
+
+        is_nil(last_inserted_load_rec) or
+          DateTime.compare(last_modified, last_inserted_load_rec.s3_modified) == :gt
+      end)
 
     if Enum.empty?(new_objects) do
       {:ok, []}
@@ -121,49 +134,6 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
       s3_size: size,
       is_raw: table.is_raw
     })
-  end
-
-  @doc """
-  For a list of S3 objects, get all the possible matching load records.
-  """
-  @spec get_by_objects(list()) :: [t()]
-  def get_by_objects(objects) do
-    # put together filters based on the object info
-    filters =
-      Enum.map(objects, fn object ->
-        last_modified = parse_and_drop_msec(object.last_modified)
-
-        {object.key, last_modified}
-      end)
-
-    # we only want to query if we have filters because otherwise the query will the return
-    # the whole table
-    if Enum.empty?(filters) do
-      []
-    else
-      query_with_filters =
-        Enum.reduce(filters, __MODULE__, fn {s3_key, s3_modified}, query ->
-          # query
-          from(load in query,
-            or_where:
-              is_nil(load.deleted_at) and load.s3_key == ^s3_key and
-                load.s3_modified == ^s3_modified
-          )
-        end)
-
-      Repo.all(query_with_filters)
-    end
-  end
-
-  @spec not_added(map(), list()) :: boolean()
-  def not_added(load_object, load_recs) do
-    key = load_object.key
-    last_modified = parse_and_drop_msec(load_object.last_modified)
-
-    not Enum.any?(
-      load_recs,
-      fn r -> r.s3_key == key and r.s3_modified == last_modified end
-    )
   end
 
   @spec get_status_ready :: [t()]
