@@ -183,11 +183,12 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   @doc """
   Get records by a list of statuses.
   """
-  @spec all_by_status_in([String.t()]) :: [t()]
-  def all_by_status_in(statuses) do
+  @spec all_by_status_in([String.t()], integer()) :: [t()]
+  def all_by_status_in(statuses, limit \\ 1000) do
     query =
       from(load in not_deleted(),
-        where: load.status in ^statuses
+        where: load.status in ^statuses,
+        limit: ^limit
       )
 
     Repo.all(query)

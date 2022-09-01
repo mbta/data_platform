@@ -216,6 +216,29 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       assert [load_1.id, load_2.id] ==
                Enum.sort(Enum.map(actual_loads, & &1.id))
     end
+
+    test "limiting the number of records returned", %{
+      table: table
+    } do
+      # insert loads
+      Repo.insert!(%CubicLoad{
+        table_id: table.id,
+        status: "ready_for_archiving",
+        s3_key: "cubic/dmap/sample/20220101.csv.gz",
+        s3_modified: ~U[2022-01-01 20:49:50Z],
+        s3_size: 197
+      })
+
+      Repo.insert!(%CubicLoad{
+        table_id: table.id,
+        status: "ready_for_archiving",
+        s3_key: "cubic/dmap/sample/20220102.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197
+      })
+
+      assert 1 == length(CubicLoad.all_by_status_in(["ready_for_archiving"], 1))
+    end
   end
 
   describe "update/2" do
