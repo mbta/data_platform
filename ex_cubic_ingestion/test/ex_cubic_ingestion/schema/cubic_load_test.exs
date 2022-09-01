@@ -48,12 +48,34 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
   describe "insert_new_from_objects_with_table/1" do
     test "providing a non-empty list of objects", %{
       table: table,
+      utc_now: utc_now,
       load_objects: load_objects
     } do
       {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
 
       assert Enum.map(load_objects, & &1[:key]) ==
                Enum.map(new_load_recs, & &1.s3_key)
+
+      # inserting again should not return any new records
+      assert {:ok, []} == CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+
+      # add a new object
+      load_objects = [
+        %{
+          key: "cubic/dmap/sample/20220103.csv",
+          last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -2400),
+          size: "197"
+        }
+        | load_objects
+      ]
+
+      # adding one more load object, should only insert it as a load record
+      assert {:ok,
+              [
+                %CubicLoad{
+                  s3_key: "cubic/dmap/sample/20220103.csv"
+                }
+              ]} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
     end
 
     test "providing an empty list of objects", %{
@@ -85,74 +107,6 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
       assert "ready_for_erroring" ==
                CubicLoad.insert_from_object_with_table(%{object | size: "0"}, table).status
-    end
-  end
-
-  describe "get_by_objects/1" do
-    test "getting records just added by providing the list we added from", %{
-      table: table,
-      load_objects: load_objects
-    } do
-      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
-
-      assert new_load_recs == CubicLoad.get_by_objects(load_objects)
-    end
-
-    test "getting no records by providing a list with a load object not in db", %{
-      table: table,
-      load_objects: load_objects
-    } do
-      # put some records in DB
-      CubicLoad.insert_new_from_objects_with_table(load_objects, table)
-
-      assert [] ==
-               CubicLoad.get_by_objects([
-                 %{
-                   e_tag: "\"ghi789\"",
-                   key: "not/in/db.csv.gz",
-                   last_modified: "2022-02-08T21:49:50.000Z",
-                   owner: nil,
-                   size: "197",
-                   storage_class: "STANDARD"
-                 }
-               ])
-    end
-
-    test "getting no records by providing an empty list" do
-      assert [] == CubicLoad.get_by_objects([])
-    end
-  end
-
-  describe "not_added/2" do
-    test "object NOT found in database records", %{
-      load_objects: load_objects
-    } do
-      load_object = List.first(load_objects)
-
-      load_recs = [
-        %CubicLoad{
-          s3_key: "key/not/found.csv.gz",
-          s3_modified: ~U[2022-02-08 20:49:50Z]
-        }
-      ]
-
-      assert CubicLoad.not_added(load_object, load_recs)
-    end
-
-    test "object found in database records", %{
-      utc_now: utc_now,
-      load_objects: load_objects
-    } do
-      load_object = List.first(load_objects)
-
-      load_recs = [
-        %CubicLoad{
-          s3_key: "cubic/dmap/sample/20220101.csv.gz",
-          s3_modified: utc_now |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
-        }
-      ]
-
-      refute CubicLoad.not_added(load_object, load_recs)
     end
   end
 
