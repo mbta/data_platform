@@ -122,9 +122,7 @@ jobs:
       - run: exit 1
         if: steps.asdf-cache.outputs.cache-hit != 'true'
       - name: Install dependencies
-        run: |
-          poetry config virtualenvs.create false
-          poetry install
+        run: poetry install
       - name: Check code formatting with Black
         run: poetry run black . --check
       - name: Check static typing with mypy
