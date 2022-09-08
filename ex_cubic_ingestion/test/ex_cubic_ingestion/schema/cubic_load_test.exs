@@ -184,7 +184,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     end
   end
 
-  describe "all_by_status_in/1" do
+  describe "all_by_status_in/2" do
     test "empty list of statuses" do
       assert [] == CubicLoad.all_by_status_in([])
     end
@@ -211,10 +211,31 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
           s3_size: 197
         })
 
-      actual_loads = CubicLoad.all_by_status_in(["ready_for_archiving", "ready_for_erroring"])
+      assert [load_1, load_2] ==
+               CubicLoad.all_by_status_in(["ready_for_archiving", "ready_for_erroring"])
+    end
 
-      assert [load_1.id, load_2.id] ==
-               Enum.sort(Enum.map(actual_loads, & &1.id))
+    test "limiting the number of records returned", %{
+      table: table
+    } do
+      # insert loads
+      Repo.insert!(%CubicLoad{
+        table_id: table.id,
+        status: "ready_for_archiving",
+        s3_key: "cubic/dmap/sample/20220101.csv.gz",
+        s3_modified: ~U[2022-01-01 20:49:50Z],
+        s3_size: 197
+      })
+
+      Repo.insert!(%CubicLoad{
+        table_id: table.id,
+        status: "ready_for_archiving",
+        s3_key: "cubic/dmap/sample/20220102.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197
+      })
+
+      assert 1 == length(CubicLoad.all_by_status_in(["ready_for_archiving"], 1))
     end
   end
 
