@@ -188,6 +188,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     query =
       from(load in not_deleted(),
         where: load.status in ^statuses,
+        order_by: load.id,
         limit: ^limit
       )
 
