@@ -63,7 +63,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       # add a new object
       load_objects = [
         %{
-          key: "cubic/dmap/sample/20220103.csv",
+          key: "cubic/dmap/sample/20220103.csv.gz",
           last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -2400),
           size: "197"
         }
@@ -74,7 +74,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       assert {:ok,
               [
                 %CubicLoad{
-                  s3_key: "cubic/dmap/sample/20220103.csv"
+                  s3_key: "cubic/dmap/sample/20220103.csv.gz"
                 }
               ]} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
     end
@@ -136,7 +136,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
           is_raw: true
         })
 
-      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
       ods_snapshot = ~U[2022-01-01 20:49:50Z]
 
       Repo.insert!(%CubicOdsTableSnapshot{
@@ -159,7 +159,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       Repo.insert!(%CubicLoad{
         table_id: ods_table.id,
         status: "ready",
-        s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv",
+        s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
         s3_modified: ~U[2022-01-02 20:49:50Z],
         s3_size: 197,
         is_raw: true
@@ -173,7 +173,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
         Repo.insert!(%CubicLoad{
           table_id: ods_table.id,
           status: "ready",
-          s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv",
+          s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
           s3_modified: ~U[2022-01-03 20:49:50Z],
           s3_size: 197,
           is_raw: true

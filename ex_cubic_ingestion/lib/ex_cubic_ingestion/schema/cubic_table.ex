@@ -93,7 +93,8 @@ defmodule ExCubicIngestion.Schema.CubicTable do
       from(table in not_deleted(),
         left_join: ods_table_snapshot in CubicOdsTableSnapshot,
         on: table.id == ods_table_snapshot.table_id,
-        select: {table, ods_table_snapshot}
+        select: {table, ods_table_snapshot},
+        order_by: table.id
       )
     )
   end

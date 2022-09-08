@@ -91,7 +91,7 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
       ods_table_id = ods_table.id
 
       # insert ODS table
-      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv"
+      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
 
       ods_table_snapshot =
         Repo.insert!(%CubicOdsTableSnapshot{
@@ -106,12 +106,9 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
       ]
 
       actual =
-        Enum.sort_by(
-          Enum.filter(CubicTable.all_with_ods_table_snapshot(), fn {table, _ods_table_snapshot} ->
-            Enum.member?([dmap_table_id, ods_table_id], table.id)
-          end),
-          fn {table, _ods_table_snapshot} -> table.id end
-        )
+        Enum.filter(CubicTable.all_with_ods_table_snapshot(), fn {table, _ods_table_snapshot} ->
+          Enum.member?([dmap_table_id, ods_table_id], table.id)
+        end)
 
       assert expected == actual
     end
