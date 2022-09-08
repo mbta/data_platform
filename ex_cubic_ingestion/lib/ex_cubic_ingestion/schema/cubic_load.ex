@@ -136,25 +136,60 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     })
   end
 
-  @spec get_status_ready :: [t()]
-  def get_status_ready do
-    query =
-      from(load in not_deleted(),
-        where: load.status == "ready",
-        order_by: [load.s3_modified, load.s3_key]
-      )
+  @doc """
+  Get loads with the 'ready' status by getting all the active tables and
+  querying for the first {limit} loads by table. For ODS, because there might be a
+  Qlik restart between the 'ready' and 'ingesting' status, we should check to make
+  sure we only start since the last snapshot load's s3_modified. Because of this
+  logic, some 'ready' loads will be left behind. That's because they will be
+  pointing to non-existing objects (Note: Qlik removes all objects on a restart).
+  """
+  @spec get_status_ready(integer()) :: [t()]
+  def get_status_ready(limit \\ 100) do
+    # we need to get 'ready' loads only for active tables
+    CubicTable.all_with_ods_table_snapshot()
+    |> Enum.map(fn {table_rec, ods_table_snapshot_rec} ->
+      # get the last load with snapshot key
+      last_snapshot_load_rec =
+        if not is_nil(ods_table_snapshot_rec) do
+          Repo.one(
+            from(load in not_deleted(),
+              where: load.s3_key == ^ods_table_snapshot_rec.snapshot_s3_key,
+              order_by: [desc: load.s3_modified],
+              limit: 1
+            )
+          )
+        end
 
-    Repo.all(query)
+      # query for 'ready' loads, with limit
+      ready_loads =
+        from(load in not_deleted(),
+          where: load.status == "ready" and load.table_id == ^table_rec.id,
+          order_by: [load.s3_modified, load.s3_key],
+          limit: ^limit
+        )
+
+      # if we know the last snapshot load, then filter down to 'ready' loads
+      # after the snapshot
+      if is_nil(last_snapshot_load_rec) do
+        ready_loads
+      else
+        from(load in ready_loads, where: load.s3_modified >= ^last_snapshot_load_rec.s3_modified)
+      end
+    end)
+    |> Enum.flat_map(&Repo.all(&1))
   end
 
   @doc """
   Get records by a list of statuses.
   """
-  @spec all_by_status_in([String.t()]) :: [t()]
-  def all_by_status_in(statuses) do
+  @spec all_by_status_in([String.t()], integer()) :: [t()]
+  def all_by_status_in(statuses, limit \\ 1000) do
     query =
       from(load in not_deleted(),
-        where: load.status in ^statuses
+        where: load.status in ^statuses,
+        order_by: load.id,
+        limit: ^limit
       )
 
     Repo.all(query)

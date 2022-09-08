@@ -4,6 +4,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
   import Ecto.Changeset
 
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
   alias ExCubicIngestion.Schema.CubicTable
 
   setup do
@@ -62,7 +63,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       # add a new object
       load_objects = [
         %{
-          key: "cubic/dmap/sample/20220103.csv",
+          key: "cubic/dmap/sample/20220103.csv.gz",
           last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -2400),
           size: "197"
         }
@@ -73,7 +74,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       assert {:ok,
               [
                 %CubicLoad{
-                  s3_key: "cubic/dmap/sample/20220103.csv"
+                  s3_key: "cubic/dmap/sample/20220103.csv.gz"
                 }
               ]} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
     end
@@ -111,7 +112,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
   end
 
   describe "get_status_ready/0" do
-    test "getting load records with the status 'ready'", %{
+    test "getting non-ODS 'ready' loads", %{
       table: table,
       load_objects: load_objects
     } do
@@ -125,9 +126,65 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       # assert that the last record inserted comes back
       assert rest_new_load_recs == CubicLoad.get_status_ready()
     end
+
+    test "getting ODS 'ready' loads" do
+      # insert ODS table and snapshot
+      ods_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_ods_qlik__sample",
+          s3_prefix: "cubic/ods_qlik/SAMPLE/",
+          is_raw: true
+        })
+
+      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
+      ods_snapshot = ~U[2022-01-01 20:49:50Z]
+
+      Repo.insert!(%CubicOdsTableSnapshot{
+        table_id: ods_table.id,
+        snapshot: ods_snapshot,
+        snapshot_s3_key: ods_snapshot_s3_key
+      })
+
+      # insert loads
+      ods_load =
+        Repo.insert!(%CubicLoad{
+          table_id: ods_table.id,
+          status: "ready",
+          s3_key: ods_snapshot_s3_key,
+          s3_modified: ods_snapshot,
+          s3_size: 197,
+          is_raw: true
+        })
+
+      Repo.insert!(%CubicLoad{
+        table_id: ods_table.id,
+        status: "ready",
+        s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197,
+        is_raw: true
+      })
+
+      # only get the first load because of limit
+      assert [ods_load] == CubicLoad.get_status_ready(1)
+
+      # add new snapshot load
+      new_ods_load =
+        Repo.insert!(%CubicLoad{
+          table_id: ods_table.id,
+          status: "ready",
+          s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
+          s3_modified: ~U[2022-01-03 20:49:50Z],
+          s3_size: 197,
+          is_raw: true
+        })
+
+      # ignoring loads prior to this last snapshot load
+      assert [new_ods_load] == CubicLoad.get_status_ready()
+    end
   end
 
-  describe "all_by_status_in/1" do
+  describe "all_by_status_in/2" do
     test "empty list of statuses" do
       assert [] == CubicLoad.all_by_status_in([])
     end
@@ -154,10 +211,31 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
           s3_size: 197
         })
 
-      actual_loads = CubicLoad.all_by_status_in(["ready_for_archiving", "ready_for_erroring"])
+      assert [load_1, load_2] ==
+               CubicLoad.all_by_status_in(["ready_for_archiving", "ready_for_erroring"])
+    end
 
-      assert [load_1.id, load_2.id] ==
-               Enum.sort(Enum.map(actual_loads, & &1.id))
+    test "limiting the number of records returned", %{
+      table: table
+    } do
+      # insert loads
+      Repo.insert!(%CubicLoad{
+        table_id: table.id,
+        status: "ready_for_archiving",
+        s3_key: "cubic/dmap/sample/20220101.csv.gz",
+        s3_modified: ~U[2022-01-01 20:49:50Z],
+        s3_size: 197
+      })
+
+      Repo.insert!(%CubicLoad{
+        table_id: table.id,
+        status: "ready_for_archiving",
+        s3_key: "cubic/dmap/sample/20220102.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197
+      })
+
+      assert 1 == length(CubicLoad.all_by_status_in(["ready_for_archiving"], 1))
     end
   end
 
