@@ -1,6 +1,6 @@
 defmodule ExCubicIngestion.Schema.ObanWorkerErrorTest do
   @moduledoc """
-  Test for ingest worker error handler.
+  Test for worker error handler.
   """
 
   use ExCubicIngestion.DataCase, async: true
