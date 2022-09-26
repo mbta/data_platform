@@ -1,7 +1,7 @@
 import Config
 
 # only log warnings+ in test
-config :logger, level: :warning
+config :logger, level: :info
 
 config :ex_cubic_ingestion,
   start_app_children?: false
