@@ -44,7 +44,6 @@ defmodule ExCubicIngestion.Schema.ObanLoggerTest do
                  [:oban, :job, :exception],
                  %{duration: 1, queue_time: 1},
                  %{
-                   worker: "ExCubicIngestion.Workers.Archive",
                    queue: "archive",
                    args: %{"load_rec_id" => dmap_load.id},
                    state: "",
@@ -66,7 +65,6 @@ defmodule ExCubicIngestion.Schema.ObanLoggerTest do
                  [:oban, :job, :exception],
                  %{duration: 1, queue_time: 1},
                  %{
-                   worker: "ExCubicIngestion.Workers.Error",
                    queue: "error",
                    args: %{"load_rec_id" => dmap_load.id},
                    state: "",
@@ -91,7 +89,6 @@ defmodule ExCubicIngestion.Schema.ObanLoggerTest do
                  [:oban, :job, :exception],
                  %{duration: 1, queue_time: 1},
                  %{
-                   worker: "ExCubicIngestion.Workers.FetchDmap",
                    queue: "fetch_dmap",
                    args: %{"feed_id" => dmap_feed.id},
                    state: "",
@@ -115,7 +112,6 @@ defmodule ExCubicIngestion.Schema.ObanLoggerTest do
             [:oban, :job, :exception],
             %{duration: 1, queue_time: 1},
             %{
-              worker: "ExCubicIngestion.Workers.Ingest",
               queue: "ingest",
               args: %{"load_rec_ids" => [ods_load.id, dmap_load.id]},
               state: "",
@@ -138,7 +134,6 @@ defmodule ExCubicIngestion.Schema.ObanLoggerTest do
                  [:oban, :job, :exception],
                  %{duration: 1, queue_time: 1},
                  %{
-                   worker: "ExCubicIngestion.Workers.Any",
                    queue: "any",
                    args: %{},
                    state: "",

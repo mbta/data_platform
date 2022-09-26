@@ -31,50 +31,37 @@ defmodule ExCubicIngestion.ObanLogger do
   def handle_event(
         [:oban, :job, :exception],
         measure,
-        %{worker: worker} = meta,
+        %{args: %{"load_rec_id" => load_rec_id}} = meta,
         _config
-      )
-      when worker in ["ExCubicIngestion.Workers.Archive", "ExCubicIngestion.Workers.Error"] do
-    %{"load_rec_id" => load_rec_id} = meta.args
-
-    args_info = CubicLoad.get!(load_rec_id)
-
-    log_exception(measure, meta, args_info)
+      ) do
+    log_exception(measure, meta, CubicLoad.get!(load_rec_id))
   end
 
   def handle_event(
         [:oban, :job, :exception],
         measure,
-        %{worker: "ExCubicIngestion.Workers.FetchDmap"} = meta,
+        %{args: %{"feed_id" => feed_id}} = meta,
         _config
       ) do
-    %{"feed_id" => feed_id} = meta.args
-
-    args_info = CubicDmapFeed.get!(feed_id)
-
-    log_exception(measure, meta, args_info)
+    log_exception(measure, meta, CubicDmapFeed.get!(feed_id))
   end
 
   def handle_event(
         [:oban, :job, :exception],
         measure,
-        %{worker: "ExCubicIngestion.Workers.Ingest"} = meta,
+        %{args: %{"load_rec_ids" => load_rec_ids}} = meta,
         _config
       ) do
-    %{"load_rec_ids" => load_rec_ids} = meta.args
-
-    args_info = CubicLoad.get_many_with_table(load_rec_ids)
-
-    log_exception(measure, meta, args_info)
+    log_exception(measure, meta, CubicLoad.get_many_with_table(load_rec_ids))
   end
 
   def handle_event([:oban, :job, :exception], measure, meta, _config) do
-    log_exception(measure, meta, {})
+    log_exception(measure, meta)
   end
 
-  defp log_exception(measure, meta, args_info) do
+  defp log_exception(measure, meta, args_info \\ nil) do
     Logger.error(
-      "#{@log_prefix} [#{meta.queue}] Exception: args=#{inspect(meta.args, charlists: :as_lists)} duration=#{measure.duration} queue_time=#{measure.queue_time} state=#{meta.state} attempt=#{meta.attempt} kind=#{meta.kind} error=#{inspect(meta.error)}\nargs_info: #{inspect(args_info)}\nStacktrace:\n#{Exception.format_stacktrace(meta.stacktrace)}"
+      "#{@log_prefix} [#{meta.queue}] Exception: args=#{inspect(meta.args, charlists: :as_lists)} duration=#{measure.duration} queue_time=#{measure.queue_time} state=#{meta.state} attempt=#{meta.attempt} kind=#{meta.kind} error=#{inspect(meta.error)} args_info=#{inspect(args_info)}\nStacktrace:\n#{Exception.format_stacktrace(meta.stacktrace)}"
     )
   end
 end
