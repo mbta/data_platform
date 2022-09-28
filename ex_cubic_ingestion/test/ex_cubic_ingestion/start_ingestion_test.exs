@@ -53,8 +53,6 @@ defmodule ExCubicIngestion.StartIngestionTest do
           s3_size: 197
         })
 
-      dmap_load_id = dmap_load.id
-
       ods_load =
         Repo.insert!(%CubicLoad{
           table_id: ods_table.id,
@@ -64,20 +62,62 @@ defmodule ExCubicIngestion.StartIngestionTest do
           s3_size: 197
         })
 
-      ods_load_id = ods_load.id
-
       :ok = StartIngestion.run()
 
       # snapshot was updated
       assert CubicOdsTableSnapshot.get_by!(%{table_id: ods_table.id}).snapshot == ods_snapshot
 
       # status was updated
-      assert CubicLoad.get!(dmap_load_id).status == "ingesting"
+      assert CubicLoad.get!(dmap_load.id).status == "ingesting"
 
-      assert CubicLoad.get!(ods_load_id).status == "ingesting"
+      assert CubicLoad.get!(ods_load.id).status == "ingesting"
 
       # job have been queued
-      assert_enqueued(worker: Ingest, args: %{load_rec_ids: [dmap_load_id, ods_load_id]})
+      assert_enqueued(worker: Ingest, args: %{load_rec_ids: [dmap_load.id, ods_load.id]})
+    end
+
+    test "ignoring ODS loads without snapshots" do
+      dmap_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_dmap__sample",
+          s3_prefix: "cubic/dmap/sample/"
+        })
+
+      ods_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_ods_qlik__sample",
+          s3_prefix: "cubic/ods_qlik/SAMPLE/"
+        })
+
+      # insert ODS table
+      Repo.insert!(%CubicOdsTableSnapshot{
+        table_id: ods_table.id,
+        snapshot: nil,
+        snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
+      })
+
+      # insert loads
+      dmap_load =
+        Repo.insert!(%CubicLoad{
+          table_id: dmap_table.id,
+          status: "ready",
+          s3_key: "cubic/dmap/sample/20220101.csv.gz",
+          s3_modified: ~U[2022-01-01 20:49:50Z],
+          s3_size: 197
+        })
+
+      # add a 'ready' CT ODS load
+      Repo.insert!(%CubicLoad{
+        table_id: ods_table.id,
+        status: "ready",
+        s3_key: "cubic/ods_qlik/SAMPLE__ct/20220102-204950123.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197
+      })
+
+      :ok = StartIngestion.run()
+
+      assert_enqueued(worker: Ingest, args: %{load_rec_ids: [dmap_load.id]})
     end
   end
 
