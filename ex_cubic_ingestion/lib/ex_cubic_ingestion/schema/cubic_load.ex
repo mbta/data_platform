@@ -145,9 +145,13 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   def get_status_ready do
     # we need to get 'ready' loads only for active tables
     CubicTable.all_with_ods_table_snapshot()
-    |> Enum.map(&get_status_ready_for_table_query(&1))
+    |> Enum.map(&get_status_ready_by_table_query(&1))
     |> Enum.filter(&(!is_nil(&1)))
-    |> Enum.flat_map(&Repo.all(&1))
+    |> Enum.flat_map(fn {table_rec, ready_loads_by_table_query} ->
+      Enum.map(Repo.all(ready_loads_by_table_query), fn ready_load_rec ->
+        {table_rec, ready_load_rec}
+      end)
+    end)
   end
 
   @doc """
@@ -212,14 +216,6 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     updated_load_recs
   end
 
-  # private
-  @spec parse_and_drop_msec(String.t()) :: DateTime.t()
-  defp parse_and_drop_msec(datetime) do
-    {:ok, datetime_with_msec, _offset} = DateTime.from_iso8601(datetime)
-
-    DateTime.truncate(datetime_with_msec, :second)
-  end
-
   @doc """
   Construct query for loads with the ready status, filtered by the table and ordered by
   the S3 modified and key values. For tables that are ODS, because there might be a
@@ -230,19 +226,20 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   Lastly, if no snapshot load exists, just return nil as loads may have not come
   through yet.
   """
-  @spec get_status_ready_for_table_query({CubicTable.t(), CubicOdsTableSnapshot.t()}, integer()) ::
-          Ecto.Queryable.t() | nil
-  def get_status_ready_for_table_query(table_and_ods_table_snapshot, limit \\ 100)
+  @spec get_status_ready_by_table_query({CubicTable.t(), CubicOdsTableSnapshot.t()}, integer()) ::
+          {CubicTable.t(), Ecto.Queryable.t()} | nil
+  def get_status_ready_by_table_query(table_and_ods_table_snapshot, limit \\ 100)
 
-  def get_status_ready_for_table_query({table_rec, nil}, limit) do
-    from(load in not_deleted(),
-      where: load.status == "ready" and load.table_id == ^table_rec.id,
-      order_by: [load.s3_modified, load.s3_key],
-      limit: ^limit
-    )
+  def get_status_ready_by_table_query({table_rec, nil}, limit) do
+    {table_rec,
+     from(load in not_deleted(),
+       where: load.status == "ready" and load.table_id == ^table_rec.id,
+       order_by: [load.s3_modified, load.s3_key],
+       limit: ^limit
+     )}
   end
 
-  def get_status_ready_for_table_query({table_rec, ods_table_snapshot_rec}, limit) do
+  def get_status_ready_by_table_query({table_rec, ods_table_snapshot_rec}, limit) do
     # get the last load with snapshot key
     last_snapshot_load_rec =
       Repo.one(
@@ -254,13 +251,30 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
       )
 
     if not is_nil(last_snapshot_load_rec) do
-      from(load in not_deleted(),
-        where:
-          load.status == "ready" and load.table_id == ^table_rec.id and
-            load.s3_modified >= ^last_snapshot_load_rec.s3_modified,
-        order_by: [load.s3_modified, load.s3_key],
-        limit: ^limit
-      )
+      {table_rec,
+       from(load in not_deleted(),
+         where:
+           load.status == "ready" and load.table_id == ^table_rec.id and
+             load.s3_modified >= ^last_snapshot_load_rec.s3_modified,
+         order_by: [load.s3_modified, load.s3_key],
+         limit: ^limit
+       )}
     end
+  end
+
+  @spec ods_load?(String.t()) :: boolean()
+  @doc """
+  Check the S3 key provided starts with the path where ODS loads are uploaded.
+  """
+  def ods_load?(s3_key) do
+    String.starts_with?(s3_key, "cubic/ods_qlik/")
+  end
+
+  # private
+  @spec parse_and_drop_msec(String.t()) :: DateTime.t()
+  defp parse_and_drop_msec(datetime) do
+    {:ok, datetime_with_msec, _offset} = DateTime.from_iso8601(datetime)
+
+    DateTime.truncate(datetime_with_msec, :second)
   end
 end

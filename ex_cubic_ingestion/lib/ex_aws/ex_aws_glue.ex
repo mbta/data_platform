@@ -4,7 +4,7 @@ defmodule ExAws.Glue do
   """
 
   @spec start_job_run(String.t(), map()) :: ExAws.Operation.t()
-  def start_job_run(job_name, job_arguments) do
+  def start_job_run(job_name, arguments) do
     %ExAws.Operation.JSON{
       http_method: :post,
       path: "/",
@@ -14,14 +14,14 @@ defmodule ExAws.Glue do
       ],
       data: %{
         JobName: job_name,
-        Arguments: job_arguments
+        Arguments: arguments
       },
       service: :glue
     }
   end
 
   @spec get_job_run(String.t(), String.t()) :: ExAws.Operation.t()
-  def get_job_run(job_name, job_run_id) do
+  def get_job_run(job_name, run_id) do
     %ExAws.Operation.JSON{
       http_method: :post,
       path: "/",
@@ -31,7 +31,24 @@ defmodule ExAws.Glue do
       ],
       data: %{
         JobName: job_name,
-        RunId: job_run_id
+        RunId: run_id
+      },
+      service: :glue
+    }
+  end
+
+  @spec get_table(String.t(), String.t()) :: ExAws.Operation.t()
+  def get_table(database_name, name) do
+    %ExAws.Operation.JSON{
+      http_method: :post,
+      path: "/",
+      headers: [
+        {"x-amz-target", "AWSGlue.GetTable"},
+        {"content-type", "application/x-amz-json-1.1"}
+      ],
+      data: %{
+        DatabaseName: database_name,
+        Name: name
       },
       service: :glue
     }

@@ -50,7 +50,7 @@ defmodule ExCubicIngestion.Workers.Error do
 
     # if ODS, also move the metadata file to destination
     {move_metadata_status, move_metadata_response} =
-      if String.starts_with?(load_rec.s3_key, "cubic/ods_qlik/") do
+      if CubicLoad.ods_load?(load_rec.s3_key) do
         metadata_source_key = "#{incoming_prefix}#{source_key_root}.dfm"
 
         metadata_destination_key = "#{error_prefix}#{destination_key_root}.dfm"
@@ -82,7 +82,7 @@ defmodule ExCubicIngestion.Workers.Error do
   @spec construct_destination_key_root(CubicLoad.t()) :: String.t()
   def construct_destination_key_root(load_rec) do
     # for ODS, the destination will include the timestamp to prevent from overwriting
-    if String.starts_with?(load_rec.s3_key, "cubic/ods_qlik/") do
+    if CubicLoad.ods_load?(load_rec.s3_key) do
       Enum.join([
         Path.dirname(load_rec.s3_key),
         "/timestamp=#{Calendar.strftime(load_rec.s3_modified, "%Y%m%dT%H%M%SZ")}/",

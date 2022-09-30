@@ -53,6 +53,103 @@ defmodule MockExAws do
     end
   end
 
+  def request(%{service: :s3, http_method: :get, params: params, path: path}, _config_overrides)
+      when params == %{} do
+    incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+    cond do
+      path == "#{incoming_prefix}cubic/ods_qlik/SAMPLE/LOAD1.dfm" ->
+        {:ok,
+         %{
+           body: """
+            {
+                "dataInfo": {
+                    "columns": [
+                        {
+                            "name": "SAMPLE_ID"
+                        },
+                        {
+                            "name": "SAMPLE_NAME"
+                        },
+                        {
+                            "name": "EDW_INSERTED_DTM"
+                        },
+                        {
+                            "name": "EDW_UPDATED_DTM"
+                        }
+                    ]
+                }
+            }
+           """
+         }}
+
+      path == "#{incoming_prefix}cubic/ods_qlik/SAMPLE__ct/20220102-204950123.dfm" ->
+        {:ok,
+         %{
+           body: """
+            {
+                "dataInfo": {
+                    "columns": [
+                        {
+                            "name": "header__change_seq"
+                        },
+                        {
+                            "name": "header__change_oper"
+                        },
+                        {
+                            "name": "header__timestamp"
+                        },
+                        {
+                            "name": "SAMPLE_ID"
+                        },
+                        {
+                            "name": "SAMPLE_NAME"
+                        },
+                        {
+                            "name": "EDW_INSERTED_DTM"
+                        },
+                        {
+                            "name": "EDW_UPDATED_DTM"
+                        }
+                    ]
+                }
+            }
+           """
+         }}
+
+      path == "#{incoming_prefix}cubic/ods_qlik/SAMPLE/invalid_LOAD2.dfm" ->
+        {:ok,
+         %{
+           body: """
+            {
+                "dataInfo": {
+                    "columns": [
+                        {
+                            "name": "SAMPLE_ID"
+                        },
+                        {
+                            "name": "SAMPLE_NAME"
+                        },
+                        {
+                            "name": "EDW_INSERTED_DTM"
+                        },
+                        {
+                            "name": "EDW_UPDATED_DTM"
+                        },
+                        {
+                            "name": "INVALID_COLUMN"
+                        }
+                    ]
+                }
+            }
+           """
+         }}
+
+      true ->
+        {:error, "get_object failed"}
+    end
+  end
+
   def request(
         %{
           service: :s3,
@@ -154,12 +251,75 @@ defmodule MockExAws do
   end
 
   def request(%{service: :glue} = op, _config_overrides) do
-    cond do
-      Enum.member?(op.headers, {"x-amz-target", "AWSGlue.StartJobRun"}) ->
-        {:ok, %{"JobRunId" => "abc123"}}
+    glue_database_incoming = Application.fetch_env!(:ex_cubic_ingestion, :glue_database_incoming)
 
+    cond do
       Enum.member?(op.headers, {"x-amz-target", "AWSGlue.GetJobRun"}) ->
         {:ok, %{"JobRun" => %{"JobRunState" => "SUCCEEDED"}}}
+
+      Enum.member?(op.headers, {"x-amz-target", "AWSGlue.GetTable"}) and
+          op.data == %{DatabaseName: glue_database_incoming, Name: "cubic_ods_qlik__sample"} ->
+        {:ok,
+         %{
+           "Table" => %{
+             "DatabaseName" => glue_database_incoming,
+             "Name" => "cubic_ods_qlik__sample",
+             "StorageDescriptor" => %{
+               "Columns" => [
+                 %{
+                   "Name" => "sample_id"
+                 },
+                 %{
+                   "Name" => "sample_name"
+                 },
+                 %{
+                   "Name" => "edw_inserted_dtm"
+                 },
+                 %{
+                   "Name" => "edw_updated_dtm"
+                 }
+               ]
+             }
+           }
+         }}
+
+      Enum.member?(op.headers, {"x-amz-target", "AWSGlue.GetTable"}) and
+          op.data == %{DatabaseName: glue_database_incoming, Name: "cubic_ods_qlik__sample__ct"} ->
+        {:ok,
+         %{
+           "Table" => %{
+             "DatabaseName" => glue_database_incoming,
+             "Name" => "cubic_ods_qlik__sample",
+             "StorageDescriptor" => %{
+               "Columns" => [
+                 %{
+                   "Name" => "header__change_seq"
+                 },
+                 %{
+                   "Name" => "header__change_oper"
+                 },
+                 %{
+                   "Name" => "header__timestamp"
+                 },
+                 %{
+                   "Name" => "sample_id"
+                 },
+                 %{
+                   "Name" => "sample_name"
+                 },
+                 %{
+                   "Name" => "edw_inserted_dtm"
+                 },
+                 %{
+                   "Name" => "edw_updated_dtm"
+                 }
+               ]
+             }
+           }
+         }}
+
+      Enum.member?(op.headers, {"x-amz-target", "AWSGlue.StartJobRun"}) ->
+        {:ok, %{"JobRunId" => "abc123"}}
 
       true ->
         {:error, "glue failed"}
