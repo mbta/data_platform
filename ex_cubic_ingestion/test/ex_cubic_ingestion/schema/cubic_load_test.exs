@@ -112,7 +112,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
   end
 
   describe "get_status_ready/0" do
-    test "getting non-ODS 'ready' loads", %{
+    test "getting only 'ready' loads after updating one to 'archived'", %{
       table: table,
       load_objects: load_objects
     } do
@@ -125,62 +125,6 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
       # assert that the last record inserted comes back
       assert rest_new_load_recs == CubicLoad.get_status_ready()
-    end
-
-    test "getting ODS 'ready' loads" do
-      # insert ODS table and snapshot
-      ods_table =
-        Repo.insert!(%CubicTable{
-          name: "cubic_ods_qlik__sample",
-          s3_prefix: "cubic/ods_qlik/SAMPLE/",
-          is_raw: true
-        })
-
-      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
-      ods_snapshot = ~U[2022-01-01 20:49:50Z]
-
-      Repo.insert!(%CubicOdsTableSnapshot{
-        table_id: ods_table.id,
-        snapshot: ods_snapshot,
-        snapshot_s3_key: ods_snapshot_s3_key
-      })
-
-      # insert loads
-      ods_load =
-        Repo.insert!(%CubicLoad{
-          table_id: ods_table.id,
-          status: "ready",
-          s3_key: ods_snapshot_s3_key,
-          s3_modified: ods_snapshot,
-          s3_size: 197,
-          is_raw: true
-        })
-
-      Repo.insert!(%CubicLoad{
-        table_id: ods_table.id,
-        status: "ready",
-        s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
-        s3_modified: ~U[2022-01-02 20:49:50Z],
-        s3_size: 197,
-        is_raw: true
-      })
-
-      # only get the first load because of limit
-      assert [ods_load] == CubicLoad.get_status_ready(1)
-
-      # add new snapshot load
-      new_ods_load =
-        Repo.insert!(%CubicLoad{
-          table_id: ods_table.id,
-          status: "ready",
-          s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
-          s3_modified: ~U[2022-01-03 20:49:50Z],
-          s3_size: 197,
-          is_raw: true
-        })
-
-      # ignoring loads prior to this last snapshot load
-      assert [new_ods_load] == CubicLoad.get_status_ready()
     end
   end
 
@@ -294,6 +238,109 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       # assert all are in 'ready' status
       assert Enum.map(new_load_rec_ids, fn _rec_id -> "ready" end) ==
                Enum.map(new_load_rec_ids, &CubicLoad.get!(&1).status)
+    end
+  end
+
+  describe "get_status_ready_for_table_query/3" do
+    test "getting non-ODS 'ready' loads", %{
+      table: table,
+      load_objects: load_objects
+    } do
+      {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+
+      assert new_load_recs == Repo.all(CubicLoad.get_status_ready_for_table_query({table, nil}))
+    end
+
+    test "getting ODS 'ready' loads" do
+      # insert ODS table and snapshot
+      ods_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_ods_qlik__sample",
+          s3_prefix: "cubic/ods_qlik/SAMPLE/",
+          is_raw: true
+        })
+
+      ods_snapshot_s3_key = "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
+      ods_snapshot = ~U[2022-01-01 20:49:50Z]
+
+      ods_table_snapshot =
+        Repo.insert!(%CubicOdsTableSnapshot{
+          table_id: ods_table.id,
+          snapshot: ods_snapshot,
+          snapshot_s3_key: ods_snapshot_s3_key
+        })
+
+      # insert loads
+      ods_load_1 =
+        Repo.insert!(%CubicLoad{
+          table_id: ods_table.id,
+          status: "ready",
+          s3_key: ods_snapshot_s3_key,
+          s3_modified: ods_snapshot,
+          s3_size: 197,
+          is_raw: true
+        })
+
+      Repo.insert!(%CubicLoad{
+        table_id: ods_table.id,
+        status: "ready",
+        s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197,
+        is_raw: true
+      })
+
+      # only get the first load because of limit
+      assert [ods_load_1] ==
+               Repo.all(
+                 CubicLoad.get_status_ready_for_table_query({ods_table, ods_table_snapshot}, 1)
+               )
+
+      # add new snapshot load
+      new_ods_load =
+        Repo.insert!(%CubicLoad{
+          table_id: ods_table.id,
+          status: "ready",
+          s3_key: ods_snapshot_s3_key,
+          s3_modified: ~U[2022-01-03 20:49:50Z],
+          s3_size: 197,
+          is_raw: true
+        })
+
+      # ignoring loads prior to this last snapshot load
+      assert [new_ods_load] ==
+               Repo.all(
+                 CubicLoad.get_status_ready_for_table_query({ods_table, ods_table_snapshot})
+               )
+    end
+
+    test "no query available because no snapshot load" do
+      # insert ODS table and snapshot
+      ods_table =
+        Repo.insert!(%CubicTable{
+          name: "cubic_ods_qlik__sample",
+          s3_prefix: "cubic/ods_qlik/SAMPLE/",
+          is_raw: true
+        })
+
+      ods_table_snapshot =
+        Repo.insert!(%CubicOdsTableSnapshot{
+          table_id: ods_table.id,
+          snapshot: ~U[2022-01-01 20:49:50Z],
+          snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
+        })
+
+      # insert a non-snapshot load
+      Repo.insert!(%CubicLoad{
+        table_id: ods_table.id,
+        status: "ready",
+        s3_key: "cubic/ods_qlik/SAMPLE/LOAD2.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197,
+        is_raw: true
+      })
+
+      assert is_nil(CubicLoad.get_status_ready_for_table_query({ods_table, ods_table_snapshot}))
     end
   end
 end

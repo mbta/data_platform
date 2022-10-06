@@ -21,6 +21,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   alias Ecto.Changeset
   alias ExCubicIngestion.Repo
+  alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
   alias ExCubicIngestion.Schema.CubicTable
 
   @derive {Jason.Encoder,
@@ -138,45 +139,14 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   @doc """
   Get loads with the 'ready' status by getting all the active tables and
-  querying for the first {limit} loads by table. For ODS, because there might be a
-  Qlik restart between the 'ready' and 'ingesting' status, we should check to make
-  sure we only start since the last snapshot load's s3_modified. Because of this
-  logic, some 'ready' loads will be left behind. That's because they will be
-  pointing to non-existing objects (Note: Qlik removes all objects on a restart).
+  querying for loads by table.
   """
-  @spec get_status_ready(integer()) :: [t()]
-  def get_status_ready(limit \\ 100) do
+  @spec get_status_ready :: [t()]
+  def get_status_ready do
     # we need to get 'ready' loads only for active tables
     CubicTable.all_with_ods_table_snapshot()
-    |> Enum.map(fn {table_rec, ods_table_snapshot_rec} ->
-      # get the last load with snapshot key
-      last_snapshot_load_rec =
-        if not is_nil(ods_table_snapshot_rec) do
-          Repo.one(
-            from(load in not_deleted(),
-              where: load.s3_key == ^ods_table_snapshot_rec.snapshot_s3_key,
-              order_by: [desc: load.s3_modified],
-              limit: 1
-            )
-          )
-        end
-
-      # query for 'ready' loads, with limit
-      ready_loads =
-        from(load in not_deleted(),
-          where: load.status == "ready" and load.table_id == ^table_rec.id,
-          order_by: [load.s3_modified, load.s3_key],
-          limit: ^limit
-        )
-
-      # if we know the last snapshot load, then filter down to 'ready' loads
-      # after the snapshot
-      if is_nil(last_snapshot_load_rec) do
-        ready_loads
-      else
-        from(load in ready_loads, where: load.s3_modified >= ^last_snapshot_load_rec.s3_modified)
-      end
-    end)
+    |> Enum.map(&get_status_ready_for_table_query(&1))
+    |> Enum.filter(&(!is_nil(&1)))
     |> Enum.flat_map(&Repo.all(&1))
   end
 
@@ -248,5 +218,49 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     {:ok, datetime_with_msec, _offset} = DateTime.from_iso8601(datetime)
 
     DateTime.truncate(datetime_with_msec, :second)
+  end
+
+  @doc """
+  Construct query for loads with the ready status, filtered by the table and ordered by
+  the S3 modified and key values. For tables that are ODS, because there might be a
+  Qlik restart between the 'ready' and 'ingesting' status, we should check to make
+  sure we only start since the last snapshot load's s3_modified. Because of this
+  logic, some 'ready' loads will be left behind. That's because they will be
+  pointing to non-existing objects (Note: Qlik removes all objects on a restart).
+  Lastly, if no snapshot load exists, just return nil as loads may have not come
+  through yet.
+  """
+  @spec get_status_ready_for_table_query({CubicTable.t(), CubicOdsTableSnapshot.t()}, integer()) ::
+          Ecto.Queryable.t() | nil
+  def get_status_ready_for_table_query(table_and_ods_table_snapshot, limit \\ 100)
+
+  def get_status_ready_for_table_query({table_rec, nil}, limit) do
+    from(load in not_deleted(),
+      where: load.status == "ready" and load.table_id == ^table_rec.id,
+      order_by: [load.s3_modified, load.s3_key],
+      limit: ^limit
+    )
+  end
+
+  def get_status_ready_for_table_query({table_rec, ods_table_snapshot_rec}, limit) do
+    # get the last load with snapshot key
+    last_snapshot_load_rec =
+      Repo.one(
+        from(load in not_deleted(),
+          where: load.s3_key == ^ods_table_snapshot_rec.snapshot_s3_key,
+          order_by: [desc: load.s3_modified],
+          limit: 1
+        )
+      )
+
+    if not is_nil(last_snapshot_load_rec) do
+      from(load in not_deleted(),
+        where:
+          load.status == "ready" and load.table_id == ^table_rec.id and
+            load.s3_modified >= ^last_snapshot_load_rec.s3_modified,
+        order_by: [load.s3_modified, load.s3_key],
+        limit: ^limit
+      )
+    end
   end
 end
