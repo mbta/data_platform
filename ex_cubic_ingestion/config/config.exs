@@ -12,6 +12,8 @@ config :ex_cubic_ingestion,
 
 config :ex_cubic_ingestion, Oban,
   repo: ExCubicIngestion.Repo,
+  # 15 minutes
+  shutdown_grace_period: 900_000,
   plugins: [
     {
       Oban.Plugins.Cron,
