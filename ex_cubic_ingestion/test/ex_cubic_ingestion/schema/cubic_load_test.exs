@@ -124,7 +124,9 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       Repo.update!(change(first_new_load_rec, status: "archived"))
 
       # assert that the last record inserted comes back
-      assert rest_new_load_recs == CubicLoad.get_status_ready()
+      assert Enum.map(rest_new_load_recs, fn load_rec ->
+               {table, load_rec}
+             end) == CubicLoad.get_status_ready()
     end
   end
 
@@ -241,14 +243,16 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     end
   end
 
-  describe "get_status_ready_for_table_query/3" do
+  describe "get_status_ready_by_table_query/3" do
     test "getting non-ODS 'ready' loads", %{
       table: table,
       load_objects: load_objects
     } do
       {:ok, new_load_recs} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
 
-      assert new_load_recs == Repo.all(CubicLoad.get_status_ready_for_table_query({table, nil}))
+      {_, ready_loads_by_table_query} = CubicLoad.get_status_ready_by_table_query({table, nil})
+
+      assert new_load_recs == Repo.all(ready_loads_by_table_query)
     end
 
     test "getting ODS 'ready' loads" do
@@ -290,11 +294,11 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
         is_raw: true
       })
 
+      {_, ready_loads_by_table_query} =
+        CubicLoad.get_status_ready_by_table_query({ods_table, ods_table_snapshot}, 1)
+
       # only get the first load because of limit
-      assert [ods_load_1] ==
-               Repo.all(
-                 CubicLoad.get_status_ready_for_table_query({ods_table, ods_table_snapshot}, 1)
-               )
+      assert [ods_load_1] == Repo.all(ready_loads_by_table_query)
 
       # add new snapshot load
       new_ods_load =
@@ -307,14 +311,14 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
           is_raw: true
         })
 
+      {_, new_ready_loads_by_table_query} =
+        CubicLoad.get_status_ready_by_table_query({ods_table, ods_table_snapshot})
+
       # ignoring loads prior to this last snapshot load
-      assert [new_ods_load] ==
-               Repo.all(
-                 CubicLoad.get_status_ready_for_table_query({ods_table, ods_table_snapshot})
-               )
+      assert [new_ods_load] == Repo.all(new_ready_loads_by_table_query)
     end
 
-    test "no query available because no snapshot load" do
+    test "no query available because there is no snapshot load" do
       # insert ODS table and snapshot
       ods_table =
         Repo.insert!(%CubicTable{
@@ -340,7 +344,17 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
         is_raw: true
       })
 
-      assert is_nil(CubicLoad.get_status_ready_for_table_query({ods_table, ods_table_snapshot}))
+      assert is_nil(CubicLoad.get_status_ready_by_table_query({ods_table, ods_table_snapshot}))
+    end
+  end
+
+  describe "ods_load?/1" do
+    test "ODS load S3 key is from ODS" do
+      assert CubicLoad.ods_load?("cubic/ods_qlik/SAMPLE/LOAD1.csv.gz")
+    end
+
+    test "DMAP loads are not from ODS" do
+      refute CubicLoad.ods_load?("cubic/dmap/sample/20220101.csv.gz")
     end
   end
 end

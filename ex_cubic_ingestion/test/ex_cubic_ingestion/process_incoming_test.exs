@@ -5,9 +5,6 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
   alias ExCubicIngestion.Schema.CubicLoad
   alias ExCubicIngestion.Schema.CubicTable
 
-  require MockExAws
-  require MockExAws.Data
-
   setup do
     {:ok, state, _timeout} = ProcessIncoming.init(lib_ex_aws: MockExAws)
 
