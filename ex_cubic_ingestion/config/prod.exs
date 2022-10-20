@@ -12,3 +12,5 @@ config :ex_aws,
   # overwrite defaults here, so as to only look at instance role
   access_key_id: :instance_role,
   secret_access_key: :instance_role
+
+config :ehmon, :report_mf, {:ehmon, :info_report}
