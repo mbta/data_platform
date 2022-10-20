@@ -84,11 +84,11 @@ defmodule ExCubicIngestion.Workers.Archive do
   def construct_destination_key_root(load_rec) do
     # for ODS, the destination will include the snapshot to prevent from overwriting
     if CubicLoad.ods_load?(load_rec.s3_key) do
-      ods_load_rec = CubicOdsLoadSnapshot.get_by!(load_id: load_rec.id)
+      ods_load_snapshot_rec = CubicOdsLoadSnapshot.get_latest_by!(load_id: load_rec.id)
 
       Enum.join([
         Path.dirname(load_rec.s3_key),
-        '/snapshot=#{Calendar.strftime(ods_load_rec.snapshot, "%Y%m%dT%H%M%SZ")}/',
+        '/snapshot=#{Calendar.strftime(ods_load_snapshot_rec.snapshot, "%Y%m%dT%H%M%SZ")}/',
         Path.basename(load_rec.s3_key, ".csv.gz")
       ])
     else
