@@ -159,7 +159,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
   @spec attach_ods_snapshot(map()) :: map()
   defp attach_ods_snapshot(%{partition_columns: partition_columns} = load) do
     if CubicLoad.ods_load?(load[:s3_key]) do
-      ods_load_snapshot_rec = CubicOdsLoadSnapshot.get_by!(load_id: load[:id])
+      ods_load_snapshot_rec = CubicOdsLoadSnapshot.get_latest_by!(load_id: load[:id])
 
       # note: order of partitions is intentional
       %{

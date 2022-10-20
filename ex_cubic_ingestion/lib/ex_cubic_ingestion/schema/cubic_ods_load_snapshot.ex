@@ -49,6 +49,17 @@ defmodule ExCubicIngestion.Schema.CubicOdsLoadSnapshot do
     Repo.get_by!(not_deleted(), clauses, opts)
   end
 
+  @spec get_latest_by!(Keyword.t() | map()) :: t() | nil
+  def get_latest_by!(clauses) do
+    Repo.one!(
+      from(ods_load_snapshot in not_deleted(),
+        where: ^clauses,
+        order_by: [desc: ods_load_snapshot.inserted_at],
+        limit: 1
+      )
+    )
+  end
+
   @doc """
   Updates snapshots for ODS table (if needed), and inserts new ODS load snapshot.
   """
