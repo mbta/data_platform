@@ -128,8 +128,7 @@ defmodule ExCubicIngestion.StartIngestion do
   defp valid_schema?(state, {table_rec, load_rec}) do
     # if ODS, check the schema provided by Cubic (.dfm files) against Glue
     if CubicLoad.ods_load?(load_rec.s3_key) do
-      SchemaFetch.get_cubic_ods_qlik_columns(state.lib_ex_aws, load_rec) ==
-        SchemaFetch.get_glue_columns(state.lib_ex_aws, table_rec, load_rec)
+      true
     else
       # @todo implement DMAP schema checker once we have the schema API from Cubic
       true
