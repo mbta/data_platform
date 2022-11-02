@@ -48,9 +48,14 @@ defmodule ExCubicIngestion.Schema.CubicOdsTableSnapshot do
     from(ods_table_snapshot in __MODULE__, where: is_nil(ods_table_snapshot.deleted_at))
   end
 
-  @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
+  @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t()
   def get_by!(clauses, opts \\ []) do
     Repo.get_by!(not_deleted(), clauses, opts)
+  end
+
+  @spec get_by(Keyword.t() | map(), Keyword.t()) :: t() | nil
+  def get_by(clauses, opts \\ []) do
+    Repo.get_by(not_deleted(), clauses, opts)
   end
 
   @spec update_snapshot(t(), DateTime.t()) :: t()

@@ -117,38 +117,4 @@ defmodule ExCubicIngestion.ValidatorsTest do
       refute Validators.valid_s3_object?(object)
     end
   end
-
-  describe "recently_created_s3_object?/1" do
-    test "invalid if missing last_modified" do
-      object = %{
-        # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
-        size: "123"
-      }
-
-      refute Validators.recently_created_s3_object?(object)
-    end
-
-    test "valid it it's a recent object" do
-      object = %{
-        # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
-        last_modified: @utc_now,
-        size: "123"
-      }
-
-      assert Validators.recently_created_s3_object?(object)
-    end
-
-    test "invalid if it's not a recent object" do
-      object = %{
-        # ...
-        key: "cubic/ods_qlik/EDW.SAMPLE/LOAD1.csv.gz",
-        last_modified: "2022-01-01T20:49:50.000Z",
-        size: "123"
-      }
-
-      refute Validators.recently_created_s3_object?(object)
-    end
-  end
 end

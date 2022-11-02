@@ -4,16 +4,20 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   their status while transitioning through the various steps in the data pipeline process.
 
   Statuses:
-    "ready"
-    "ingesting"
-    "ready_for_archiving"
-    "ready_for_erroring"
-    "archiving"
-    "erroring"
     "archived"
     "archived_unknown"
+    "archiving"
     "errored"
     "errored_unknown"
+    "erroring"
+    "ingesting"
+    "ready"
+    "ready_for_archiving"
+    "ready_for_erroring"
+    "ready_for_ingesting"
+
+  Status Flow Chart:
+  https://miro.com/app/board/o9J_liWCxTw=/?moveToWidget=3458764538953053054&cot=14
   """
   use Ecto.Schema
 
@@ -21,6 +25,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
   alias Ecto.Changeset
   alias ExCubicIngestion.Repo
+  alias ExCubicIngestion.Schema.CubicOdsLoadSnapshot
   alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
   alias ExCubicIngestion.Schema.CubicTable
 
@@ -75,14 +80,23 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   end
 
   @doc """
-  From a list of S3 objects defined as maps, filter in only new objects and
+  From a list of S3 objects defined as maps, filter in only new objects since last load and
   insert them in database.
   """
   @spec insert_new_from_objects_with_table([map()], CubicTable.t()) ::
-          {:ok, [t()]} | {:error, term()}
+          {:ok,
+           {CubicOdsTableSnapshot.t() | nil,
+            [
+              {t(), CubicOdsLoadSnapshot.t() | nil, CubicTable.t(),
+               CubicOdsTableSnapshot.t() | nil}
+            ]}}
+          | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
-    # get the last inserted load which will be used to further filter the objects
-    last_inserted_load_rec =
+    # get ODS snapshot if available
+    ods_table_snapshot = CubicOdsTableSnapshot.get_by(table_id: table.id)
+
+    # get the last inserted load
+    last_inserted_load =
       Repo.one(
         from(load in not_deleted(),
           where: load.table_id == ^table.id,
@@ -97,26 +111,34 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
       Enum.filter(objects, fn object ->
         last_modified = parse_and_drop_msec(object.last_modified)
 
-        is_nil(last_inserted_load_rec) or
-          DateTime.compare(last_modified, last_inserted_load_rec.s3_modified) == :gt
+        is_nil(last_inserted_load) or
+          DateTime.compare(last_modified, last_inserted_load.s3_modified) == :gt
       end)
 
     if Enum.empty?(new_objects) do
-      {:ok, []}
+      {:ok, {ods_table_snapshot, []}}
     else
       Repo.transaction(fn ->
-        # insert new objects
-        Enum.map(new_objects, &insert_from_object_with_table(&1, table))
+        Enum.reduce(new_objects, {ods_table_snapshot, []}, fn object,
+                                                              {latest_ods_table_snapshot,
+                                                               latest_inserted_loads} ->
+          inserted_load =
+            {_load, _ods_load_snapshot, _table, updated_ods_table_snapshot} =
+            insert_from_object_with_table(object, {table, latest_ods_table_snapshot})
+
+          {updated_ods_table_snapshot, [inserted_load | latest_inserted_loads]}
+        end)
       end)
     end
   end
 
   @doc """
-  Inserts S3 object into database, by doing some pre-processing and adjusting
-  status to 'ready_for_erroring' if object size is not greater than 0.
+  Insert load record from an S3 object. For ODS, we also insert an ods_load_snapshot record
+  and update ods_table_snapshot record if we the S3 object correspond to a snapshot key.
   """
-  @spec insert_from_object_with_table(map(), CubicTable.t()) :: t()
-  def insert_from_object_with_table(object, table) do
+  @spec insert_from_object_with_table(map(), {CubicTable.t(), CubicOdsTableSnapshot.t() | nil}) ::
+          {t(), CubicOdsLoadSnapshot.t() | nil, CubicTable.t(), CubicOdsTableSnapshot.t() | nil}
+  def insert_from_object_with_table(object, {table, nil}) do
     last_modified = parse_and_drop_msec(object.last_modified)
     size = String.to_integer(object.size)
 
@@ -127,29 +149,73 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
         "ready_for_erroring"
       end
 
-    Repo.insert!(%__MODULE__{
-      table_id: table.id,
-      status: status,
-      s3_key: object.key,
-      s3_modified: last_modified,
-      s3_size: size,
-      is_raw: table.is_raw
-    })
+    load =
+      Repo.insert!(%__MODULE__{
+        table_id: table.id,
+        status: status,
+        s3_key: object.key,
+        s3_modified: last_modified,
+        s3_size: size,
+        is_raw: table.is_raw
+      })
+
+    {load, nil, table, nil}
+  end
+
+  # for ODS we need to do some extra work
+  def insert_from_object_with_table(object, {table, ods_table_snapshot}) do
+    last_modified = parse_and_drop_msec(object.last_modified)
+    size = String.to_integer(object.size)
+
+    # first update the snapshot, if we have encountered an S3 key that matches
+    updated_ods_table_snapshot =
+      if ods_table_snapshot.snapshot_s3_key == object.key do
+        CubicOdsTableSnapshot.update_snapshot(ods_table_snapshot, last_modified)
+      else
+        ods_table_snapshot
+      end
+
+    # only ready if we have a snapshot
+    status =
+      if size > 0 and not is_nil(updated_ods_table_snapshot.snapshot) do
+        "ready"
+      else
+        "ready_for_erroring"
+      end
+
+    load =
+      Repo.insert!(%__MODULE__{
+        table_id: table.id,
+        status: status,
+        s3_key: object.key,
+        s3_modified: last_modified,
+        s3_size: size,
+        is_raw: table.is_raw
+      })
+
+    # insert a snapshot record for the load
+    ods_load_snapshot =
+      Repo.insert!(%CubicOdsLoadSnapshot{
+        load_id: load.id,
+        snapshot: updated_ods_table_snapshot.snapshot
+      })
+
+    {load, ods_load_snapshot, table, updated_ods_table_snapshot}
   end
 
   @doc """
   Get loads with the 'ready' status by getting all the active tables and
   querying for loads by table.
   """
-  @spec get_status_ready :: [t()]
+  @spec get_status_ready :: [{t(), CubicTable.t()}]
   def get_status_ready do
     # we need to get 'ready' loads only for active tables
     CubicTable.all_with_ods_table_snapshot()
     |> Enum.map(&get_status_ready_by_table_query(&1))
     |> Enum.filter(&(!is_nil(&1)))
-    |> Enum.flat_map(fn {table_rec, ready_loads_by_table_query} ->
-      Enum.map(Repo.all(ready_loads_by_table_query), fn ready_load_rec ->
-        {table_rec, ready_load_rec}
+    |> Enum.flat_map(fn {table, ready_loads_by_table_query} ->
+      Enum.map(Repo.all(ready_loads_by_table_query), fn ready_load ->
+        {ready_load, table}
       end)
     end)
   end
@@ -162,7 +228,6 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     query =
       from(load in not_deleted(),
         where: load.status in ^statuses,
-        order_by: load.id,
         limit: ^limit
       )
 
@@ -234,7 +299,6 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     {table_rec,
      from(load in not_deleted(),
        where: load.status == "ready" and load.table_id == ^table_rec.id,
-       order_by: [load.s3_modified, load.s3_key],
        limit: ^limit
      )}
   end
@@ -256,7 +320,6 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
          where:
            load.status == "ready" and load.table_id == ^table_rec.id and
              load.s3_modified >= ^last_snapshot_load_rec.s3_modified,
-         order_by: [load.s3_modified, load.s3_key],
          limit: ^limit
        )}
     end
@@ -270,9 +333,8 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     String.starts_with?(s3_key, "cubic/ods_qlik/")
   end
 
-  # private
   @spec parse_and_drop_msec(String.t()) :: DateTime.t()
-  defp parse_and_drop_msec(datetime) do
+  def parse_and_drop_msec(datetime) do
     {:ok, datetime_with_msec, _offset} = DateTime.from_iso8601(datetime)
 
     DateTime.truncate(datetime_with_msec, :second)

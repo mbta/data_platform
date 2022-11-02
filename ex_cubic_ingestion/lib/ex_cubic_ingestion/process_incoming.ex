@@ -71,11 +71,8 @@ defmodule ExCubicIngestion.ProcessIncoming do
         prefix: "#{incoming_prefix}#{table_prefix}",
         lib_ex_aws: state.lib_ex_aws
       )
-      # filter s3 objects to only acceptable ones
-      |> Enum.filter(fn s3_object ->
-        Validators.valid_s3_object?(s3_object) and
-          Validators.recently_created_s3_object?(s3_object)
-      end)
+      # filter s3 objects to only data objects with a size specified
+      |> Enum.filter(&Validators.valid_s3_object?(&1))
       |> Enum.map(fn object ->
         %{object | key: String.replace_prefix(object[:key], incoming_prefix, "")}
       end)

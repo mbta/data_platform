@@ -60,10 +60,42 @@ defmodule MockExAws.Data do
         owner: nil,
         size: "123",
         storage_class: "STANDARD"
+      },
+      %{
+        e_tag: "\"abc123\"",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE__ct/20211201-112233444.csv.gz",
+        last_modified: dt_adjust_and_format(utc_now, -1200),
+        owner: nil,
+        size: "197",
+        storage_class: "STANDARD"
+      },
+      %{
+        e_tag: "\"abc123\"",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE__ct/20211201-112233444.dfm",
+        last_modified: dt_adjust_and_format(utc_now, -1200),
+        owner: nil,
+        size: "197",
+        storage_class: "STANDARD"
+      },
+      %{
+        e_tag: "\"def123\"",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE__ct/20211201-122433444.csv.gz",
+        last_modified: dt_adjust_and_format(utc_now, -600),
+        owner: nil,
+        size: "123",
+        storage_class: "STANDARD"
+      },
+      %{
+        e_tag: "\"def123\"",
+        key: "#{incoming_prefix}cubic/ods_qlik/SAMPLE__ct/20211201-122433444.dfm",
+        last_modified: dt_adjust_and_format(utc_now, -600),
+        owner: nil,
+        size: "123",
+        storage_class: "STANDARD"
       }
     ]
 
-    Enum.filter(objects, &String.starts_with?(&1[:key], key_starts_with))
+    Enum.filter(objects, &String.starts_with?(&1.key, key_starts_with))
   end
 
   @doc """

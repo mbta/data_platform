@@ -7,6 +7,7 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
   alias ExCubicIngestion.Schema.CubicTable
   alias ExCubicIngestion.Workers.Archive
   alias ExCubicIngestion.Workers.Error
+  alias ExCubicIngestion.Workers.Ingest
 
   require MockExAws.Data
   require Logger
@@ -20,7 +21,7 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
       })
 
     # insert loads
-    load_1 =
+    archive_load =
       Repo.insert!(%CubicLoad{
         table_id: table.id,
         status: "ready_for_archiving",
@@ -29,7 +30,7 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
         s3_size: 197
       })
 
-    load_2 =
+    error_load =
       Repo.insert!(%CubicLoad{
         table_id: table.id,
         status: "ready_for_erroring",
@@ -38,10 +39,20 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
         s3_size: 197
       })
 
+    ingest_load =
+      Repo.insert!(%CubicLoad{
+        table_id: table.id,
+        status: "ready_for_ingesting",
+        s3_key: "cubic/dmap/sample/20220103.csv.gz",
+        s3_modified: ~U[2022-01-02 20:49:50Z],
+        s3_size: 197
+      })
+
     {:ok,
      %{
-       load_1: load_1,
-       load_2: load_2
+       archive_load: archive_load,
+       error_load: error_load,
+       ingest_load: ingest_load
      }}
   end
 
@@ -59,38 +70,147 @@ defmodule ExCubicIngestion.ProcessIngestionTest do
     end
 
     test "processing with one ready for archiving load and one ready for erroring", %{
-      load_1: load_1,
-      load_2: load_2
+      archive_load: archive_load,
+      error_load: error_load,
+      ingest_load: ingest_load
     } do
-      assert :ok == ProcessIngestion.process_loads([load_1, load_2])
+      assert :ok == ProcessIngestion.process_loads([archive_load, error_load, ingest_load])
+    end
+  end
+
+  describe "chunk_loads/3" do
+    test "chunking by number of loads" do
+      max_num_of_loads = 2
+      max_size_of_loads = 1000
+
+      loads = [
+        %CubicLoad{
+          s3_key: "test/load1.csv.gz",
+          s3_size: 12
+        },
+        %CubicLoad{
+          s3_key: "test/load2.csv.gz",
+          s3_size: 34
+        },
+        %CubicLoad{
+          s3_key: "test/load3.csv.gz",
+          s3_size: 56
+        },
+        %CubicLoad{
+          s3_key: "test/load4.csv.gz",
+          s3_size: 78
+        },
+        %CubicLoad{
+          s3_key: "test/load5.csv.gz",
+          s3_size: 90
+        }
+      ]
+
+      expected_chunked_loads = [
+        [
+          Enum.at(loads, 0),
+          Enum.at(loads, 1)
+        ],
+        [
+          Enum.at(loads, 2),
+          Enum.at(loads, 3)
+        ],
+        [
+          Enum.at(loads, 4)
+        ]
+      ]
+
+      assert expected_chunked_loads ==
+               ProcessIngestion.chunk_loads(loads, max_num_of_loads, max_size_of_loads)
+    end
+
+    test "chunking by size of loads" do
+      max_num_of_loads = 3
+      max_size_of_loads = 1000
+
+      loads = [
+        %{
+          s3_key: "test/load1.csv.gz",
+          s3_size: 123
+        },
+        %{
+          s3_key: "test/load2.csv.gz",
+          s3_size: 456
+        },
+        %{
+          s3_key: "test/load3.csv.gz",
+          s3_size: 789
+        },
+        %{
+          s3_key: "test/load4.csv.gz",
+          s3_size: 1000
+        },
+        %{
+          s3_key: "test/load5.csv.gz",
+          s3_size: 1112
+        }
+      ]
+
+      expected_chunked_loads = [
+        [
+          Enum.at(loads, 0),
+          Enum.at(loads, 1)
+        ],
+        [
+          Enum.at(loads, 2)
+        ],
+        [
+          Enum.at(loads, 3)
+        ],
+        [
+          Enum.at(loads, 4)
+        ]
+      ]
+
+      assert expected_chunked_loads ==
+               ProcessIngestion.chunk_loads(loads, max_num_of_loads, max_size_of_loads)
     end
   end
 
   describe "archive/1" do
     test "archiving load after ingestion", %{
-      load_1: load_1
+      archive_load: archive_load
     } do
       # insert job
-      ProcessIngestion.archive(load_1)
+      ProcessIngestion.archive(archive_load)
 
       # make sure record is in an "archiving" status
-      assert "archiving" == CubicLoad.get!(load_1.id).status
+      assert "archiving" == CubicLoad.get!(archive_load.id).status
 
-      assert_enqueued(worker: Archive, args: %{load_rec_id: load_1.id})
+      assert_enqueued(worker: Archive, args: %{load_rec_id: archive_load.id})
     end
   end
 
   describe "error/1" do
     test "processing error in ingestion", %{
-      load_1: load_1
+      error_load: error_load
     } do
       # insert job
-      ProcessIngestion.error(load_1)
+      ProcessIngestion.error(error_load)
 
       # make sure record is in "erroring" status
-      assert "erroring" == CubicLoad.get!(load_1.id).status
+      assert "erroring" == CubicLoad.get!(error_load.id).status
 
-      assert_enqueued(worker: Error, args: %{load_rec_id: load_1.id})
+      assert_enqueued(worker: Error, args: %{load_rec_id: error_load.id})
+    end
+  end
+
+  describe "ingest/1" do
+    test "processing error in ingestion", %{
+      ingest_load: ingest_load
+    } do
+      # insert job
+      ProcessIngestion.ingest([ingest_load.id])
+
+      # make sure record is in "ingesting" status
+      assert "ingesting" == CubicLoad.get!(ingest_load.id).status
+
+      assert_enqueued(worker: Ingest, args: %{"load_rec_ids" => [ingest_load.id]})
     end
   end
 end

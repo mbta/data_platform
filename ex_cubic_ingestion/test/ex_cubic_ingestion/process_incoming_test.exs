@@ -3,6 +3,7 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
 
   alias ExCubicIngestion.ProcessIncoming
   alias ExCubicIngestion.Schema.CubicLoad
+  alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
   alias ExCubicIngestion.Schema.CubicTable
 
   setup do
@@ -26,7 +27,7 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
       assert Repo.all(CubicLoad) == []
     end
 
-    test "with a configured table, scans the prefixes for files", %{state: state} do
+    test "with configured tables, scans the prefixes for files", %{state: state} do
       # insert tables
       dmap_table =
         Repo.insert!(%CubicTable{
@@ -42,11 +43,16 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
           s3_prefix: "cubic/ods_qlik/SAMPLE/"
         })
 
+      Repo.insert!(%CubicOdsTableSnapshot{
+        table_id: ods_table.id,
+        snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
+      })
+
       ods_table_id = ods_table.id
 
       :ok = ProcessIncoming.run(state)
 
-      [ods_load_1, ods_load_2, dmap_load_1, dmap_load_2] =
+      [ods_load_1, ods_load_2, ods_load_ct_1, ods_load_ct_2, dmap_load_1, dmap_load_2] =
         Enum.sort_by(Repo.all(CubicLoad), & &1.id)
 
       assert %CubicLoad{
@@ -60,6 +66,18 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
                status: "ready",
                table_id: ^ods_table_id
              } = ods_load_2
+
+      assert %CubicLoad{
+               s3_key: "cubic/ods_qlik/SAMPLE__ct/20211201-112233444.csv.gz",
+               status: "ready",
+               table_id: ^ods_table_id
+             } = ods_load_ct_1
+
+      assert %CubicLoad{
+               s3_key: "cubic/ods_qlik/SAMPLE__ct/20211201-122433444.csv.gz",
+               status: "ready",
+               table_id: ^ods_table_id
+             } = ods_load_ct_2
 
       assert %CubicLoad{
                s3_key: "cubic/dmap/sample/20220101.csv.gz",
@@ -85,6 +103,9 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
       assert ^prefixes_list = [
                %{
                  prefix: "#{incoming_prefix}cubic/ods_qlik/SAMPLE/"
+               },
+               %{
+                 prefix: "#{incoming_prefix}cubic/ods_qlik/SAMPLE__ct/"
                },
                %{
                  prefix: "#{incoming_prefix}cubic/dmap/sample/"
