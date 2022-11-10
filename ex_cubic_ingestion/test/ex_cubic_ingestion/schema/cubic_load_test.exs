@@ -46,7 +46,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
      }}
   end
 
-  describe "insert_new_from_objects_with_table/1" do
+  describe "insert_new_from_objects_with_table/3" do
     test "providing a non-empty list of objects", %{
       table: table,
       utc_now: utc_now,
@@ -61,7 +61,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       assert {:ok, []} == CubicLoad.insert_new_from_objects_with_table(load_objects, table)
 
       # add a new object
-      load_objects = [
+      updated_load_objects = [
         %{
           key: "cubic/dmap/sample/20220103.csv.gz",
           last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -2400),
@@ -76,7 +76,29 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
                 %CubicLoad{
                   s3_key: "cubic/dmap/sample/20220103.csv.gz"
                 }
-              ]} = CubicLoad.insert_new_from_objects_with_table(load_objects, table)
+              ]} = CubicLoad.insert_new_from_objects_with_table(updated_load_objects, table)
+
+      # lastly, add one more but with an older timestamp than the last one
+      updated_load_objects_with_one_extra = [
+        %{
+          key: "cubic/dmap/sample/20220104.csv.gz",
+          last_modified: MockExAws.Data.dt_adjust_and_format(utc_now, -2700),
+          size: "197"
+        }
+        | updated_load_objects
+      ]
+
+      # adding one more load object, should only insert it as a load record
+      assert {:ok,
+              [
+                %CubicLoad{
+                  s3_key: "cubic/dmap/sample/20220104.csv.gz"
+                }
+              ]} =
+               CubicLoad.insert_new_from_objects_with_table(
+                 updated_load_objects_with_one_extra,
+                 table
+               )
     end
 
     test "providing an empty list of objects", %{

@@ -81,13 +81,14 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   @spec insert_new_from_objects_with_table([map()], CubicTable.t()) ::
           {:ok, [t()]} | {:error, term()}
   def insert_new_from_objects_with_table(objects, table) do
+    datetime_since = DateTime.add(DateTime.utc_now(), -86_400)
+
     # get the last inserted load which will be used to further filter the objects
-    last_inserted_load_rec =
-      Repo.one(
+    last_inserted_load_recs =
+      Repo.all(
         from(load in not_deleted(),
-          where: load.table_id == ^table.id,
-          order_by: [desc: load.s3_modified],
-          limit: 1
+          where: load.table_id == ^table.id and load.s3_modified > ^datetime_since,
+          order_by: [desc: load.s3_modified]
         )
       )
 
@@ -95,10 +96,10 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     # the last object we have in database
     new_objects =
       Enum.filter(objects, fn object ->
-        last_modified = parse_and_drop_msec(object.last_modified)
-
-        is_nil(last_inserted_load_rec) or
-          DateTime.compare(last_modified, last_inserted_load_rec.s3_modified) == :gt
+        not Enum.any?(last_inserted_load_recs, fn rec ->
+          rec.s3_key == object.key and
+            rec.s3_modified == parse_and_drop_msec(object.last_modified)
+        end)
       end)
 
     if Enum.empty?(new_objects) do
