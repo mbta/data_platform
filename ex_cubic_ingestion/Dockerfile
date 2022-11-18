@@ -27,8 +27,9 @@ COPY config/runtime.exs config/runtime.exs
 # fetch RDS cert to be used in SSL connection to database
 RUN curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
     -o priv/aws-cert-bundle.pem
+RUN sha256sum priv/aws-cert-bundle.pem
 # run SHA256 sum check
-RUN echo "6f99a8eac41b1b76bdc4f402c4a1f3d12d24fcae75ce08818ee3349bda075e93  priv/aws-cert-bundle.pem" | sha256sum -c -
+RUN echo "976de749e16140c2e91e2ea1daa508ef716be5decafbb9f0f77087abc879487b  priv/aws-cert-bundle.pem" | sha256sum -c -
 
 RUN mix release
 
