@@ -350,6 +350,44 @@ defmodule MockExAws do
     end
   end
 
+  def request(
+        %{service: :athena, data: %{QueryExecutionIds: ["error_batch_get_query_execution"]}},
+        _config_overrides
+      ) do
+    {:error, "AmazonAthena.BatchGetQueryExecution failed"}
+  end
+
+  def request(
+        %{service: :athena, data: %{QueryExecutionIds: ["success_batch_get_query_execution"]}},
+        _config_overrides
+      ) do
+    {:ok,
+     %{
+       "QueryExecutions" => [
+         %{"Status" => %{"State" => "SUCCEEDED"}}
+       ]
+     }}
+  end
+
+  def request(%{service: :athena, headers: headers, data: data}, _config_overrides) do
+    cond do
+      Enum.member?(headers, {"x-amz-target", "AmazonAthena.StartQueryExecution"}) ->
+        {:ok, %{"QueryExecutionId" => "success_query_id"}}
+
+      Enum.member?(headers, {"x-amz-target", "AmazonAthena.BatchGetQueryExecution"}) ->
+        {:ok,
+         %{
+           "QueryExecutions" =>
+             Enum.map(data."QueryExecutionIds", fn _query_execution_status ->
+               %{"Status" => %{"State" => "SUCCEEDED"}}
+             end)
+         }}
+
+      true ->
+        {:error, "athena failed"}
+    end
+  end
+
   @spec request!(ExAws.Operation.t(), keyword) :: term
   def request!(op, config_overrides \\ []) do
     case request(op, config_overrides) do

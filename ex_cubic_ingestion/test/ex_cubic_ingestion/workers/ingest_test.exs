@@ -29,70 +29,102 @@ defmodule ExCubicIngestion.Workers.IngestTest do
     end
   end
 
-  describe "construct_glue_job_payload/1" do
+  describe "add_athena_partition/3" do
+    test "adding athena partition" do
+      assert {:error, _message} = Ingest.add_athena_partition(:ok, MockExAws, {%{}, %{loads: []}})
+
+      Ingest.add_athena_partition(
+        :ok,
+        MockExAws,
+        {%{},
+         %{
+           loads: [
+             %{
+               table_name: "test",
+               partition_columns: [
+                 %{
+                   name: "identifier",
+                   value: "identifier_1"
+                 }
+               ]
+             }
+           ]
+         }}
+      )
+      |> IO.inspect()
+    end
+  end
+
+  describe "monitor_athena_query_executions/2" do
+    test "successful call of query execution start and status" do
+      assert :ok =
+               Ingest.monitor_athena_query_executions(MockExAws, [
+                 {:ok, %{"QueryExecutionId" => "success_batch_get_query_execution"}}
+               ])
+    end
+
+    test "error in calling query execution start" do
+      assert {:error, _error_message} =
+               Ingest.monitor_athena_query_executions(MockExAws, [
+                 {:ok, %{"QueryExecutionId" => "error_batch_get_query_execution"}}
+               ])
+    end
+  end
+
+  describe "construct_job_payload/1" do
     test "payload is contructed correctly with ods and dmap data", %{
       dmap_load: dmap_load,
       ods_load: ods_load
     } do
       {_actual_env, actual_input} =
-        Ingest.construct_glue_job_payload([
+        Ingest.construct_job_payload([
           dmap_load.id,
           ods_load.id
         ])
 
-      actual_input_decoded = Jason.decode!(actual_input)
-
       expected_input = %{
-        "loads" => [
+        loads: [
           %{
-            "id" => dmap_load.id,
-            "s3_key" => "cubic/dmap/sample/20220101.csv.gz",
-            "table_name" => "cubic_dmap__sample",
-            "is_raw" => false,
-            "partition_columns" => [
-              %{"name" => "identifier", "value" => "20220101.csv.gz"}
+            id: dmap_load.id,
+            s3_key: "cubic/dmap/sample/20220101.csv.gz",
+            table_name: "cubic_dmap__sample",
+            is_raw: false,
+            partition_columns: [
+              %{name: "identifier", value: "20220101.csv.gz"}
             ]
           },
           %{
-            "id" => ods_load.id,
-            "s3_key" => "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
-            "table_name" => "cubic_ods_qlik__sample",
-            "is_raw" => true,
-            "partition_columns" => [
+            id: ods_load.id,
+            s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
+            table_name: "cubic_ods_qlik__sample",
+            is_raw: true,
+            partition_columns: [
               %{
-                "name" => "snapshot",
-                "value" => "20220101T204950Z"
+                name: "snapshot",
+                value: "20220101T204950Z"
               },
-              %{"name" => "identifier", "value" => "LOAD1.csv.gz"}
+              %{name: "identifier", value: "LOAD1.csv.gz"}
             ]
           }
         ]
       }
 
-      assert expected_input["loads"] ==
-               Enum.sort_by(actual_input_decoded["loads"], & &1["id"])
+      assert expected_input.loads ==
+               Enum.sort_by(actual_input.loads, & &1.id)
     end
   end
 
-  describe "monitor_glue_job_run/3" do
-    test "monitoring a successful run", %{
-      dmap_load: dmap_load,
-      ods_load: ods_load
-    } do
+  describe "monitor_glue_job_run/2" do
+    test "monitoring a successful run" do
       assert :ok =
                Ingest.monitor_glue_job_run(
-                 "success_run_id",
-                 [dmap_load.id, ods_load.id],
-                 MockExAws
+                 MockExAws,
+                 "success_run_id"
                )
     end
 
-    test "monitoring a error run", %{
-      dmap_load: dmap_load,
-      ods_load: ods_load
-    } do
-      assert {:error, _message} =
-               Ingest.monitor_glue_job_run("error_run_id", [dmap_load.id, ods_load.id], MockExAws)
+    test "monitoring a error run" do
+      assert {:error, _message} = Ingest.monitor_glue_job_run(MockExAws, "error_run_id")
     end
   end
 
