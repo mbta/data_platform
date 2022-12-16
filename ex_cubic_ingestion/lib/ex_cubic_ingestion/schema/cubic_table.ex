@@ -78,7 +78,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
 
       for prefix <- prefixes,
           short_prefix = String.replace_suffix(prefix, "__ct/", "/"),
-          %__MODULE__{} = table <- [Map.get(valid_prefix_map, short_prefix)] do
+          table = %__MODULE__{} <- [Map.get(valid_prefix_map, short_prefix)] do
         {prefix, table}
       end
     end

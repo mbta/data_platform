@@ -8,8 +8,6 @@ defmodule ExCubicIngestion.Schema.CubicOdsLoadSnapshot do
   import Ecto.Query
 
   alias ExCubicIngestion.Repo
-  alias ExCubicIngestion.Schema.CubicLoad
-  alias ExCubicIngestion.Schema.CubicOdsTableSnapshot
 
   @derive {Jason.Encoder,
            only: [
@@ -58,32 +56,5 @@ defmodule ExCubicIngestion.Schema.CubicOdsLoadSnapshot do
         limit: 1
       )
     )
-  end
-
-  @doc """
-  Updates snapshots for ODS table (if needed), and inserts new ODS load snapshot.
-  """
-  @spec update_snapshot(CubicLoad.t()) :: :ok
-  def update_snapshot(load_rec) do
-    # will raise error if no results found
-    ods_table_snapshot_rec = CubicOdsTableSnapshot.get_by!(table_id: load_rec.table_id)
-
-    # update ODS table snapshot if we have a new snapshot, as in the load key
-    # matches the snapshot key and the load modified date is newer than the snapshot
-    updated_ods_table_snapshot_rec =
-      if ods_table_snapshot_rec.snapshot_s3_key == load_rec.s3_key and
-           (is_nil(ods_table_snapshot_rec.snapshot) or
-              DateTime.compare(ods_table_snapshot_rec.snapshot, load_rec.s3_modified) == :lt) do
-        CubicOdsTableSnapshot.update_snapshot(ods_table_snapshot_rec, load_rec.s3_modified)
-      else
-        ods_table_snapshot_rec
-      end
-
-    Repo.insert!(%__MODULE__{
-      load_id: load_rec.id,
-      snapshot: updated_ods_table_snapshot_rec.snapshot
-    })
-
-    :ok
   end
 end

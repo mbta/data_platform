@@ -163,6 +163,7 @@ defmodule MockExAws do
     cubic = incoming_prefix <> "cubic/"
     cubic_ods_qlik = cubic <> "ods_qlik/"
     cubic_ods_qlik_sample = cubic_ods_qlik <> "SAMPLE/"
+    cubic_ods_qlik_sample_ct = cubic_ods_qlik <> "SAMPLE__ct/"
     cubic_dmap = cubic <> "dmap/"
     cubic_dmap_sample = cubic_dmap <> "sample/"
 
@@ -171,7 +172,10 @@ defmodule MockExAws do
         {:ok,
          %{
            body: %{
-             common_prefixes: [%{prefix: cubic_ods_qlik_sample}],
+             common_prefixes: [
+               %{prefix: cubic_ods_qlik_sample},
+               %{prefix: cubic_ods_qlik_sample_ct}
+             ],
              contents: [],
              next_continuation_token: ""
            }
@@ -203,6 +207,16 @@ defmodule MockExAws do
            body: %{
              common_prefixes: [],
              contents: MockExAws.Data.load_objects(cubic_ods_qlik_sample),
+             next_continuation_token: ""
+           }
+         }}
+
+      %{"prefix" => ^cubic_ods_qlik_sample_ct} ->
+        {:ok,
+         %{
+           body: %{
+             common_prefixes: [],
+             contents: MockExAws.Data.load_objects(cubic_ods_qlik_sample_ct),
              next_continuation_token: ""
            }
          }}

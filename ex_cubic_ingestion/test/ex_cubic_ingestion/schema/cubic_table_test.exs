@@ -49,6 +49,11 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
           s3_prefix: "cubic/ods_qlik/SAMPLE/"
         })
 
+      Repo.insert!(%CubicOdsTableSnapshot{
+        table_id: ods_table.id,
+        snapshot_s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz"
+      })
+
       # note: purposely leaving out incoming bucket prefix config
       prefixes = [
         "cubic/dmap/sample/",
@@ -96,7 +101,6 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
       ods_table_snapshot =
         Repo.insert!(%CubicOdsTableSnapshot{
           table_id: ods_table.id,
-          snapshot: nil,
           snapshot_s3_key: ods_snapshot_s3_key
         })
 
