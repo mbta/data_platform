@@ -44,7 +44,7 @@
                 "length": 10,
                 "precision": 0,
                 "scale": 0,
-                "primaryKeyPos": 0
+                "primaryKeyPos": 1
             },
             {
                 "ordinal": 2,
