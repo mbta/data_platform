@@ -71,7 +71,7 @@ defmodule ExCubicIngestion.ValidateIncomingTest do
       assert CubicLoad.get!(ods_load.id).status == "ready_for_ingesting"
 
       # for invalid, logged and status was updated to error out
-      assert process_logs =~ "[start_ingestion] Invalid schema detected"
+      assert process_logs =~ "[validate_incoming] Invalid schema detected"
 
       assert CubicLoad.get!(invalid_ods_load.id).status == "ready_for_erroring"
     end

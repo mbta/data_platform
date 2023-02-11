@@ -145,6 +145,16 @@ defmodule MockExAws do
            """
          }}
 
+      path == "#{incoming_prefix}cubic/ods_qlik/SAMPLE/notfound_LOAD3.dfm" ->
+        {:error,
+         {:http_error, 404,
+          %{
+            body:
+              "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message><Key>cubic/ods_qlik/SAMPLE/notfound_LOAD3.dfm</Key><RequestId>...</RequestId><HostId>...</HostId></Error>",
+            headers: [],
+            status_code: 404
+          }}}
+
       true ->
         {:error, "get_object failed"}
     end
