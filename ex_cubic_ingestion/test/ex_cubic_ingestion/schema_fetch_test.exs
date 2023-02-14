@@ -2,6 +2,7 @@ defmodule ExCubicIngestion.SchemaFetchTest do
   use ExCubicIngestion.DataCase, async: true
 
   import ExCubicIngestion.TestFixtures, only: [setup_tables_loads: 1]
+  import ExUnit.CaptureLog
 
   alias ExCubicIngestion.Schema.CubicLoad
   alias ExCubicIngestion.SchemaFetch
@@ -41,6 +42,30 @@ defmodule ExCubicIngestion.SchemaFetchTest do
                "edw_inserted_dtm",
                "edw_updated_dtm"
              ] == SchemaFetch.get_cubic_ods_qlik_columns(MockExAws, ods_ct_load)
+    end
+
+    test "cubic provided schema file (dfm) not found", %{
+      ods_table: ods_table
+    } do
+      s3_key_path = "cubic/ods_qlik/SAMPLE/notfound_LOAD3"
+
+      notfound_ods_load =
+        Repo.insert!(%CubicLoad{
+          table_id: ods_table.id,
+          status: "ready",
+          s3_key: "#{s3_key_path}.csv.gz",
+          s3_modified: ~U[2022-01-01 21:49:50Z],
+          s3_size: 197,
+          is_raw: true
+        })
+
+      # empty list of columns
+      assert [] == SchemaFetch.get_cubic_ods_qlik_columns(MockExAws, notfound_ods_load)
+
+      # logged error
+      assert capture_log(fn ->
+               SchemaFetch.get_cubic_ods_qlik_columns(MockExAws, notfound_ods_load)
+             end) =~ "#{s3_key_path}.dfm"
     end
   end
 

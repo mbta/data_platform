@@ -6,6 +6,8 @@ defmodule ExCubicIngestion.SchemaFetch do
   alias ExCubicIngestion.Schema.CubicLoad
   alias ExCubicIngestion.Schema.CubicTable
 
+  require Logger
+
   @spec get_cubic_ods_qlik_columns(module(), CubicLoad.t()) :: list()
   @doc """
   Using the load's S3 key, we identify the Cubic provided schema and extract the columns.
@@ -18,11 +20,8 @@ defmodule ExCubicIngestion.SchemaFetch do
 
     incoming_bucket
     |> ExAws.S3.get_object("#{incoming_prefix}#{s3_key_root}.dfm")
-    |> lib_ex_aws.request!()
-    |> Map.fetch!(:body)
-    |> Jason.decode!()
-    |> map_fetch_cubic_ods_columns()
-    |> Enum.map(&String.downcase(Map.fetch!(&1, "name")))
+    |> lib_ex_aws.request()
+    |> handle_get_cubic_ods_columns()
   end
 
   @spec get_glue_columns(module(), CubicTable.t(), CubicLoad.t()) :: list()
@@ -44,6 +43,23 @@ defmodule ExCubicIngestion.SchemaFetch do
     |> lib_ex_aws.request!()
     |> map_fetch_glue_columns()
     |> Enum.map(&Map.fetch!(&1, "Name"))
+  end
+
+  @spec handle_get_cubic_ods_columns({:ok, map()} | {:error, any()}) :: list()
+  defp handle_get_cubic_ods_columns({:ok, response}) do
+    response
+    |> Map.fetch!(:body)
+    |> Jason.decode!()
+    |> map_fetch_cubic_ods_columns()
+    |> Enum.map(&String.downcase(Map.fetch!(&1, "name")))
+  end
+
+  defp handle_get_cubic_ods_columns({:error, response}) do
+    Logger.error(
+      "[ex_cubic_ingestion] [schema_fetch] Unable to fetch schema: #{inspect(response)}"
+    )
+
+    []
   end
 
   @spec map_fetch_cubic_ods_columns(map()) :: list()
