@@ -2,6 +2,6 @@ adr-tools 3.0.0
 elixir 1.13.2-otp-24
 erlang 24.2.1
 java openjdk-11
-poetry 1.1.13
+poetry 1.4.2
 python 3.7.12
 terraform 1.1.8
