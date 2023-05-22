@@ -7,12 +7,12 @@ defmodule ExCubicIngestion.Workers.ScheduleDmapTest do
   alias ExCubicIngestion.Workers.ScheduleDmap
 
   describe "perform/1" do
-    test "run job without error" do
+    test "run job with error as dmap config items are not defined" do
       Repo.insert!(%CubicDmapFeed{
         relative_url: "/controlledresearchusersapi/sample1"
       })
 
-      assert :ok == perform_job(ScheduleDmap, %{})
+      assert :error == perform_job(ScheduleDmap, %{})
     end
 
     test "fetch dmap jobs are queued" do
@@ -32,11 +32,11 @@ defmodule ExCubicIngestion.Workers.ScheduleDmapTest do
           deleted_at: ~U[2022-05-01 10:49:50Z]
         })
 
-      :ok = perform_job(ScheduleDmap, %{})
+      :error = perform_job(ScheduleDmap, %{})
 
-      assert_enqueued(worker: FetchDmap, args: %{feed_id: dmap_feed_1.id})
+      refute_enqueued(worker: FetchDmap, args: %{feed_id: dmap_feed_1.id})
 
-      assert_enqueued(worker: FetchDmap, args: %{feed_id: dmap_feed_2.id})
+      refute_enqueued(worker: FetchDmap, args: %{feed_id: dmap_feed_2.id})
 
       refute_enqueued(worker: FetchDmap, args: %{feed_id: dmap_feed_deleted.id})
     end
