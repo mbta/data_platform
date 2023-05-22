@@ -12,7 +12,7 @@ defmodule ExCubicIngestion.Workers.ScheduleDmapTest do
         relative_url: "/controlledresearchusersapi/sample1"
       })
 
-      assert :error == perform_job(ScheduleDmap, %{})
+      assert {:error, _message} = perform_job(ScheduleDmap, %{})
     end
 
     test "fetch dmap jobs are queued" do
@@ -32,7 +32,7 @@ defmodule ExCubicIngestion.Workers.ScheduleDmapTest do
           deleted_at: ~U[2022-05-01 10:49:50Z]
         })
 
-      :error = perform_job(ScheduleDmap, %{})
+      assert {:error, _message} = perform_job(ScheduleDmap, %{})
 
       refute_enqueued(worker: FetchDmap, args: %{feed_id: dmap_feed_1.id})
 
