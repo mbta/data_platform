@@ -37,15 +37,17 @@ defmodule ReleaseTasks.ScheduleDmap do
       end)
       |> Enum.all?(fn x -> x end)
 
-      case dmap_is_configured do
-        true -> Application.fetch_env!(:ex_cubic_ingestion, Oban)
-        false ->
-          Logger.warning("dmap_base_url or dmap_api_key empty, dmap will not be scheduled")
+    case dmap_is_configured do
+      true ->
+        Application.fetch_env!(:ex_cubic_ingestion, Oban)
 
-          Enum.map(Application.fetch_env!(:ex_cubic_ingestion, Oban), fn
-            {:plugins, _} -> {:plugins, false}
-            item -> item
-          end)
-      end
+      false ->
+        Logger.warning("dmap_base_url or dmap_api_key empty, dmap will not be scheduled")
+
+        Enum.map(Application.fetch_env!(:ex_cubic_ingestion, Oban), fn
+          {:plugins, _} -> {:plugins, false}
+          item -> item
+        end)
+    end
   end
 end

@@ -14,7 +14,7 @@ defmodule ReleaseTasks.ScheduleDmapTest do
     end
 
     test "oban config items not defined" do
-      assert Keyword.fetch!(ReleaseTasks.ScheduleDmap.oban_config, :plugins) == false
+      assert Keyword.fetch!(ReleaseTasks.ScheduleDmap.oban_config(), :plugins) == false
     end
   end
 end
