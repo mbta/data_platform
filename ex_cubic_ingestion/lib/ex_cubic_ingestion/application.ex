@@ -12,7 +12,7 @@ defmodule ExCubicIngestion.Application do
       {ExCubicIngestion.Repo.Migrator,
        run_migrations_at_startup?:
          Application.get_env(:ex_cubic_ingestion, :run_migrations_at_startup?)},
-      {Oban, ReleaseTasks.ScheduleDmap.oban_config()}
+      {Oban, Application.fetch_env!(:ex_cubic_ingestion, Oban)}
     ]
 
     app_children =

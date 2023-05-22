@@ -12,9 +12,5 @@ defmodule ReleaseTasks.ScheduleDmapTest do
 
       assert_enqueued(worker: ScheduleDmap, args: args)
     end
-
-    test "oban config items not defined" do
-      assert Keyword.fetch!(ReleaseTasks.ScheduleDmap.oban_config(), :plugins) == false
-    end
   end
 end
