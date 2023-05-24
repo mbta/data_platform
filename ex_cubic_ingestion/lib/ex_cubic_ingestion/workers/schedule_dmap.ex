@@ -17,10 +17,19 @@ defmodule ExCubicIngestion.Workers.ScheduleDmap do
 
   @impl Oban.Worker
   def perform(_job) do
-    Repo.transaction(fn ->
-      Enum.each(CubicDmapFeed.all(), &Oban.insert(FetchDmap.new(%{feed_id: &1.id})))
-    end)
+    maybe_base_url = Application.fetch_env(:ex_cubic_ingestion, :dmap_base_url)
+    maybe_api_key = Application.fetch_env(:ex_cubic_ingestion, :dmap_base_url)
 
-    :ok
+    case {maybe_base_url, maybe_api_key} do
+      {{:ok, base_url}, {:ok, api_key}} when base_url != "" and api_key != "" ->
+        Repo.transaction(fn ->
+          Enum.each(CubicDmapFeed.all(), &Oban.insert(FetchDmap.new(%{feed_id: &1.id})))
+        end)
+
+        :ok
+
+      _error ->
+        {:error, "dmap_base_url or dmap_api_key empty, dmap will not be scheduled"}
+    end
   end
 end
