@@ -52,6 +52,9 @@ GLUE_DATABASE_SPRINGBOARD={username}_springboard
 GLUE_JOB_CUBIC_INGESTION_INGEST_INCOMING={username}_cubic_ingestion_ingest_incoming
 ```
 
+- add folder to S3 to contain the glue job and package
+- need steps for building python package and how to deploy it for local use
+
 For the following, the Data Platform team will need to provide you with the `{dmap_base_url}` and `{dmap_api_key}`.
 
 **Note:** This configuration is NOT required that it'd be set.

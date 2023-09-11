@@ -9,7 +9,7 @@ This area exists for management of infrastructure as it relates to **local devel
 
 In root directory:
 ```
-asdf add-plugin terraform
+asdf plugin-add terraform
 asdf install
 ```
 
