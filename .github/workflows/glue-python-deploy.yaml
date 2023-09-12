@@ -70,4 +70,12 @@ jobs:
         working-directory: ${{github.workspace}}/py_cubic_ingestion/libs
         run: zip -r ${{github.workspace}}/aws/s3/packages/py_cubic_ingestion.zip ./
       - name: Sync Glue Jobs and package to operations
-        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://mbta-ctd-dataplatform-${{github.event.inputs.env}}-operations/ --exclude "*/empty"
+        env:
+          S3_BUCKET_OPERATIONS: ${{github.event.inputs.env == 'prod' && 'mbta-ctd-dataplatform-operations' || 'mbta-ctd-dataplatform-dev-operations'}}
+        run: aws s3 sync ${{github.workspace}}/aws/s3/ s3://${{env.S3_BUCKET_OPERATIONS}}/ --exclude "*/empty"
+      - uses: mbta/actions/notify-slack-deploy@v1
+        if: ${{ !cancelled() }}
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          job-status: ${{ job.status }}
+          custom-message: "(glue-python-${{github.event.inputs.env}})"
