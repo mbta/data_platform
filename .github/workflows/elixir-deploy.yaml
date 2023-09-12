@@ -32,9 +32,9 @@ jobs:
           ecs-service: dataplatform-${{github.event.inputs.env}}
           docker-tag: ${{ steps.build-push.outputs.docker-tag }}
           requires-secrets: false
-      # - uses: mbta/actions/notify-slack-deploy@v1
-      #   if: ${{ !cancelled() }}
-      #   with:
-      #     webhook-url: ${{ secrets.SLACK_WEBHOOK }}
-      #     job-status: ${{ job.status }}
-      #     custom-message: "(${{ env.TARGET }})"
+      - uses: mbta/actions/notify-slack-deploy@v1
+        if: ${{ !cancelled() }}
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          job-status: ${{ job.status }}
+          custom-message: "(elixir-${{github.event.inputs.env}})"
