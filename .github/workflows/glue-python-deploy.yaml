@@ -58,7 +58,7 @@ jobs:
       - name: Prepare for installing dependencies and package
         working-directory: ${{github.workspace}}/py_cubic_ingestion
         run: |
-          poetry export --output requirements.txt
+          poetry export --without-hashes --output requirements.txt
           poetry build
       - name: Install dependencies and py_cubic_ingestion package into 'libs'
         working-directory: ${{github.workspace}}/py_cubic_ingestion

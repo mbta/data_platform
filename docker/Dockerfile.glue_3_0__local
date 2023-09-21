@@ -32,7 +32,8 @@ ENV SPARK_HOME=/spark-3.1.1-amzn-0-bin-3.2.1-amzn-3
 RUN /glue/bin/gluesparksubmit --version
 
 # python packaging
-RUN pip install poetry
+### Note: This version here needs to match .tool-versions
+RUN pip install poetry==1.3.2
 # install py_cubic_ingestion's required python dependencies
 COPY ./py_cubic_ingestion /data_platform/py_cubic_ingestion
 WORKDIR /data_platform/py_cubic_ingestion
