@@ -1,5 +1,8 @@
 name: Glue (Python) Deploy
 
+permissions:
+  id-token: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -35,12 +38,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: asdf
 
-    # job env variables used by AWS CLI
-    env:
-      AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-      AWS_DEFAULT_REGION: 'us-east-1'
-
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v2
@@ -66,6 +63,11 @@ jobs:
           pip install -r requirements.txt -t ./libs
           pip install dist/py_cubic_ingestion-*.whl -t ./libs
 
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: 'us-east-1'
       - name: Add to py_cubic_ingestion archive
         working-directory: ${{github.workspace}}/py_cubic_ingestion/libs
         run: zip -r ${{github.workspace}}/aws/s3/packages/py_cubic_ingestion.zip ./
