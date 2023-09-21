@@ -9,7 +9,8 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "3.7.12"
+### Note: This version here needs to match .tool-versions
+python = "3.7.17"
 python-dateutil = "^2.8.2"
 boto3-stubs = {extras = ["glue"], version = "^1.24.23"}
 
