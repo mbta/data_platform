@@ -1,6 +1,8 @@
 defmodule ExAws.Glue do
   @moduledoc """
-  ExAws.Glue module.
+  ExAws.Glue module for making Glue requests.
+  See https://github.com/aws/aws-sdk-go/blob/main/models/apis/glue/2017-03-31/api-2.json
+  for constructing further requests.
   """
 
   @spec start_job_run(String.t(), map()) :: ExAws.Operation.t()
