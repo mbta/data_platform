@@ -350,6 +350,62 @@ defmodule MockExAws do
     end
   end
 
+  def request(
+        %{service: :athena, data: %{QueryExecutionIds: ["success_query_id"]}},
+        _config_overrides
+      ) do
+    {:ok, %{"QueryExecutions" => [%{"Status" => %{"State" => "SUCCEEDED"}}]}}
+  end
+
+  def request(
+        %{
+          service: :athena,
+          data: %{QueryExecutionIds: ["success_query_id_1", "success_query_id_2"]}
+        },
+        _config_overrides
+      ) do
+    {:ok,
+     %{
+       "QueryExecutions" => [
+         %{"Status" => %{"State" => "SUCCEEDED"}},
+         %{"Status" => %{"State" => "SUCCEEDED"}}
+       ]
+     }}
+  end
+
+  def request(
+        %{service: :athena, data: %{QueryExecutionIds: ["cancel_query_id", "fail_query_id"]}},
+        _config_overrides
+      ) do
+    {:ok,
+     %{
+       "QueryExecutions" => [
+         %{"Status" => %{"State" => "CANCELLED"}},
+         %{"Status" => %{"State" => "FAILED"}}
+       ]
+     }}
+  end
+
+  def request(
+        %{
+          service: :athena,
+          data: %{QueryString: "MSCK REPAIR TABLE success_table;"}
+        },
+        _config_overrides
+      ) do
+    {:ok, %{"QueryExecutionId" => "success_query_id"}}
+  end
+
+  def request(
+        %{
+          service: :athena,
+          data: %{QueryString: "MSCK REPAIR TABLE fail_table;"}
+        },
+        _config_overrides
+      ) do
+    {:error, {"Exception", "fail_table issue message"}}
+  end
+
   @spec request!(ExAws.Operation.t(), keyword) :: term
   def request!(op, config_overrides \\ []) do
     case request(op, config_overrides) do
