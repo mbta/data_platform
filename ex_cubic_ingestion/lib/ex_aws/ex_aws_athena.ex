@@ -22,7 +22,8 @@ defmodule ExAws.Athena do
       data: %{
         ClientRequestToken: Ecto.UUID.generate(),
         QueryString: query_string,
-        ResultConfiguration: result_configuration
+        ResultConfiguration: result_configuration,
+        WorkGroup: Application.fetch_env!(:ex_cubic_ingestion, :athena_workgroup)
       },
       service: :athena
     }
