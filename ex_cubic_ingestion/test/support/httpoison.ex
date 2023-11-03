@@ -8,7 +8,7 @@ defmodule MockHTTPoison do
     dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
     cond do
-      String.starts_with?(url, "#{dmap_base_url}/controlledresearchusersapi/sample") ->
+      String.starts_with?(url, "#{dmap_base_url}/datasetpublicusersapi/sample") ->
         %HTTPoison.Response{
           status_code: 200,
           body: """

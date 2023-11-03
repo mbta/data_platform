@@ -10,7 +10,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "run job without error" do
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
-          relative_url: "/controlledresearchusersapi/sample"
+          relative_url: "/datasetpublicusersapi/sample"
         })
 
       assert :ok ==
@@ -23,8 +23,21 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
   end
 
   describe "construct_feed_url/2" do
-    test "feed without a last updated timestamp" do
-      dmap_feed_relative_url = "/controlledresearchusersapi/sample"
+    test "unknown feed without a last updated timestamp" do
+      dmap_feed_relative_url = "/datasetunknownuserapi/sample"
+
+      dmap_feed =
+        Repo.insert!(%CubicDmapFeed{
+          relative_url: dmap_feed_relative_url
+        })
+
+      assert_raise RuntimeError, fn ->
+        FetchDmap.construct_feed_url(dmap_feed, nil)
+      end
+    end
+
+    test "controlled feed without a last updated timestamp" do
+      dmap_feed_relative_url = "/datasetcontrolleduserapi/sample"
 
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
@@ -33,14 +46,32 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-      dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
+      dmap_controlled_user_api_key =
+        Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_user_api_key)
 
-      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}" ==
+      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_controlled_user_api_key}" ==
                FetchDmap.construct_feed_url(dmap_feed, nil)
     end
 
-    test "feed with a last updated timestamp" do
-      dmap_feed_relative_url = "/controlledresearchusersapi/sample"
+    test "public feed without a last updated timestamp" do
+      dmap_feed_relative_url = "/datasetpublicusersapi/sample"
+
+      dmap_feed =
+        Repo.insert!(%CubicDmapFeed{
+          relative_url: dmap_feed_relative_url
+        })
+
+      dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
+
+      dmap_public_user_api_key =
+        Application.fetch_env!(:ex_cubic_ingestion, :dmap_public_user_api_key)
+
+      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_public_user_api_key}" ==
+               FetchDmap.construct_feed_url(dmap_feed, nil)
+    end
+
+    test "public feed with a last updated timestamp" do
+      dmap_feed_relative_url = "/datasetpublicusersapi/sample"
 
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
@@ -50,14 +81,15 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-      dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
+      dmap_public_user_api_key =
+        Application.fetch_env!(:ex_cubic_ingestion, :dmap_public_user_api_key)
 
-      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}&last_updated=2022-05-22T20:49:50.123457" ==
+      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_public_user_api_key}&last_updated=2022-05-22T20:49:50.123457" ==
                FetchDmap.construct_feed_url(dmap_feed, nil)
     end
 
-    test "feed with last updated passed in" do
-      dmap_feed_relative_url = "/controlledresearchusersapi/sample"
+    test "public feed with last updated passed in" do
+      dmap_feed_relative_url = "/datasetpublicusersapi/sample"
 
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
@@ -69,9 +101,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-      dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
+      dmap_public_user_api_key =
+        Application.fetch_env!(:ex_cubic_ingestion, :dmap_public_user_api_key)
 
-      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_api_key}&last_updated=2022-05-01T10:49:50.123456" ==
+      assert "#{dmap_base_url}#{dmap_feed_relative_url}?apikey=#{dmap_public_user_api_key}&last_updated=2022-05-01T10:49:50.123456" ==
                FetchDmap.construct_feed_url(dmap_feed, DateTime.to_string(last_updated))
     end
   end
@@ -80,7 +113,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "getting mock feed results" do
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
-          relative_url: "/controlledresearchusersapi/sample",
+          relative_url: "/datasetpublicusersapi/sample",
           last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
         })
 

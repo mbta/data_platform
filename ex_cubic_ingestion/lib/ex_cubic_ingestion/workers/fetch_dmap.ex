@@ -1,6 +1,6 @@
 defmodule ExCubicIngestion.Workers.FetchDmap do
   @moduledoc """
-  Oban Worker for fetching a DMAP and the data files available in that feed, ultimately
+  Oban Worker for fetching a DMAP feed and the data files available in that feed, ultimately
   uploading them to the 'Incoming' bucket for further processing through the ingestion
   process.
   """
@@ -47,14 +47,24 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   end
 
   @doc """
-  Construct the full URL to the feed, applying some overriding logic for
-  last updated (if passed in).
+  Construct the full URL to the feed, with the correct API key, and applying some
+  overriding logic for last updated (if passed in).
   """
   @spec construct_feed_url(CubicDmapFeed.t(), String.t() | nil) :: String.t()
   def construct_feed_url(feed_rec, last_updated) do
     dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
-    dmap_api_key = Application.fetch_env!(:ex_cubic_ingestion, :dmap_api_key)
+    dmap_api_key =
+      cond do
+        String.starts_with?(feed_rec.relative_url, "/datasetcontrolleduserapi") ->
+          Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_user_api_key)
+
+        String.starts_with?(feed_rec.relative_url, "/datasetpublicusersapi") ->
+          Application.fetch_env!(:ex_cubic_ingestion, :dmap_public_user_api_key)
+
+        true ->
+          raise "No API key available."
+      end
 
     last_updated =
       cond do
