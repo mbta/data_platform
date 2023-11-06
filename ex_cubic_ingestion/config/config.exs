@@ -16,7 +16,7 @@ config :ex_cubic_ingestion, Oban,
     {
       Oban.Plugins.Cron,
       crontab: [
-        {"0 15 * * *", ExCubicIngestion.Workers.ScheduleDmap, max_attempts: 1}
+        # {"0 15 * * *", ExCubicIngestion.Workers.ScheduleDmap, max_attempts: 1}
         # {"0 * * * *", ExCubicIngestion.Workers.LoadPartitions,
         #  args: %{
         #    table_names: [
