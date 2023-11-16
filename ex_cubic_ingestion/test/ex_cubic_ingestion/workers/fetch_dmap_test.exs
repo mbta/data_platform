@@ -129,6 +129,26 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
                  & &1["dataset_id"]
                )
     end
+
+    test "api key not logged when error in fetching mock feed results" do
+      relative_url = "/datasetpublicusersapi/error"
+
+      dmap_feed =
+        Repo.insert!(%CubicDmapFeed{
+          relative_url: relative_url,
+          last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
+        })
+
+      last_updated = ~U[2022-05-01 10:49:50.123456Z]
+
+      assert_raise RuntimeError, "Unable to fetch feed results: #{relative_url}", fn ->
+        FetchDmap.get_feed_datasets(
+          dmap_feed,
+          DateTime.to_string(last_updated),
+          MockHTTPoison
+        )
+      end
+    end
   end
 
   describe "fetch_and_upload_to_s3/1" do

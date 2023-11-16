@@ -90,12 +90,18 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
   @doc """
   Using the feed record to construct a URL and get the contents containing the dataset
-  information. Also, checks that datasets are valid an filters out invalid ones.
+  information. Also, checks that datasets are valid and filters out invalid ones.
   """
   @spec get_feed_datasets(CubicDmapFeed.t(), String.t() | nil, module()) :: [map()]
   def get_feed_datasets(feed_rec, last_updated, lib_httpoison) do
-    %HTTPoison.Response{status_code: 200, body: body} =
-      lib_httpoison.get!(construct_feed_url(feed_rec, last_updated))
+    body =
+      case lib_httpoison.get(construct_feed_url(feed_rec, last_updated)) do
+        {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+          body
+
+        _exception_or_error_code ->
+          raise "Unable to fetch feed results: #{feed_rec.relative_url}"
+      end
 
     body
     |> Jason.decode!()
