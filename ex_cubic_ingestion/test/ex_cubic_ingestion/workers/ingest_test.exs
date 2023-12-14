@@ -29,70 +29,74 @@ defmodule ExCubicIngestion.Workers.IngestTest do
     end
   end
 
-  describe "construct_glue_job_payload/1" do
+  describe "construct_job_payload/1" do
     test "payload is contructed correctly with ods and dmap data", %{
+      dmap_table: dmap_table,
+      ods_table: ods_table,
       dmap_load: dmap_load,
       ods_load: ods_load
     } do
+      incoming_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
+      springboard_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_springboard)
+      incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+      springboard_prefix =
+        Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_springboard)
+
       {_actual_env, actual_input} =
-        Ingest.construct_glue_job_payload([
+        Ingest.construct_job_payload([
           dmap_load.id,
           ods_load.id
         ])
 
-      actual_input_decoded = Jason.decode!(actual_input)
-
       expected_input = %{
-        "loads" => [
+        loads: [
           %{
-            "id" => dmap_load.id,
-            "s3_key" => "cubic/dmap/sample/20220101.csv.gz",
-            "table_name" => "cubic_dmap__sample",
-            "is_raw" => false,
-            "partition_columns" => [
-              %{"name" => "identifier", "value" => "20220101.csv.gz"}
-            ]
+            id: dmap_load.id,
+            partition_columns: [
+              %{name: "identifier", value: "20220101.csv.gz"}
+            ],
+            s3_key: "cubic/dmap/sample/20220101.csv.gz",
+            destination_path: "s3a://#{incoming_bucket}/#{springboard_prefix}cubic/dmap/sample",
+            destination_table_name: "#{dmap_table.name}",
+            source_s3_key: "s3://#{incoming_bucket}/#{incoming_prefix}#{dmap_load.s3_key}",
+            source_table_name: "#{dmap_table.name}"
           },
           %{
-            "id" => ods_load.id,
-            "s3_key" => "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
-            "table_name" => "cubic_ods_qlik__sample",
-            "is_raw" => true,
-            "partition_columns" => [
+            id: ods_load.id,
+            partition_columns: [
               %{
-                "name" => "snapshot",
-                "value" => "20220101T204950Z"
+                name: "snapshot",
+                value: "20220101T204950Z"
               },
-              %{"name" => "identifier", "value" => "LOAD1.csv.gz"}
-            ]
+              %{name: "identifier", value: "LOAD1.csv.gz"}
+            ],
+            s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
+            destination_path:
+              "s3a://#{springboard_bucket}/#{springboard_prefix}raw/cubic/ods_qlik/SAMPLE",
+            destination_table_name: "raw_#{ods_table.name}",
+            source_s3_key: "s3://#{incoming_bucket}/#{incoming_prefix}#{ods_load.s3_key}",
+            source_table_name: "#{ods_table.name}"
           }
         ]
       }
 
-      assert expected_input["loads"] ==
-               Enum.sort_by(actual_input_decoded["loads"], & &1["id"])
+      assert expected_input[:loads] ==
+               Enum.sort_by(actual_input[:loads], & &1[:id])
     end
   end
 
-  describe "monitor_glue_job_run/3" do
-    test "monitoring a successful run", %{
-      dmap_load: dmap_load,
-      ods_load: ods_load
-    } do
+  describe "monitor_glue_job_run/2" do
+    test "monitoring a successful run" do
       assert :ok =
                Ingest.monitor_glue_job_run(
-                 "success_run_id",
-                 [dmap_load.id, ods_load.id],
-                 MockExAws
+                 MockExAws,
+                 "success_run_id"
                )
     end
 
-    test "monitoring a error run", %{
-      dmap_load: dmap_load,
-      ods_load: ods_load
-    } do
-      assert {:error, _message} =
-               Ingest.monitor_glue_job_run("error_run_id", [dmap_load.id, ods_load.id], MockExAws)
+    test "monitoring a error run" do
+      assert {:error, _message} = Ingest.monitor_glue_job_run(MockExAws, "error_run_id")
     end
   end
 

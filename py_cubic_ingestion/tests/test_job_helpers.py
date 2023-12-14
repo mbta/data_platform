@@ -220,50 +220,6 @@ def test_get_glue_table_schema_fields_by_load(glue_client_stubber: Tuple[GlueCli
     )
 
 
-def test_get_glue_info() -> None:
-    """
-    Test the correct kwargs are constructed from the load and env dicts
-    """
-
-    load = {
-        "s3_key": "cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz",
-        "table_name": "cubic_ods_qlik__edw_test",
-        "is_raw": False,
-    }
-    env = {
-        "GLUE_DATABASE_INCOMING": "glue_db",
-        "S3_BUCKET_INCOMING": "incoming",
-        "S3_BUCKET_SPRINGBOARD": "springboard",
-    }
-
-    assert job_helpers.get_glue_info(load, env) == {
-        "source_table_name": "cubic_ods_qlik__edw_test",
-        "destination_table_name": "cubic_ods_qlik__edw_test",
-        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST/LOAD001.csv.gz",
-        "destination_path": "s3a://springboard/cubic/ods_qlik/EDW.TEST/",
-    }
-
-    # update s3 key to '__ct' one
-    load["s3_key"] = "cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz"
-
-    assert job_helpers.get_glue_info(load, env) == {
-        "source_table_name": "cubic_ods_qlik__edw_test__ct",
-        "destination_table_name": "cubic_ods_qlik__edw_test__ct",
-        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz",
-        "destination_path": "s3a://springboard/cubic/ods_qlik/EDW.TEST__ct/",
-    }
-
-    # update to a raw load
-    load["is_raw"] = True
-
-    assert job_helpers.get_glue_info(load, env) == {
-        "source_table_name": "cubic_ods_qlik__edw_test__ct",
-        "destination_table_name": "raw_cubic_ods_qlik__edw_test__ct",
-        "source_key": "s3://incoming/cubic/ods_qlik/EDW.TEST__ct/20220101-112233444.csv.gz",
-        "destination_path": "s3a://springboard/raw/cubic/ods_qlik/EDW.TEST__ct/",
-    }
-
-
 def test_df_with_updated_schema(spark_session: SparkSessionType) -> None:
     """
     Test creating a DataFrame with an updated schema and that

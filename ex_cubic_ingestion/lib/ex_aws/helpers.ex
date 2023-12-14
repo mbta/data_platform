@@ -63,7 +63,7 @@ defmodule ExAws.Helpers do
 
     # return ok only if all the queries succeeded
     with :ok <- request_status,
-         true <- queries_succeeded?(query_executions) do
+         true <- Enum.all?(query_executions, &query_succeeded?/1) do
       Logger.info("Athena Query Executions Status: #{Jason.encode!(query_executions)}")
 
       :ok
@@ -101,9 +101,20 @@ defmodule ExAws.Helpers do
     end)
   end
 
-  defp queries_succeeded?(query_executions) do
-    Enum.all?(query_executions, fn %{"Status" => %{"State" => state}} ->
-      state == "SUCCEEDED"
-    end)
+  defp query_succeeded?(%{"Status" => %{"State" => "SUCCEEDED"}}) do
+    true
+  end
+
+  defp query_succeeded?(%{
+         "Status" => %{
+           "State" => "FAILED",
+           "AthenaError" => %{"ErrorMessage" => "Partition entries already exist."}
+         }
+       }) do
+    true
+  end
+
+  defp query_succeeded?(_query_execution_status) do
+    false
   end
 end

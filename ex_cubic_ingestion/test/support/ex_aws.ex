@@ -351,6 +351,19 @@ defmodule MockExAws do
   end
 
   def request(
+        %{service: :athena, data: %{QueryExecutionIds: ["success_query_id", "success_query_id"]}},
+        _config_overrides
+      ) do
+    {:ok,
+     %{
+       "QueryExecutions" => [
+         %{"Status" => %{"State" => "SUCCEEDED"}},
+         %{"Status" => %{"State" => "SUCCEEDED"}}
+       ]
+     }}
+  end
+
+  def request(
         %{service: :athena, data: %{QueryExecutionIds: ["success_query_id"]}},
         _config_overrides
       ) do
@@ -389,6 +402,27 @@ defmodule MockExAws do
   def request(
         %{
           service: :athena,
+          data: %{QueryExecutionIds: ["success_query_id", "already_added_partition_query_id"]}
+        },
+        _config_overrides
+      ) do
+    {:ok,
+     %{
+       "QueryExecutions" => [
+         %{"Status" => %{"State" => "CANCELLED"}},
+         %{
+           "Status" => %{
+             "State" => "FAILED",
+             "AthenaError" => %{"ErrorMessage" => "Partition entries already exist."}
+           }
+         }
+       ]
+     }}
+  end
+
+  def request(
+        %{
+          service: :athena,
           data: %{QueryString: "MSCK REPAIR TABLE success_table;"}
         },
         _config_overrides
@@ -404,6 +438,14 @@ defmodule MockExAws do
         _config_overrides
       ) do
     {:error, {"Exception", "fail_table issue message"}}
+  end
+
+  def request(%{service: :athena} = op, _config_overrides) do
+    if Enum.member?(op.headers, {"x-amz-target", "AmazonAthena.StartQueryExecution"}) do
+      {:ok, %{"QueryExecutionId" => "success_query_id"}}
+    else
+      {:error, "athena failed"}
+    end
   end
 
   @spec request!(ExAws.Operation.t(), keyword) :: term

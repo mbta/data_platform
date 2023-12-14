@@ -17,16 +17,6 @@ config :ex_cubic_ingestion, Oban,
       Oban.Plugins.Cron,
       crontab: [
         {"0 15 * * *", ExCubicIngestion.Workers.ScheduleDmap, max_attempts: 1}
-        # {"0 * * * *", ExCubicIngestion.Workers.LoadPartitions,
-        #  args: %{
-        #    table_names: [
-        #      "raw_cubic_ods_qlik__edw_fnp_general_jrnl_account_entry",
-        #      "raw_cubic_ods_qlik__edw_fnp_general_jrnl_account_entry__ct",
-        #      "raw_cubic_ods_qlik__edw_cch_afc_transaction",
-        #      "raw_cubic_ods_qlik__edw_cch_afc_transaction__ct"
-        #    ]
-        #  },
-        #  max_attempts: 1}
       ]
     }
   ],
