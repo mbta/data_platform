@@ -99,6 +99,9 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
         {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
           body
 
+        {:ok, %HTTPoison.Response{body: body}} ->
+          raise "Unable to fetch feed results: #{feed_rec.relative_url} (Response: #{inspect(body)})"
+
         _exception_or_error_code ->
           raise "Unable to fetch feed results: #{feed_rec.relative_url}"
       end
