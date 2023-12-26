@@ -48,8 +48,6 @@ defmodule MockHTTPoison do
 
   @spec get!(String.t()) :: HTTPoison.Response.t()
   def get!(url) do
-    dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
-
     if String.starts_with?(url, "https://mbtaqadmapdatalake.blob.core.windows.net/sample") do
       %HTTPoison.Response{status_code: 200, body: "sample_body"}
     else

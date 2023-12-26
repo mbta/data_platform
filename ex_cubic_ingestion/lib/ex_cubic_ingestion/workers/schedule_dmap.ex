@@ -18,18 +18,43 @@ defmodule ExCubicIngestion.Workers.ScheduleDmap do
   @impl Oban.Worker
   def perform(_job) do
     maybe_base_url = Application.fetch_env(:ex_cubic_ingestion, :dmap_base_url)
-    maybe_api_key = Application.fetch_env(:ex_cubic_ingestion, :dmap_base_url)
 
-    case {maybe_base_url, maybe_api_key} do
-      {{:ok, base_url}, {:ok, api_key}} when base_url != "" and api_key != "" ->
-        Repo.transaction(fn ->
-          Enum.each(CubicDmapFeed.all(), &Oban.insert(FetchDmap.new(%{feed_id: &1.id})))
-        end)
+    maybe_controlled_user_api_key =
+      Application.fetch_env(:ex_cubic_ingestion, :dmap_controlled_user_api_key)
 
-        :ok
+    maybe_public_user_api_key =
+      Application.fetch_env(:ex_cubic_ingestion, :dmap_public_user_api_key)
 
-      _error ->
-        {:error, "dmap_base_url or dmap_api_key empty, dmap will not be scheduled"}
-    end
+    insert_fetch_jobs(
+      maybe_base_url,
+      maybe_controlled_user_api_key,
+      maybe_public_user_api_key
+    )
+  end
+
+  @doc """
+  Inserts a fetch job for each DMAP feed.
+  """
+  @spec insert_fetch_jobs(
+          {:ok, String.t()} | :error,
+          {:ok, String.t()} | :error,
+          {:ok, String.t()} | :error
+        ) :: Oban.Worker.result()
+  def insert_fetch_jobs(
+        {:ok, base_url},
+        {:ok, controlled_user_api_key},
+        {:ok, public_user_api_key}
+      )
+      when base_url != "" and controlled_user_api_key != "" and public_user_api_key != "" do
+    Repo.transaction(fn ->
+      Enum.each(CubicDmapFeed.all(), &Oban.insert(FetchDmap.new(%{feed_id: &1.id})))
+    end)
+
+    :ok
+  end
+
+  def insert_fetch_jobs(_base_url, _controlled_user_api_key, _public_user_api_key) do
+    {:error,
+     "dmap_base_url or dmap_controlled_user_api_key or dmap_public_user_api_key empty, dmap will not be scheduled"}
   end
 end

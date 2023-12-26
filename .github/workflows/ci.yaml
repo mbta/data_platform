@@ -43,6 +43,9 @@ jobs:
       DB_NAME: dataplatform_test
       DB_USER: postgres
       DB_PASSWORD: postgres
+      CUBIC_DMAP_BASE_URL: https://dmap_base_url
+      CUBIC_DMAP_CONTROLLED_USER_API_KEY: controlled_api_key
+      CUBIC_DMAP_PUBLIC_USER_API_KEY: public_api_key
 
     services:
       postgres:
