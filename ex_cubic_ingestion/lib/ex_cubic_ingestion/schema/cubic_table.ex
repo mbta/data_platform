@@ -16,6 +16,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
              :name,
              :s3_prefix,
              :is_raw,
+             :is_active,
              :deleted_at,
              :inserted_at,
              :updated_at
@@ -26,6 +27,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
           name: String.t() | nil,
           s3_prefix: String.t() | nil,
           is_raw: boolean() | nil,
+          is_active: boolean() | nil,
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -35,6 +37,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
     field(:name, :string)
     field(:s3_prefix, :string)
     field(:is_raw, :boolean)
+    field(:is_active, :boolean)
 
     field(:deleted_at, :utc_datetime)
 
@@ -46,13 +49,19 @@ defmodule ExCubicIngestion.Schema.CubicTable do
     from(table in __MODULE__, where: is_nil(table.deleted_at))
   end
 
+  @spec active :: Ecto.Queryable.t()
+  defp active do
+    from(table in __MODULE__, where: table.is_active and is_nil(table.deleted_at))
+  end
+
   @spec get_by!(Keyword.t() | map(), Keyword.t()) :: t() | nil
   def get_by!(clauses, opts \\ []) do
     Repo.get_by!(not_deleted(), clauses, opts)
   end
 
   @doc """
-  Given an enumerable of S3 prefixes, return those prefixes which represent a #{__MODULE__} and their table.
+  Given an enumerable of S3 prefixes, return those prefixes which represent a #{__MODULE__} and
+  their active table.
   """
   @spec filter_to_existing_prefixes(Enumerable.t()) :: [{String.t(), t()}]
   def filter_to_existing_prefixes(prefixes) do
@@ -67,7 +76,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
         |> Enum.to_list()
 
       query =
-        from(table in not_deleted(),
+        from(table in active(),
           where: table.s3_prefix in ^without_change_tracking
         )
 
@@ -85,7 +94,7 @@ defmodule ExCubicIngestion.Schema.CubicTable do
   end
 
   @doc """
-  Get all active tables, including ODS snapshot for ODS tables.
+  Get all tables, including ODS snapshot for ODS tables.
   """
   @spec all_with_ods_table_snapshot :: [{t(), CubicOdsTableSnapshot.t()}]
   def all_with_ods_table_snapshot do

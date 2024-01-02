@@ -32,7 +32,8 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
       dmap_table =
         Repo.insert!(%CubicTable{
           name: "cubic_dmap__sample",
-          s3_prefix: "cubic/dmap/sample/"
+          s3_prefix: "cubic/dmap/sample/",
+          is_active: true
         })
 
       dmap_table_id = dmap_table.id
@@ -40,7 +41,8 @@ defmodule ExCubicIngestion.ProcessIncomingTest do
       ods_table =
         Repo.insert!(%CubicTable{
           name: "cubic_ods_qlik__sample",
-          s3_prefix: "cubic/ods_qlik/SAMPLE/"
+          s3_prefix: "cubic/ods_qlik/SAMPLE/",
+          is_active: true
         })
 
       Repo.insert!(%CubicOdsTableSnapshot{
