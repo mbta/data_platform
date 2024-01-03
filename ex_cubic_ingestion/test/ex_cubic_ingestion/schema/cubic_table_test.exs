@@ -40,13 +40,22 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
       dmap_table =
         Repo.insert!(%CubicTable{
           name: "cubic_dmap__sample",
-          s3_prefix: "cubic/dmap/sample/"
+          s3_prefix: "cubic/dmap/sample/",
+          is_active: true
         })
+
+      # adding an inactive table
+      Repo.insert!(%CubicTable{
+        name: "cubic_dmap__sample_inactive",
+        s3_prefix: "cubic/dmap/sample_inactive/",
+        is_active: false
+      })
 
       ods_table =
         Repo.insert!(%CubicTable{
           name: "cubic_ods_qlik__sample",
-          s3_prefix: "cubic/ods_qlik/SAMPLE/"
+          s3_prefix: "cubic/ods_qlik/SAMPLE/",
+          is_active: true
         })
 
       Repo.insert!(%CubicOdsTableSnapshot{
@@ -57,6 +66,7 @@ defmodule ExCubicIngestion.Schema.CubicTableTest do
       # note: purposely leaving out incoming bucket prefix config
       prefixes = [
         "cubic/dmap/sample/",
+        "cubic/dmap/sample_inactive/",
         "cubic/dmap/sample_table_wrong/",
         "cubic/ods_qlik/SAMPLE/",
         "cubic/ods_qlik/SAMPLE__ct/",
