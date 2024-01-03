@@ -11,7 +11,6 @@ from pyspark.sql.types import DateType, DoubleType, LongType, TimestampType
 from typing import Tuple
 import json
 import logging
-import os
 
 
 # helper variables
@@ -49,11 +48,11 @@ def parse_args(env_arg: str, input_arg: str) -> Tuple[dict, dict]:
     Examples
     --------
     >>> parse_job_arguments(
-    ...   '{"GLUE_DATABASE_INCOMING": "db","S3_BUCKET_INCOMING": "incoming","S3_BUCKET_SPRINGBOARD": "springboard"}',
-    ...   '{"loads": [{"s3_key": "...", "table_name": "...", "partition_columns": [...]}, ...]}'
+    ...   '{"GLUE_DATABASE_INCOMING": "incoming", "GLUE_DATABASE_SPRINGBOARD": "springboard"}',
+    ...   '{"loads": [{"source_table_name": "...", ..., "partition_columns": [...]}, ...]}'
     ... )
-    ({'GLUE_DATABASE_INCOMING': 'db', 'S3_BUCKET_INCOMING': 'incoming', 'S3_BUCKET_SPRINGBOARD': 'springboard'},
-    ...{'loads': [{'s3_key': '...', 'table_name': '...', 'partition_columns': [...]}, ...]})
+    ({'GLUE_DATABASE_INCOMING': 'incoming', 'GLUE_DATABASE_INCOMING': 'springboard'},
+    ...{'loads': [{'source_table_name': '...', ..., 'partition_columns': [...]}, ...]})
     """
 
     log_prefix = "[py_cubic_ingestion] [job_helpers]"
@@ -102,50 +101,6 @@ def get_glue_table_schema_fields_by_load(glue_client: GlueClient, database_name:
         {"name": column["Name"], "type": athena_type_to_spark_type.get(column["Type"], "string")}
         for column in response["Table"]["StorageDescriptor"]["Columns"]
     ]
-
-
-def get_glue_info(load: dict, env: dict) -> dict:
-    """
-    Determine source and destination information for glue based on load criterias
-
-    Parameters
-    ----------
-    load : dict
-        Load information
-    env : dict
-        Environment variables
-
-    Returns
-    -------
-    dict
-        Dictionary that contains information for the glue job
-    """
-
-    load_table_name = load["table_name"]
-    load_s3_key = load["s3_key"]
-
-    source_table_name = load_table_name
-    destination_table_name = load_table_name
-    source_key = load_s3_key
-    destination_path = os.path.dirname(load_s3_key)
-
-    # for change tracking loads, add a suffix to the table names
-    if destination_path.endswith("__ct"):
-        source_table_name = f"{source_table_name}__ct"
-        destination_table_name = f"{destination_table_name}__ct"
-
-    # for raw loads, add a prefix to the table_name and adjust the destination path
-    if load["is_raw"]:
-        destination_table_name = f"raw_{destination_table_name}"
-        destination_path = f"raw/{destination_path}"
-
-    return {
-        "source_table_name": source_table_name,
-        "destination_table_name": destination_table_name,
-        "source_key": f's3://{env["S3_BUCKET_INCOMING"]}/{env.get("S3_BUCKET_PREFIX_INCOMING", "")}{source_key}',
-        "destination_path": f's3a://{env["S3_BUCKET_SPRINGBOARD"]}/'
-        f'{env.get("S3_BUCKET_PREFIX_SPRINGBOARD", "")}{destination_path}/',
-    }
 
 
 def df_with_updated_schema(df: DataFrame, schema_fields: list) -> DataFrame:

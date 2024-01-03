@@ -57,4 +57,12 @@ defmodule ExCubicIngestion.Schema.CubicOdsLoadSnapshot do
       )
     )
   end
+
+  @doc """
+  When we use snapshot in paths, we need to format so it's URL-friendly.
+  """
+  @spec formatted(DateTime.t()) :: String.t()
+  def formatted(snapshot) do
+    Calendar.strftime(snapshot, "%Y%m%dT%H%M%SZ")
+  end
 end

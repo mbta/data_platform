@@ -87,5 +87,15 @@ defmodule ExAws.HelpersTest do
       assert {:error, _message} =
                ExAws.Helpers.monitor_athena_query_executions(MockExAws, query_executions)
     end
+
+    test "returns success even if we have a failed query due to an already added partition" do
+      query_executions = [
+        {:ok, %{"QueryExecutionId" => "success_query_id"}},
+        {:ok, %{"QueryExecutionId" => "already_added_partition_query_id"}}
+      ]
+
+      assert {:error, _message} =
+               ExAws.Helpers.monitor_athena_query_executions(MockExAws, query_executions)
+    end
   end
 end

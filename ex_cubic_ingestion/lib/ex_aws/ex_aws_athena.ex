@@ -23,7 +23,11 @@ defmodule ExAws.Athena do
         ClientRequestToken: Ecto.UUID.generate(),
         QueryString: query_string,
         ResultConfiguration: result_configuration,
-        WorkGroup: Application.fetch_env!(:ex_cubic_ingestion, :athena_workgroup)
+        WorkGroup: Application.fetch_env!(:ex_cubic_ingestion, :athena_workgroup),
+        QueryExecutionContext: %{
+          Database: Application.fetch_env!(:ex_cubic_ingestion, :glue_database_springboard),
+          Catalog: "AwsDataCatalog"
+        }
       },
       service: :athena
     }

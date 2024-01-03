@@ -455,4 +455,70 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       refute CubicLoad.ods_load?("cubic/dmap/sample/20220101.csv.gz")
     end
   end
+
+  describe "glue_job_payload/1" do
+    test "returns correct payload based on load and table record", %{
+      ods_table: ods_table
+    } do
+      incoming_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
+      springboard_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_springboard)
+      incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+      springboard_prefix =
+        Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_springboard)
+
+      ods_load =
+        Repo.insert!(%CubicLoad{
+          table_id: ods_table.id,
+          status: "ready",
+          s3_key: "cubic/ods_qlik/SAMPLE/LOAD1.csv.gz",
+          s3_modified: ~U[2022-01-01 20:49:50Z],
+          s3_size: 197,
+          is_raw: true
+        })
+
+      assert %{
+               id: ods_load.id,
+               destination_path:
+                 "s3a://#{springboard_bucket}/#{springboard_prefix}raw/cubic/ods_qlik/SAMPLE",
+               destination_table_name: "raw_cubic_ods_qlik__sample",
+               partition_columns: [%{name: "identifier", value: "LOAD1.csv.gz"}],
+               s3_key: ods_load.s3_key,
+               source_s3_key: "s3://#{incoming_bucket}/#{incoming_prefix}#{ods_load.s3_key}",
+               source_table_name: "cubic_ods_qlik__sample"
+             } == CubicLoad.glue_job_payload({ods_load, ods_table})
+    end
+
+    test "returns correct payload based on change tracking load and table record", %{
+      ods_table: ods_table
+    } do
+      incoming_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
+      springboard_bucket = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_springboard)
+      incoming_prefix = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+      springboard_prefix =
+        Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_springboard)
+
+      ods_load =
+        Repo.insert!(%CubicLoad{
+          table_id: ods_table.id,
+          status: "ready",
+          s3_key: "cubic/ods_qlik/SAMPLE__ct/20220102-204950123.csv.gz",
+          s3_modified: ~U[2022-01-01 20:49:50Z],
+          s3_size: 197,
+          is_raw: true
+        })
+
+      assert %{
+               id: ods_load.id,
+               destination_path:
+                 "s3a://#{springboard_bucket}/#{springboard_prefix}raw/cubic/ods_qlik/SAMPLE__ct",
+               destination_table_name: "raw_cubic_ods_qlik__sample__ct",
+               partition_columns: [%{name: "identifier", value: "20220102-204950123.csv.gz"}],
+               s3_key: ods_load.s3_key,
+               source_s3_key: "s3://#{incoming_bucket}/#{incoming_prefix}#{ods_load.s3_key}",
+               source_table_name: "cubic_ods_qlik__sample__ct"
+             } == CubicLoad.glue_job_payload({ods_load, ods_table})
+    end
+  end
 end

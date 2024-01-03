@@ -339,4 +339,62 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
 
     DateTime.truncate(datetime_with_msec, :second)
   end
+
+  @spec glue_job_payload({t(), CubicTable.t()}) :: map()
+  @doc """
+  Using Cubic load and table information, return the payload the Glue job will need.
+  """
+  def glue_job_payload({load_rec, table_rec}) do
+    bucket_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
+    bucket_springboard = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_springboard)
+
+    prefix_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
+
+    prefix_springboard =
+      Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_springboard)
+
+    destination_path =
+      if load_rec.is_raw do
+        "raw/#{Path.dirname(load_rec.s3_key)}"
+      else
+        Path.dirname(load_rec.s3_key)
+      end
+
+    destination_path_ct = String.ends_with?(destination_path, "__ct")
+
+    source_table_name =
+      if destination_path_ct do
+        "#{table_rec.name}__ct"
+      else
+        table_rec.name
+      end
+
+    destination_table_name =
+      cond do
+        load_rec.is_raw && destination_path_ct ->
+          "raw_#{table_rec.name}__ct"
+
+        load_rec.is_raw ->
+          "raw_#{table_rec.name}"
+
+        destination_path_ct ->
+          "#{table_rec.name}__ct"
+
+        true ->
+          table_rec.name
+      end
+
+    %{
+      id: load_rec.id,
+      s3_key: load_rec.s3_key,
+      source_table_name: source_table_name,
+      destination_table_name: destination_table_name,
+      source_s3_key: "s3://#{bucket_incoming}/#{prefix_incoming}#{load_rec.s3_key}",
+      # note: 's3a' is intentional and is the protocol glue/spark uses to write to S3
+      destination_path: "s3a://#{bucket_springboard}/#{prefix_springboard}#{destination_path}",
+      partition_columns: [
+        %{name: "identifier", value: Path.basename(load_rec.s3_key)}
+      ]
+    }
+  end
 end
