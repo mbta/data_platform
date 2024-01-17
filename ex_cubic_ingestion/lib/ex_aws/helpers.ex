@@ -108,6 +108,15 @@ defmodule ExAws.Helpers do
   defp query_succeeded?(%{
          "Status" => %{
            "State" => "FAILED",
+           "AthenaError" => %{"ErrorMessage" => "Partition already exists."}
+         }
+       }) do
+    true
+  end
+
+  defp query_succeeded?(%{
+         "Status" => %{
+           "State" => "FAILED",
            "AthenaError" => %{"ErrorMessage" => "Partition entries already exist."}
          }
        }) do

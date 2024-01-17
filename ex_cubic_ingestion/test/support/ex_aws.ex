@@ -409,11 +409,11 @@ defmodule MockExAws do
     {:ok,
      %{
        "QueryExecutions" => [
-         %{"Status" => %{"State" => "CANCELLED"}},
+         %{"Status" => %{"State" => "SUCCEEDED"}},
          %{
            "Status" => %{
              "State" => "FAILED",
-             "AthenaError" => %{"ErrorMessage" => "Partition entries already exist."}
+             "AthenaError" => %{"ErrorMessage" => "Partition already exists."}
            }
          }
        ]
@@ -423,21 +423,23 @@ defmodule MockExAws do
   def request(
         %{
           service: :athena,
-          data: %{QueryString: "MSCK REPAIR TABLE success_table;"}
+          # note: multiple added partitions
+          data: %{QueryExecutionIds: ["success_query_id", "already_added_partitions_query_id"]}
         },
         _config_overrides
       ) do
-    {:ok, %{"QueryExecutionId" => "success_query_id"}}
-  end
-
-  def request(
-        %{
-          service: :athena,
-          data: %{QueryString: "MSCK REPAIR TABLE fail_table;"}
-        },
-        _config_overrides
-      ) do
-    {:error, {"Exception", "fail_table issue message"}}
+    {:ok,
+     %{
+       "QueryExecutions" => [
+         %{"Status" => %{"State" => "SUCCEEDED"}},
+         %{
+           "Status" => %{
+             "State" => "FAILED",
+             "AthenaError" => %{"ErrorMessage" => "Partition entries already exist."}
+           }
+         }
+       ]
+     }}
   end
 
   def request(%{service: :athena} = op, _config_overrides) do
