@@ -3,12 +3,14 @@ defmodule MockHTTPoison do
   Allow for controlling what is returned for a HTTPoison request.
   """
 
-  @spec get(String.t()) :: {:ok, HTTPoison.Response.t()} | {:error, HTTPoison.Error.t()}
-  def get(url) do
+  @spec get(String.t(), HTTPoison.headers()) ::
+          {:ok, HTTPoison.Response.t()} | {:error, HTTPoison.Error.t()}
+  def get(url, _headers \\ []) do
     dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
     cond do
-      String.starts_with?(url, "#{dmap_base_url}/datasetpublicusersapi/sample") ->
+      String.starts_with?(url, "#{dmap_base_url}/datasetpublicusersapi/sample") or
+          String.starts_with?(url, "#{dmap_base_url}/datasetcontrolleduserapi/sample") ->
         {:ok,
          %HTTPoison.Response{
            status_code: 200,
