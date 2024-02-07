@@ -50,21 +50,9 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   Construct the full URL to the feed, with the correct API key, and applying some
   overriding logic for last updated (if passed in).
   """
-  @spec construct_feed_url(CubicDmapFeed.t(), String.t() | nil) :: String.t()
-  def construct_feed_url(feed_rec, last_updated) do
+  @spec construct_feed_url(CubicDmapFeed.t(), String.t(), String.t() | nil) :: String.t()
+  def construct_feed_url(feed_rec, dmap_api_key, last_updated) do
     dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
-
-    dmap_api_key =
-      cond do
-        String.starts_with?(feed_rec.relative_url, "/datasetcontrolleduserapi") ->
-          Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_user_api_key)
-
-        String.starts_with?(feed_rec.relative_url, "/datasetpublicusersapi") ->
-          Application.fetch_env!(:ex_cubic_ingestion, :dmap_public_user_api_key)
-
-        true ->
-          raise "No API key available."
-      end
 
     last_updated =
       cond do
@@ -94,8 +82,22 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   """
   @spec get_feed_datasets(CubicDmapFeed.t(), String.t() | nil, module()) :: [map()]
   def get_feed_datasets(feed_rec, last_updated, lib_httpoison) do
+    dmap_api_key =
+      cond do
+        String.starts_with?(feed_rec.relative_url, "/datasetcontrolleduserapi") ->
+          Application.fetch_env!(:ex_cubic_ingestion, :dmap_controlled_user_api_key)
+
+        String.starts_with?(feed_rec.relative_url, "/datasetpublicusersapi") ->
+          Application.fetch_env!(:ex_cubic_ingestion, :dmap_public_user_api_key)
+
+        true ->
+          raise "No API key available."
+      end
+
     body =
-      case lib_httpoison.get(construct_feed_url(feed_rec, last_updated)) do
+      case lib_httpoison.get(construct_feed_url(feed_rec, dmap_api_key, last_updated),
+             apikey: dmap_api_key
+           ) do
         {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
           body
 
