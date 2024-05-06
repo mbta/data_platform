@@ -13,12 +13,12 @@ config :ex_cubic_ingestion,
 config :ex_cubic_ingestion, Oban,
   repo: ExCubicIngestion.Repo,
   plugins: [
-    {
-      Oban.Plugins.Cron,
-      crontab: [
-        {"0 15 * * *", ExCubicIngestion.Workers.ScheduleDmap, max_attempts: 1}
-      ]
-    }
+    # {
+    #   Oban.Plugins.Cron,
+    #   crontab: [
+    #     {"0 15 * * *", ExCubicIngestion.Workers.ScheduleDmap, max_attempts: 1}
+    #   ]
+    # }
   ],
   queues: [
     archive: 1,
