@@ -29,7 +29,7 @@ RUN curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
     -o priv/aws-cert-bundle.pem
 RUN sha256sum priv/aws-cert-bundle.pem
 # run SHA256 sum check
-RUN echo "51b107da46717aed974d97464b63f7357b220fe8737969db1492d1cae74b3947  priv/aws-cert-bundle.pem" | sha256sum -c -
+RUN echo "ed2b625ceeca0ebacf413972c33acbeb65a6c6b94d0c6434f1bb006cd4904ede  priv/aws-cert-bundle.pem" | sha256sum -c -
 
 RUN mix release
 
