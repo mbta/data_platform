@@ -7,10 +7,6 @@ defmodule ExCubicIngestion.Repo.Migrations.AddEvenMoreOdsTables do
 
   @ods_tables [
     %{
-      name: "cubic_ods_qlik__edw_transaction_origin_dimension",
-      s3_prefix: "cubic/ods_qlik/EDW.TRANSACTION_ORIGIN_DIMENSION/"
-    },
-    %{
       name: "cubic_ods_qlik__cch_stage_categorization_rule",
       s3_prefix: "cubic/ods_qlik/CCH_STAGE.CATEGORIZATION_RULE/"
     },
