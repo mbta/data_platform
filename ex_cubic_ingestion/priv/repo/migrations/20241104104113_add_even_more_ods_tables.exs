@@ -50,6 +50,7 @@ defmodule ExCubicIngestion.Repo.Migrations.AddEvenMoreOdsTables do
         ods_table_rec = Repo.insert!(%CubicTable{
           name: ods_table[:name],
           s3_prefix: ods_table[:s3_prefix],
+          is_active: true,
           is_raw: true
         })
         Repo.insert!(%CubicOdsTableSnapshot{
