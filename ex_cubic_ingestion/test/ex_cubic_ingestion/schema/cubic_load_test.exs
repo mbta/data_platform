@@ -86,7 +86,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       dmap_table: dmap_table,
       dmap_load_objects: dmap_load_objects
     } do
-      {:ok, {_table_original, nil, new_dmap_load_recs}} =
+      {:ok, {nil, new_dmap_load_recs}} =
         CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       assert Enum.map(dmap_load_objects, & &1.key) ==
@@ -96,7 +96,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
                  load.s3_key
                end)
 
-      assert {:ok, {dmap_table, nil, []}} ==
+      assert {:ok, {nil, []}} ==
                CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       # add a new object
@@ -111,8 +111,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
       # adding one more load object, should only insert it as a load record
       assert {:ok,
-              {_table_after_one_more_load, nil,
-               [{%CubicLoad{s3_key: "cubic/dmap/sample/20220103.csv.gz"}, nil, _table, nil}]}} =
+              {nil, [{%CubicLoad{s3_key: "cubic/dmap/sample/20220103.csv.gz"}, nil, _table, nil}]}} =
                CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
     end
 
@@ -121,7 +120,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       ods_table: ods_table,
       ods_load_objects: ods_load_objects
     } do
-      {:ok, {_table_original, _last_ods_table_snapshot, new_ods_load_recs}} =
+      {:ok, {_last_ods_table_snapshot, new_ods_load_recs}} =
         CubicLoad.insert_new_from_objects_with_table(ods_load_objects, ods_table)
 
       assert Enum.map(ods_load_objects, & &1.key) ==
@@ -133,7 +132,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
                end)
 
       # inserting again should not return any new records
-      assert {:ok, {_table_after_insert, _last_ods_table_snapshot, []}} =
+      assert {:ok, {_last_ods_table_snapshot, []}} =
                CubicLoad.insert_new_from_objects_with_table(ods_load_objects, ods_table)
 
       # add a new object
@@ -148,7 +147,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
       # adding one more load object, should only insert it as a load record
       assert {:ok,
-              {_table_after_one_more_load, _last_ods_table_snapshot,
+              {_last_ods_table_snapshot,
                [
                  {%CubicLoad{s3_key: "cubic/ods_qlik/SAMPLE/LOAD3.csv.gz"}, _ods_load_snapshot,
                   _table, _ods_table_snapshot}
@@ -158,8 +157,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
     test "providing an empty list of objects", %{
       dmap_table: dmap_table
     } do
-      assert {:ok, {_table, nil, []}} =
-               CubicLoad.insert_new_from_objects_with_table([], dmap_table)
+      assert {:ok, {nil, []}} = CubicLoad.insert_new_from_objects_with_table([], dmap_table)
     end
   end
 
@@ -238,8 +236,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       dmap_load_objects: dmap_load_objects
     } do
       # insert records as ready
-      {:ok,
-       {_table_after_insert, nil, [{first_new_load_rec, nil, _table, nil} | rest_new_load_recs]}} =
+      {:ok, {nil, [{first_new_load_rec, nil, _table, nil} | rest_new_load_recs]}} =
         CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       # set the first record to 'archived'
@@ -302,7 +299,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       dmap_load_objects: dmap_load_objects
     } do
       # insert records as ready
-      {:ok, {_table_after_insert, nil, [{first_new_load_rec, nil, _table, nil} | _rest]}} =
+      {:ok, {nil, [{first_new_load_rec, nil, _table, nil} | _rest]}} =
         CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       # update it to 'archived' status
@@ -322,7 +319,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       dmap_load_objects: dmap_load_objects
     } do
       # insert records as ready
-      {:ok, {_table_after_insert, nil, new_load_recs}} =
+      {:ok, {nil, new_load_recs}} =
         CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       expected =
@@ -349,7 +346,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       dmap_load_objects: dmap_load_objects
     } do
       # insert records as ready
-      {:ok, {_table_after_insert, nil, new_load_recs}} =
+      {:ok, {nil, new_load_recs}} =
         CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       new_load_rec_ids =
@@ -371,7 +368,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       dmap_table: dmap_table,
       dmap_load_objects: dmap_load_objects
     } do
-      {:ok, {_table, nil, new_load_recs}} =
+      {:ok, {nil, new_load_recs}} =
         CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
       {_, ready_loads_by_table_query} =

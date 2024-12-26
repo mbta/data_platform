@@ -67,44 +67,4 @@ defmodule ExAws.HelpersTest do
                )
     end
   end
-
-  describe "monitor_athena_query_executions/2" do
-    test "returns immediately if all queries have succeeded" do
-      query_executions = [
-        {:ok, %{"QueryExecutionId" => "success_query_id_1"}},
-        {:ok, %{"QueryExecutionId" => "success_query_id_2"}}
-      ]
-
-      assert :ok = ExAws.Helpers.monitor_athena_query_executions(MockExAws, query_executions)
-    end
-
-    test "returns immediately if any of the queries have failed or were cancelled" do
-      query_executions = [
-        {:ok, %{"QueryExecutionId" => "cancel_query_id"}},
-        {:ok, %{"QueryExecutionId" => "fail_query_id"}}
-      ]
-
-      assert {:error, _message} =
-               ExAws.Helpers.monitor_athena_query_executions(MockExAws, query_executions)
-    end
-
-    test "returns success even if we have a failed query due to an already added partition" do
-      query_executions = [
-        {:ok, %{"QueryExecutionId" => "success_query_id"}},
-        {:ok, %{"QueryExecutionId" => "already_added_partition_query_id"}}
-      ]
-
-      assert :ok = ExAws.Helpers.monitor_athena_query_executions(MockExAws, query_executions)
-    end
-
-    # note: multiple added partitions
-    test "returns success even if we have a failed query due to already added partitions" do
-      query_executions = [
-        {:ok, %{"QueryExecutionId" => "success_query_id"}},
-        {:ok, %{"QueryExecutionId" => "already_added_partitions_query_id"}}
-      ]
-
-      assert :ok = ExAws.Helpers.monitor_athena_query_executions(MockExAws, query_executions)
-    end
-  end
 end
