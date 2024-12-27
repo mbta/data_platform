@@ -324,7 +324,9 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
 
       expected =
         new_load_recs
-        |> Enum.map(fn {load, _ods_load_snapshot, table, _ods_table_snapshot} -> {load, table} end)
+        |> Enum.map(fn {load, _ods_load_snapshot, table, _ods_table_snapshot} ->
+          {load, table}
+        end)
         |> Enum.reverse()
 
       actual =

@@ -88,13 +88,13 @@ defmodule ExCubicIngestion.Workers.Archive do
 
       Enum.join([
         Path.dirname(load_rec.s3_key),
-        '/snapshot=#{Calendar.strftime(ods_load_snapshot_rec.snapshot, "%Y%m%dT%H%M%SZ")}/',
+        "/snapshot=#{Calendar.strftime(ods_load_snapshot_rec.snapshot, "%Y%m%dT%H%M%SZ")}/",
         Path.basename(load_rec.s3_key, ".csv.gz")
       ])
     else
       Enum.join([
         Path.dirname(load_rec.s3_key),
-        '/#{Path.basename(load_rec.s3_key, ".csv.gz")}'
+        "/#{Path.basename(load_rec.s3_key, ".csv.gz")}"
       ])
     end
   end

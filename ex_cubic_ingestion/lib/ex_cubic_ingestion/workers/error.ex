@@ -91,7 +91,7 @@ defmodule ExCubicIngestion.Workers.Error do
     else
       Enum.join([
         Path.dirname(load_rec.s3_key),
-        '/#{Path.basename(load_rec.s3_key, ".csv.gz")}'
+        "/#{Path.basename(load_rec.s3_key, ".csv.gz")}"
       ])
     end
   end
