@@ -15,31 +15,31 @@ services:
     ports:
       - "5432:5432"
 
-  glue_2_0__local:
-    container_name: glue_2_0__local
-    env_file: .env
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.glue_2_0__local
-    depends_on:
-      - db__local
-    working_dir: /data_platform
-    volumes:
-      - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only
-      - ./:/data_platform:ro # map data platform for access to glue scripts, read-only
+  # glue_2_0__local:
+  #   container_name: glue_2_0__local
+  #   env_file: .env
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.glue_2_0__local
+  #   depends_on:
+  #     - db__local
+  #   working_dir: /data_platform
+  #   volumes:
+  #     - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only
+  #     - ./:/data_platform:ro # map data platform for access to glue scripts, read-only
 
-  glue_3_0__local:
-    container_name: glue_3_0__local
-    env_file: .env
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.glue_3_0__local
-    depends_on:
-      - db__local
-    working_dir: /data_platform
-    volumes:
-      - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only
-      - ./:/data_platform:ro # map data platform for access to glue scripts, read-only
+  # glue_3_0__local:
+  #   container_name: glue_3_0__local
+  #   env_file: .env
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.glue_3_0__local
+  #   depends_on:
+  #     - db__local
+  #   working_dir: /data_platform
+  #   volumes:
+  #     - ~/.aws:/root/.aws:ro # map credentials to be used by boto3, read-only
+  #     - ./:/data_platform:ro # map data platform for access to glue scripts, read-only
 
   # # alternative way to running things on host
   # main__local:

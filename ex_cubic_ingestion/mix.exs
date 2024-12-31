@@ -5,7 +5,7 @@ defmodule ExCubicIngestion.MixProject do
     [
       app: :ex_cubic_ingestion,
       version: "0.1.0",
-      elixir: "~> 1.13",
+      elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),

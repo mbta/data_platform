@@ -1,4 +1,4 @@
-FROM hexpm/elixir:1.13.2-erlang-24.2-alpine-3.13.6 AS builder
+FROM hexpm/elixir:1.18.1-erlang-27.1.3-alpine-3.21.0 AS builder
 
 # Install Hex+Rebar
 RUN mix local.hex --force && \
@@ -29,14 +29,14 @@ RUN curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
     -o priv/aws-cert-bundle.pem
 RUN sha256sum priv/aws-cert-bundle.pem
 # run SHA256 sum check
-RUN echo "ed2b625ceeca0ebacf413972c33acbeb65a6c6b94d0c6434f1bb006cd4904ede  priv/aws-cert-bundle.pem" | sha256sum -c -
+RUN echo "390fdc813e2e58ec5a0def8ce6422b83d75032899167052ab981d8e1b3b14ff2  priv/aws-cert-bundle.pem" | sha256sum -c -
 
 RUN mix release
 
 # Second stage: copies the files from the builder stage
-FROM alpine:3.13.6
+FROM alpine:3.21.0
 
-RUN apk add --no-cache libstdc++ libgcc libssl1.1 ncurses-libs bash curl dumb-init
+RUN apk add --no-cache libssl3 dumb-init libstdc++ libgcc ncurses-libs
 
 # Create non-root user
 RUN addgroup -S ex_cubic_ingestion_app && adduser -S -G ex_cubic_ingestion_app ex_cubic_ingestion_app

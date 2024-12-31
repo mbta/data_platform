@@ -32,7 +32,7 @@ defmodule ExCubicIngestion.DataCase do
 
     :ok = Sandbox.checkout(ExCubicIngestion.Repo)
 
-    unless tags[:async] do
+    if !tags[:async] do
       Sandbox.mode(ExCubicIngestion.Repo, {:shared, self()})
     end
 

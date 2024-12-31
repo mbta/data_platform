@@ -79,6 +79,20 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     Repo.get!(not_deleted(), id)
   end
 
+  @spec process_objects(map(), CubicTable.t(), {CubicOdsTableSnapshot.t() | nil, []}) ::
+          {CubicOdsTableSnapshot.t() | nil,
+           [
+             {t(), CubicOdsLoadSnapshot.t() | nil, CubicTable.t(),
+              CubicOdsTableSnapshot.t() | nil}
+           ]}
+  defp process_objects(object, table, {latest_ods_table_snapshot, latest_inserted_loads}) do
+    inserted_load =
+      {_load, _ods_load_snapshot, _table, updated_ods_table_snapshot} =
+      insert_from_object_with_table(object, {table, latest_ods_table_snapshot})
+
+    {updated_ods_table_snapshot, [inserted_load | latest_inserted_loads]}
+  end
+
   @doc """
   From a list of S3 objects defined as maps, filter in only new objects since last load and
   insert them in database.
@@ -119,15 +133,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
       {:ok, {ods_table_snapshot, []}}
     else
       Repo.transaction(fn ->
-        Enum.reduce(new_objects, {ods_table_snapshot, []}, fn object,
-                                                              {latest_ods_table_snapshot,
-                                                               latest_inserted_loads} ->
-          inserted_load =
-            {_load, _ods_load_snapshot, _table, updated_ods_table_snapshot} =
-            insert_from_object_with_table(object, {table, latest_ods_table_snapshot})
-
-          {updated_ods_table_snapshot, [inserted_load | latest_inserted_loads]}
-        end)
+        Enum.reduce(new_objects, {ods_table_snapshot, []}, &process_objects(&1, table, &2))
       end)
     end
   end
