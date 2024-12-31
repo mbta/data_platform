@@ -37,8 +37,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
     # gather the information needed to make AWS requests
     job_payload = construct_job_payload(load_rec_ids)
 
-    with :ok <- run_glue_job(lib_ex_aws, job_payload),
-         :ok <- add_athena_partitions(lib_ex_aws, job_payload) do
+    with :ok <- run_glue_job(lib_ex_aws, job_payload) do
       update_statuses(job_payload)
     end
   end
@@ -146,61 +145,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
     end
   end
 
-  # If Glue job is successful, adds the Athena partition for each load only by start a query
-  # execution with the "ALTER TABLE" statement, and then doing a batched status call for all the
-  # queries.
-  @spec add_athena_partitions(module(), {map(), map()}) :: Oban.Worker.result()
-  defp add_athena_partitions(lib_ex_aws, {_env_payload, %{loads: loads}}) do
-    success_error_requests =
-      loads
-      # make requests to start query executions
-      |> Enum.map(&start_add_partition_query_execution(lib_ex_aws, &1))
-      # split into successful requests and failures
-      |> Enum.split_with(fn {status, _response_body} ->
-        status == :ok
-      end)
-
-    case success_error_requests do
-      # if all succesful, monitor their status
-      {success_requests, []} ->
-        ExAws.Helpers.monitor_athena_query_executions(lib_ex_aws, success_requests)
-
-      # if any failures, fail the job as well
-      {_success_requests, error_requests} ->
-        error_requests_bodies =
-          error_requests
-          |> Enum.map(fn {:error, {exception, message}} ->
-            %{exception: exception, message: message}
-          end)
-          |> Jason.encode!()
-
-        {:error, "Athena Start Query Executions: #{error_requests_bodies}"}
-    end
-  end
-
-  @spec start_add_partition_query_execution(module(), map()) :: {:ok, term()} | {:error, term()}
-  defp start_add_partition_query_execution(lib_ex_aws, load) do
-    bucket_operations = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_operations)
-
-    prefix_operations = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_operations)
-
-    partitions =
-      Enum.map_join(load.partition_columns, ", ", fn partition_column ->
-        "#{partition_column.name} = '#{partition_column.value}'"
-      end)
-
-    # sleep a little to avoid throttling, at most 10 requests will be made per job
-    Process.sleep(1000)
-
-    lib_ex_aws.request(
-      ExAws.Athena.start_query_execution(
-        "ALTER TABLE #{load.destination_table_name} ADD PARTITION (#{partitions});",
-        %{OutputLocation: "s3://#{bucket_operations}/#{prefix_operations}athena/"}
-      )
-    )
-  end
-
-  # If adding the partition to Athena is successful, update the status of all loads
+  # If Glue job run is successful, update the status of all loads
   # to 'ready_for_archiving' allowing the archiving process to begin.
   @spec update_statuses({map(), map()}) :: Oban.Worker.result()
   defp update_statuses({_env_payload, %{loads: loads}}) do

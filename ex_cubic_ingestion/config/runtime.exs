@@ -32,5 +32,4 @@ config :ex_cubic_ingestion,
     System.get_env("GLUE_JOB_CUBIC_INGESTION_INGEST_INCOMING", ""),
   dmap_base_url: System.get_env("CUBIC_DMAP_BASE_URL", ""),
   dmap_controlled_user_api_key: System.get_env("CUBIC_DMAP_CONTROLLED_USER_API_KEY", ""),
-  dmap_public_user_api_key: System.get_env("CUBIC_DMAP_PUBLIC_USER_API_KEY", ""),
-  athena_workgroup: System.get_env("ATHENA_WORKGROUP", "")
+  dmap_public_user_api_key: System.get_env("CUBIC_DMAP_PUBLIC_USER_API_KEY", "")
