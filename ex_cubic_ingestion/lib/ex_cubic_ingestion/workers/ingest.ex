@@ -26,53 +26,10 @@ defmodule ExCubicIngestion.Workers.Ingest do
     # get list of ids for load records
     %{"load_rec_ids" => load_rec_ids} = args
 
-    # allow for ex_aws module to be passed in as a string, since Oban will need to
-    # serialize args to JSON. defaulted to library module.
-    lib_ex_aws =
-      case args do
-        %{"lib_ex_aws" => mod_str} -> Module.safe_concat([mod_str])
-        _args_lib_ex_aws -> ExAws
-      end
-
     # gather the information needed to make AWS requests
-    job_payload = construct_job_payload(load_rec_ids)
-
-    with :ok <- run_glue_job(lib_ex_aws, job_payload) do
-      update_statuses(job_payload)
-    end
-  end
-
-  # Starts the glue job with the given payloads. If successful in starting, monitor the glue job
-  # by checking its status until succeeded or failed. If failed to start, handle the error based
-  # on the type error. See handle_start_glue_job_error/1.
-  @spec run_glue_job(module(), {map(), map()}) :: Oban.Worker.result()
-  defp run_glue_job(lib_ex_aws, {env_payload, input_payload}) do
-    case start_glue_job_run(lib_ex_aws, {env_payload, input_payload}) do
-      {:ok, %{"JobRunId" => glue_job_run_id}} ->
-        monitor_glue_job_run(lib_ex_aws, glue_job_run_id)
-
-      {:error, _body} = glue_job_start_request ->
-        handle_start_glue_job_error(glue_job_start_request)
-    end
-  end
-
-  @spec start_glue_job_run(module(), {map(), map()}) :: {:ok, map()} | {:error, term()}
-  defp start_glue_job_run(lib_ex_aws, {env_payload, input_payload}) do
-    bucket_operations = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_operations)
-
-    prefix_operations = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_operations)
-
-    glue_job_name =
-      Application.fetch_env!(:ex_cubic_ingestion, :glue_job_cubic_ingestion_ingest_incoming)
-
-    lib_ex_aws.request(
-      ExAws.Glue.start_job_run(glue_job_name, %{
-        "--extra-py-files":
-          "s3://#{bucket_operations}/#{prefix_operations}packages/py_cubic_ingestion.zip",
-        "--ENV": Jason.encode!(env_payload),
-        "--INPUT": Jason.encode!(input_payload)
-      })
-    )
+    load_rec_ids
+    |> construct_job_payload()
+    |> update_statuses()
   end
 
   @doc """
@@ -106,7 +63,7 @@ defmodule ExCubicIngestion.Workers.Ingest do
       Application.fetch_env!(:ex_cubic_ingestion, :glue_job_cubic_ingestion_ingest_incoming)
 
     # pause a litte before getting status
-    Process.sleep(30_000)
+    Process.sleep(1)
 
     glue_job_run_status_request =
       glue_job_name
@@ -213,13 +170,13 @@ defmodule ExCubicIngestion.Workers.Ingest do
       "#{@log_prefix} Glue Job Start Request: ConcurrentRunsExceededException: #{message}"
     )
 
-    {:snooze, 60}
+    {:snooze, 1}
   end
 
   def handle_start_glue_job_error({:error, {"ThrottlingException", message}}) do
     Logger.info("#{@log_prefix} Glue Job Start Request: ThrottlingException: #{message}")
 
-    {:snooze, 60}
+    {:snooze, 1}
   end
 
   def handle_start_glue_job_error({:error, {exception, message}}) do
