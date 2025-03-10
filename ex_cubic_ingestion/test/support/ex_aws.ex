@@ -117,34 +117,6 @@ defmodule MockExAws do
            """
          }}
 
-      path == "#{incoming_prefix}cubic/ods_qlik/SAMPLE/invalid_LOAD2.dfm" ->
-        {:ok,
-         %{
-           body: """
-            {
-                "dataInfo": {
-                    "columns": [
-                        {
-                            "name": "SAMPLE_ID"
-                        },
-                        {
-                            "name": "SAMPLE_NAME"
-                        },
-                        {
-                            "name": "EDW_INSERTED_DTM"
-                        },
-                        {
-                            "name": "EDW_UPDATED_DTM"
-                        },
-                        {
-                            "name": "INVALID_COLUMN"
-                        }
-                    ]
-                }
-            }
-           """
-         }}
-
       path == "#{incoming_prefix}cubic/ods_qlik/SAMPLE/notfound_LOAD3.dfm" ->
         {:error,
          {:http_error, 404,

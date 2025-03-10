@@ -7,8 +7,6 @@ defmodule ExCubicIngestion.ValidateIncoming do
   use GenServer
 
   alias ExCubicIngestion.Schema.CubicLoad
-  alias ExCubicIngestion.Schema.CubicTable
-  alias ExCubicIngestion.SchemaFetch
 
   require Logger
   require Oban
@@ -56,41 +54,14 @@ defmodule ExCubicIngestion.ValidateIncoming do
   validity of schema, and set status accordingly for further processing.
   """
   @spec run(t) :: :ok
-  def run(state) do
+  def run(_state) do
     ready_loads = CubicLoad.get_status_ready()
 
-    # check schemas, and split into valid and invalid loads
-    {valid_ready_loads, invalid_ready_loads} =
-      Enum.split_with(ready_loads, &valid_schema?(state, &1))
-
     # start ingestion for those with valid schemas
-    Enum.each(valid_ready_loads, fn {load_rec, _table_rec} ->
+    Enum.each(ready_loads, fn {load_rec, _table_rec} ->
       CubicLoad.update(load_rec, %{status: "ready_for_ingesting"})
     end)
 
-    # log and error out invalid ones
-    Enum.each(invalid_ready_loads, fn {load_rec, _table_rec} = ready_load ->
-      Logger.error(
-        "[ex_cubic_ingestion] [validate_incoming] Invalid schema detected: #{inspect(ready_load)}"
-      )
-
-      CubicLoad.update(load_rec, %{status: "ready_for_erroring"})
-    end)
-
     :ok
-  end
-
-  @spec valid_schema?(t(), {CubicLoad.t(), CubicTable.t()}) :: boolean()
-  defp valid_schema?(state, {load_rec, table_rec}) do
-    # if ODS, check the schema provided by Cubic (.dfm files) against Glue
-    if CubicLoad.ods_load?(load_rec.s3_key) do
-      qlik_columns = SchemaFetch.get_cubic_ods_qlik_columns(state.lib_ex_aws, load_rec)
-
-      qlik_columns ==
-        SchemaFetch.get_glue_columns(state.lib_ex_aws, table_rec, load_rec)
-    else
-      # @todo implement DMAP schema checker once we have the schema API from Cubic
-      true
-    end
   end
 end

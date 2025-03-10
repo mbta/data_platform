@@ -102,14 +102,14 @@ defmodule ExCubicIngestion.Workers.IngestTest do
 
   describe "handle_start_glue_job_error/1" do
     test "receiving a max concurrency exceeded error" do
-      assert {:snooze, 60} =
+      assert {:snooze, 1} =
                Ingest.handle_start_glue_job_error(
                  {:error, {"ConcurrentRunsExceededException", "An error occurred."}}
                )
     end
 
     test "receiving a throttling error" do
-      assert {:snooze, 60} =
+      assert {:snooze, 1} =
                Ingest.handle_start_glue_job_error(
                  {:error, {"ThrottlingException", "An error occurred."}}
                )
