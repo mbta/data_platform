@@ -2,7 +2,7 @@ FROM hexpm/elixir:1.18.1-erlang-27.1.3-alpine-3.21.0 AS builder
 
 # Install Hex+Rebar
 RUN mix local.hex --force && \
-  mix local.rebar --force
+    mix local.rebar --force
 
 # Install necessary tools
 RUN apk --no-cache add git make curl
@@ -29,7 +29,7 @@ RUN curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
     -o priv/aws-cert-bundle.pem
 RUN sha256sum priv/aws-cert-bundle.pem
 # run SHA256 sum check
-RUN echo "5fa49cac7e6e9202ef85331c6f83377a71339d692d5644c9417a2d81406f0c03  priv/aws-cert-bundle.pem" | sha256sum -c -
+RUN echo "e5bb2084ccf45087bda1c9bffdea0eb15ee67f0b91646106e466714f9de3c7e3  priv/aws-cert-bundle.pem" | sha256sum -c -
 
 RUN mix release
 
