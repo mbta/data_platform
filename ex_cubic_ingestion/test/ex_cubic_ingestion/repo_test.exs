@@ -58,7 +58,7 @@ defmodule ExCubicIngestion.RepoTest do
       ]
 
       # assert the ssl options are expected
-      assert Keyword.fetch!(connection_config, :ssl_opts) == expected_ssl_opts
+      assert Keyword.fetch!(connection_config, :ssl) == expected_ssl_opts
     end
   end
 end

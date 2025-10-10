@@ -2,7 +2,6 @@ import Config
 
 config :ex_cubic_ingestion, ExCubicIngestion.Repo,
   show_sensitive_data_on_connection_error: false,
-  ssl: true,
   use_iam_token: true
 
 config :ex_cubic_ingestion,

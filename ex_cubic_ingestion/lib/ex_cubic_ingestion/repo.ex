@@ -27,7 +27,7 @@ defmodule ExCubicIngestion.Repo do
       # update password with token and update ssl options (if set) to ref rds cert
       Keyword.merge(config,
         password: token,
-        ssl_opts: [
+        ssl: [
           cacertfile: Application.app_dir(:ex_cubic_ingestion, ["priv", "aws-cert-bundle.pem"]),
           verify: :verify_peer,
           server_name_indication: String.to_charlist(hostname),
