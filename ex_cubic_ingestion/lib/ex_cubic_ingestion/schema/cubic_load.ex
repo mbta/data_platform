@@ -97,7 +97,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
   From a list of S3 objects defined as maps, filter in only new objects since last load and
   insert them in database.
   """
-  @spec insert_new_from_objects_with_table([map()], CubicTable.t()) ::
+  @spec insert_new_from_objects_with_table([map()], CubicTable.t(), integer()) ::
           {:ok,
            {CubicOdsTableSnapshot.t() | nil,
             [
@@ -105,7 +105,7 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
                CubicOdsTableSnapshot.t() | nil}
             ]}}
           | {:error, term()}
-  def insert_new_from_objects_with_table(objects, table) do
+  def insert_new_from_objects_with_table(objects, table, limit \\ 500) do
     # get ODS snapshot if available
     ods_table_snapshot = CubicOdsTableSnapshot.get_by(table_id: table.id)
 
@@ -122,12 +122,14 @@ defmodule ExCubicIngestion.Schema.CubicLoad do
     # create a list of objects that have a last modified that is later than
     # the last object we have in database
     new_objects =
-      Enum.filter(objects, fn object ->
+      objects
+      |> Enum.filter(fn object ->
         last_modified = parse_and_drop_msec(object.last_modified)
 
         is_nil(last_inserted_load) or
           DateTime.compare(last_modified, last_inserted_load.s3_modified) == :gt
       end)
+      |> Enum.take(limit)
 
     if Enum.empty?(new_objects) do
       {:ok, {ods_table_snapshot, []}}

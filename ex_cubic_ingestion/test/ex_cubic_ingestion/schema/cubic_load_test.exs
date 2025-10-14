@@ -154,6 +154,22 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
                ]}} = CubicLoad.insert_new_from_objects_with_table(ods_load_objects, ods_table)
     end
 
+    test "limiting list of ODS objects", %{
+      ods_table: ods_table,
+      ods_load_objects: ods_load_objects
+    } do
+      {:ok, {_last_ods_table_snapshot, new_ods_load_recs}} =
+        CubicLoad.insert_new_from_objects_with_table(ods_load_objects, ods_table, 1)
+
+      assert [List.first(ods_load_objects).key] ==
+               new_ods_load_recs
+               |> Enum.reverse()
+               |> Enum.map(fn {%CubicLoad{status: "ready", s3_key: s3_key}, _ods_load_snapshot,
+                               _table, _ods_table_snapshot} ->
+                 s3_key
+               end)
+    end
+
     test "providing an empty list of objects", %{
       dmap_table: dmap_table
     } do
