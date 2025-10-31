@@ -1,4 +1,4 @@
-defmodule ExCubicIngestion.Repo.Migrations.AddMoreTablesForIngestion do
+defmodule ExCubicIngestion.Repo.Migrations.AddMoreTablesForIngestion20251030 do
   use Ecto.Migration
 
   alias ExCubicIngestion.Repo
