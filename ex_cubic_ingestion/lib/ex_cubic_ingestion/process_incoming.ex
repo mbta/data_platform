@@ -80,20 +80,19 @@ defmodule ExCubicIngestion.ProcessIncoming do
         end)
         |> CubicLoad.insert_new_from_objects_with_table(table)
 
-        case result do
-          {:ok, {_snapshot, [_ | _] = new_loads}} ->
-            Logger.info(
-              "parent=data_platform, process=run, table=#{table.name}, " <>
-                "s3_prefix=#{table.s3_prefix}, file_count=#{length(new_loads)}, "
-            )
+      case result do
+        {:ok, {_snapshot, [_ | _] = new_loads}} ->
+          Logger.info(
+            "parent=data_platform, process=run, table=#{table.name}, " <>
+              "s3_prefix=#{table.s3_prefix}, file_count=#{length(new_loads)}, "
+          )
 
-          _ ->
-            :ok
-        end
+        _ ->
+          :ok
+      end
 
-        result
+      result
     end
-
 
     :ok
   end
