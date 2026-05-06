@@ -51,8 +51,8 @@ defmodule ExCubicIngestion.Repo.Migrations.AddingTables20260330 do
     Repo.transaction(fn ->
       Enum.each(@ods_tables, fn ods_table ->
         ods_table_rec = CubicTable.get_by!(name: ods_table[:name])
-        Repo.delete!(ods_table_rec)
         Repo.delete!(CubicOdsTableSnapshot.get_by!(table_id: ods_table_rec.id))
+        Repo.delete!(ods_table_rec)
       end)
     end)
   end
