@@ -9,6 +9,7 @@ from awsglue.utils import getResolvedOptions  # pylint: disable=import-error
 from py_cubic_ingestion import job_helpers
 from pyspark.context import SparkContext
 import boto3
+import logging
 import sys
 
 
@@ -59,4 +60,13 @@ def run() -> None:
         # write out to springboard bucket using the same prefix as incoming
         job_helpers.write_parquet(updated_table_df, load.get("partition_columns", []), load["destination_path"])
 
+        logging.info(
+            "parent=data_platform, process=ingest_incoming, source_table=%s, destination_table=%s, "
+            "destination_path=%s, source_s3_key=%s, row_count=%d, col_count=%d, "
+            "partition_count=%d",
+            load["source_table_name"],
+            load["destination_table_name"],
+            load["destination_path"],
+            load["source_s3_key"]
+        )
     job.commit()
