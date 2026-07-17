@@ -6,6 +6,7 @@ RUN mix local.hex --force && \
 
 # Install necessary tools
 RUN apk --no-cache add git make curl
+RUN apk add --no-cache openssl
 
 ENV MIX_ENV=prod
 
