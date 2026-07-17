@@ -1,11 +1,8 @@
-FROM hexpm/elixir:1.18.1-erlang-27.1.3-alpine-3.21.0 AS builder
+FROM hexpm/elixir:1.20.1-erlang-27.3.4.14-alpine-3.23.5 AS builder
 
-# # Install Hex+Rebar
-# RUN mix local.hex --force && \
-#     mix local.rebar --force
-RUN apk add git
-RUN mix archive.install github hexpm/hex branch latest
-
+# Install Hex+Rebar
+RUN mix local.hex --force && \
+    mix local.rebar --force
 
 # Install necessary tools
 RUN apk --no-cache add git make curl
@@ -18,10 +15,7 @@ COPY mix.exs mix.exs
 COPY mix.lock mix.lock
 COPY config/config.exs config/prod.exs config/prod*.exs config/
 
-RUN apk add --no-cache git rebar3 && \
-    mix archive.install github hexpm/hex branch latest --force && \
-    mix local.rebar rebar3 "$(which rebar3)" --force && \
-    mix do deps.get --only prod, deps.compile
+RUN mix do deps.get --only prod, deps.compile
 
 COPY lib lib
 COPY priv priv
