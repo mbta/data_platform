@@ -1,4 +1,4 @@
-FROM hexpm/elixir:1.20.1-erlang-27.3.4.14-alpine-3.23.5 AS builder
+FROM hexpm/elixir:1.18.4-erlang-27.3.4.14-alpine-3.21.7 AS builder
 
 # Install Hex+Rebar
 RUN mix local.hex --force && \
@@ -6,7 +6,6 @@ RUN mix local.hex --force && \
 
 # Install necessary tools
 RUN apk --no-cache add git make curl
-RUN apk add --no-cache openssl
 
 ENV MIX_ENV=prod
 
