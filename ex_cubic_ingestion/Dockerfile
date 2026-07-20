@@ -1,4 +1,4 @@
-FROM hexpm/elixir:1.18.1-erlang-27.1.3-alpine-3.21.0 AS builder
+FROM hexpm/elixir:1.18.4-erlang-27.3.4.14-alpine-3.21.7 AS builder
 
 # Install Hex+Rebar
 RUN mix local.hex --force && \
