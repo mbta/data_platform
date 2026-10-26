@@ -1,4 +1,4 @@
-defmodule ExCubicIngestion.Repo.Migrations.AddingTables20261013 do
+defmodule ExCubicIngestion.Repo.Migrations.Add_ABP_TAP_STATUS_DIMENSION do
   use Ecto.Migration
 
   alias ExCubicIngestion.Repo
