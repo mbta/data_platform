@@ -1,14 +1,14 @@
 defmodule ExAws.ReqTest do
   use ExUnit.Case, async: true
 
-  alias ExAws.Request.Req, as: ReqClient
+  alias ExAws.Request
 
   setup do
     Req.Test.verify_on_exit!()
   end
 
   test "AWS requests use Req and preserve response bodies for AWS parsers" do
-    assert Application.fetch_env!(:ex_aws, :http_client) == ReqClient
+    assert Application.fetch_env!(:ex_aws, :http_client) == Request.Req
 
     Req.Test.expect(__MODULE__, fn conn ->
       assert conn.method == "GET"
@@ -20,7 +20,7 @@ defmodule ExAws.ReqTest do
     end)
 
     assert {:ok, %{status_code: 200, body: "<ListBucketResult/>"}} =
-             ReqClient.request(
+             Request.Req.request(
                :get,
                "https://s3.example.com/bucket",
                "",
