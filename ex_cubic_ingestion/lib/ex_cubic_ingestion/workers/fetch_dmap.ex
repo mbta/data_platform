@@ -129,8 +129,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
 
     resp =
       lib_req.get!(dataset_url,
-        decode_body: false,
-        decompress_body: false,
+        raw: true,
         redirect: false,
         retry: false
       )
