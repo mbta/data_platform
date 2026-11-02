@@ -1,18 +1,22 @@
 defmodule ExCubicIngestion.Workers.FetchDmapTest do
-  use ExCubicIngestion.DataCase, async: true
+  use ExUnit.Case, async: true
   use Oban.Testing, repo: ExCubicIngestion.Repo
 
+  alias Ecto.Adapters.SQL.Sandbox
+  alias ExCubicIngestion.Repo
   alias ExCubicIngestion.Schema.CubicDmapDataset
   alias ExCubicIngestion.Schema.CubicDmapFeed
   alias ExCubicIngestion.Workers.FetchDmap
 
-  setup do
+  setup tags do
+    if tags[:database], do: Sandbox.checkout(Repo)
     Req.Test.verify_on_exit!()
     Req.Test.stub(MockReq, &MockReq.call/1)
     :ok
   end
 
   describe "perform/1" do
+    @tag :database
     test "run job without error" do
       dmap_feed =
         Repo.insert!(%CubicDmapFeed{
@@ -32,10 +36,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "public feed without a last updated timestamp" do
       dmap_feed_relative_url = "/datasetpublicusersapi/sample"
 
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: dmap_feed_relative_url
-        })
+      dmap_feed = %CubicDmapFeed{relative_url: dmap_feed_relative_url}
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
@@ -49,11 +50,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "public feed with a last updated timestamp" do
       dmap_feed_relative_url = "/datasetpublicusersapi/sample"
 
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: dmap_feed_relative_url,
-          last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
-        })
+      dmap_feed = %CubicDmapFeed{
+        relative_url: dmap_feed_relative_url,
+        last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
+      }
 
       dmap_base_url = Application.fetch_env!(:ex_cubic_ingestion, :dmap_base_url)
 
@@ -67,11 +67,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "public feed with last updated passed in" do
       dmap_feed_relative_url = "/datasetpublicusersapi/sample"
 
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: dmap_feed_relative_url,
-          last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
-        })
+      dmap_feed = %CubicDmapFeed{
+        relative_url: dmap_feed_relative_url,
+        last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
+      }
 
       last_updated = ~U[2022-05-01 10:49:50.123456Z]
 
@@ -118,10 +117,7 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "unknown feed raises error" do
       dmap_feed_relative_url = "/datasetunknownuserapi/sample"
 
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: dmap_feed_relative_url
-        })
+      dmap_feed = %CubicDmapFeed{relative_url: dmap_feed_relative_url}
 
       assert_raise RuntimeError, fn ->
         FetchDmap.get_feed_datasets(dmap_feed, nil, MockReq)
@@ -129,11 +125,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     end
 
     test "getting mock controlled feed results" do
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: "/datasetcontrolleduserapi/sample",
-          last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
-        })
+      dmap_feed = %CubicDmapFeed{
+        relative_url: "/datasetcontrolleduserapi/sample",
+        last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
+      }
 
       last_updated = ~U[2022-05-01 10:49:50.123456Z]
 
@@ -149,11 +144,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     end
 
     test "getting mock public feed results" do
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: "/datasetpublicusersapi/sample",
-          last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
-        })
+      dmap_feed = %CubicDmapFeed{
+        relative_url: "/datasetpublicusersapi/sample",
+        last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
+      }
 
       last_updated = ~U[2022-05-01 10:49:50.123456Z]
 
@@ -171,11 +165,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "getting error response and throwing specific exception with response body" do
       relative_url = "/datasetpublicusersapi/error"
 
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: relative_url,
-          last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
-        })
+      dmap_feed = %CubicDmapFeed{
+        relative_url: relative_url,
+        last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
+      }
 
       last_updated = ~U[2022-05-01 10:49:50.123456Z]
 
@@ -193,11 +186,10 @@ defmodule ExCubicIngestion.Workers.FetchDmapTest do
     test "getting error response and throwing specific exception" do
       relative_url = "/datasetpublicusersapi/exception"
 
-      dmap_feed =
-        Repo.insert!(%CubicDmapFeed{
-          relative_url: relative_url,
-          last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
-        })
+      dmap_feed = %CubicDmapFeed{
+        relative_url: relative_url,
+        last_updated_at: ~U[2022-05-22 20:49:50.123456Z]
+      }
 
       last_updated = ~U[2022-05-01 10:49:50.123456Z]
 
