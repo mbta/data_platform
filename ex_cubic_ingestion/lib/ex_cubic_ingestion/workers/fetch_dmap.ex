@@ -27,20 +27,20 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
         _args_lib_ex_aws -> ExAws
       end
 
-    # allow for httpoison module to be passed in as a string, since Oban will need to
+    # allow for req module to be passed in as a string, since Oban will need to
     # serialize args to JSON. defaulted to library module.
-    lib_httpoison =
+    lib_req =
       case args do
-        %{"lib_httpoison" => mod_str} -> Module.safe_concat([mod_str])
-        _args_lib_httpoison -> HTTPoison
+        %{"lib_req" => mod_str} -> Module.safe_concat([mod_str])
+        _args_lib_req -> Req
       end
 
     feed_rec = CubicDmapFeed.get!(feed_id)
 
     feed_rec
-    |> get_feed_datasets(last_updated, lib_httpoison)
+    |> get_feed_datasets(last_updated, lib_req)
     |> CubicDmapDataset.upsert_many_from_datasets(feed_rec)
-    |> Enum.map(&fetch_and_upload_to_s3(&1, lib_ex_aws, lib_httpoison))
+    |> Enum.map(&fetch_and_upload_to_s3(&1, lib_ex_aws, lib_req))
     |> CubicDmapFeed.update_last_updated_from_datasets(feed_rec)
 
     :ok
@@ -81,7 +81,7 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   information. Also, checks that datasets are valid and filters out invalid ones.
   """
   @spec get_feed_datasets(CubicDmapFeed.t(), String.t() | nil, module()) :: [map()]
-  def get_feed_datasets(feed_rec, last_updated, lib_httpoison) do
+  def get_feed_datasets(feed_rec, last_updated, lib_req) do
     dmap_api_key =
       cond do
         String.starts_with?(feed_rec.relative_url, "/datasetcontrolleduserapi") ->
@@ -95,13 +95,16 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
       end
 
     body =
-      case lib_httpoison.get(construct_feed_url(feed_rec, dmap_api_key, last_updated),
-             apikey: dmap_api_key
+      case lib_req.get(construct_feed_url(feed_rec, dmap_api_key, last_updated),
+             headers: [apikey: dmap_api_key],
+             decode_body: false,
+             redirect: false,
+             retry: false
            ) do
-        {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        {:ok, %Req.Response{status: 200, body: body}} ->
           body
 
-        {:ok, %HTTPoison.Response{body: body}} ->
+        {:ok, %Req.Response{body: body}} ->
           raise "Unable to fetch feed results: #{feed_rec.relative_url} (Response: #{inspect(body)})"
 
         _exception_or_error_code ->
@@ -119,12 +122,22 @@ defmodule ExCubicIngestion.Workers.FetchDmap do
   """
   @spec fetch_and_upload_to_s3({CubicDmapDataset.t(), String.t()}, module(), module()) ::
           CubicDmapDataset.t()
-  def fetch_and_upload_to_s3({dataset_rec, dataset_url}, lib_ex_aws, lib_httpoison) do
+  def fetch_and_upload_to_s3({dataset_rec, dataset_url}, lib_ex_aws, lib_req) do
     bucket_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_incoming)
 
     prefix_incoming = Application.fetch_env!(:ex_cubic_ingestion, :s3_bucket_prefix_incoming)
 
-    resp = lib_httpoison.get!(dataset_url)
+    resp =
+      lib_req.get!(dataset_url,
+        decode_body: false,
+        decompress_body: false,
+        redirect: false,
+        retry: false
+      )
+
+    if resp.status != 200 do
+      raise "Unable to fetch dataset: #{dataset_rec.identifier} (Status: #{resp.status})"
+    end
 
     bucket_incoming
     |> ExAws.S3.put_object(

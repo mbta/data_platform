@@ -90,7 +90,7 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   @spec iso_extended_to_datetime(String.t()) :: DateTime.t()
   def iso_extended_to_datetime(iso_extended) do
     iso_extended
-    |> Timex.parse!("{ISO:Extended}")
+    |> NaiveDateTime.from_iso8601!()
     |> DateTime.from_naive!("Etc/UTC")
   end
 

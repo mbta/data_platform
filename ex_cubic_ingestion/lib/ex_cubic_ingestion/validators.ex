@@ -10,7 +10,7 @@ defmodule ExCubicIngestion.Validators do
 
   @spec valid_iso_datetime?(String.t()) :: boolean()
   def valid_iso_datetime?(datetime_str) do
-    match?({:ok, _datetime}, Timex.parse(datetime_str, "{ISO:Extended}"))
+    match?({:ok, _datetime}, NaiveDateTime.from_iso8601(datetime_str))
   end
 
   @spec valid_dmap_dataset_url?(String.t()) :: boolean()
