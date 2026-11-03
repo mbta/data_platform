@@ -3,7 +3,7 @@ defmodule ExAws.HelpersTest do
 
   describe "move/5" do
     test "already copied but there is still a source object" do
-      assert {:ok, _} =
+      assert {:ok, _result} =
                ExAws.Helpers.move(
                  MockExAws,
                  # incoming bucket
@@ -16,7 +16,7 @@ defmodule ExAws.HelpersTest do
     end
 
     test "already copied" do
-      assert {:ok, _} =
+      assert {:ok, _result} =
                ExAws.Helpers.move(
                  MockExAws,
                  # incoming bucket
@@ -42,7 +42,7 @@ defmodule ExAws.HelpersTest do
     end
 
     test "do the move action" do
-      assert {:ok, _} =
+      assert {:ok, _result} =
                ExAws.Helpers.move(
                  MockExAws,
                  # incoming bucket

@@ -34,7 +34,7 @@ defmodule ExCubicIngestion.Repo.Migrator do
     for repo <- Application.get_env(:ex_cubic_ingestion, :ecto_repos, []) do
       Logger.info(fn -> "Migrating repo=#{repo}" end)
 
-      {time_usec, {:ok, _, _}} =
+      {time_usec, {:ok, _migrations, _started_apps}} =
         :timer.tc(module, :with_repo, [repo, &module.run(&1, :up, all: true)])
 
       time_msec = System.convert_time_unit(time_usec, :microsecond, :millisecond)
