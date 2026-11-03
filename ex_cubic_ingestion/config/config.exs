@@ -10,7 +10,9 @@ config :ex_cubic_ingestion,
   run_migrations_at_startup?: false,
   start_app_children?: true
 
-config :ex_aws, http_client: ExAws.Request.Req
+config :ex_aws,
+  http_client: ExAws.Request.Req,
+  req_opts: [receive_timeout: 30_000, retry: false]
 
 config :ex_cubic_ingestion, Oban,
   repo: ExCubicIngestion.Repo,
