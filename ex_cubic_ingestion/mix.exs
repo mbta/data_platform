@@ -51,6 +51,7 @@ defmodule ExCubicIngestion.MixProject do
       {:plug, "~> 1.0", only: :test},
       {:req, "~> 0.7.5"},
       {:sweet_xml, "~> 0.7"},
+      {:ssl_verify_fun, "~> 1.1"},
       {:telemetry, "~> 1.0"}
     ]
   end
