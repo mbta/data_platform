@@ -50,11 +50,8 @@ defmodule ExCubicIngestion.MixProject do
       {:postgrex, "~> 0.16"},
       {:plug, "~> 1.0", only: :test},
       {:req, "~> 0.7.5"},
-      {:ssl_verify_fun, "~> 1.1"},
       {:sweet_xml, "~> 0.7"},
       {:telemetry, "~> 1.0"}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
 
