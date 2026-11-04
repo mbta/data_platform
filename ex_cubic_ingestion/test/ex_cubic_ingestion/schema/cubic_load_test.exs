@@ -387,7 +387,7 @@ defmodule ExCubicIngestion.Schema.CubicLoadTest do
       {:ok, {nil, new_load_recs}} =
         CubicLoad.insert_new_from_objects_with_table(dmap_load_objects, dmap_table)
 
-      {_, ready_loads_by_table_query} =
+      {_table, ready_loads_by_table_query} =
         CubicLoad.get_status_ready_by_table_query({dmap_table, nil})
 
       expected =

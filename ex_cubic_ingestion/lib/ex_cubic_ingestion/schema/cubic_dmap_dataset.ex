@@ -85,13 +85,22 @@ defmodule ExCubicIngestion.Schema.CubicDmapDataset do
   end
 
   @doc """
-  Converts an ISO formatted datetime String to Datetime
+  Converts an ISO timestamp to UTC, treating timestamps without an offset as UTC.
   """
   @spec iso_extended_to_datetime(String.t()) :: DateTime.t()
   def iso_extended_to_datetime(iso_extended) do
-    iso_extended
-    |> Timex.parse!("{ISO:Extended}")
-    |> DateTime.from_naive!("Etc/UTC")
+    case DateTime.from_iso8601(iso_extended) do
+      {:ok, datetime, _offset} ->
+        datetime
+
+      {:error, :missing_offset} ->
+        iso_extended
+        |> NaiveDateTime.from_iso8601!()
+        |> DateTime.from_naive!("Etc/UTC")
+
+      {:error, reason} ->
+        raise ArgumentError, "invalid ISO timestamp: #{inspect(reason)}"
+    end
   end
 
   @spec upsert_from_dataset(map(), CubicDmapFeed.t()) :: t()

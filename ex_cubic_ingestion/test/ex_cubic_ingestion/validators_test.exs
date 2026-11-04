@@ -23,6 +23,16 @@ defmodule ExCubicIngestion.ValidatorsTest do
     test "string passed in is not valid per our requirement" do
       refute Validators.valid_iso_datetime?("20220101 00:00:00")
     end
+
+    test "accepts UTC timestamps with and without fractional seconds" do
+      assert Validators.valid_iso_datetime?("2022-01-01T00:00:00Z")
+      assert Validators.valid_iso_datetime?("2022-01-01T00:00:00.123456Z")
+    end
+
+    test "rejects invalid calendar dates and times" do
+      refute Validators.valid_iso_datetime?("2022-02-30T00:00:00")
+      refute Validators.valid_iso_datetime?("2022-01-01T25:00:00")
+    end
   end
 
   describe "valid_dmap_dataset_url?/1" do
